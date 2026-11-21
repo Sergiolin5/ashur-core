@@ -2,12 +2,10 @@
 
 Cada una espera la decisión de Sergio. Cuando se cierre, se registra como ADR en `docs/adr/` y se quita de aquí.
 
-## 3. Manejo de estado en Flutter
-Qué patrón o paquete maneja el estado de la app. PrivateLM usa GetX. Cualquier paquete necesita aprobación.
-
 ## 4. Almacenamiento en Flutter
-Qué guarda la app en el dispositivo (caché, borradores, claves) y con qué. PrivateLM usa Hive. La memoria de Ashur
-vive en el core, no en la app.
+La clave del core ya se guarda con `flutter_secure_storage` (`docs/adr/0007-clave-en-el-dispositivo.md`). Falta
+decidir qué más guarda la app en el dispositivo (caché, borradores) y con qué. PrivateLM usa Hive. La memoria de
+Ashur vive en el core, no en la app.
 
 ## 6. Tiempo de aprendizaje en el contrato de la galaxia
 La densidad del polvo crece con el tiempo que Ashur lleva aprendiendo, $t_A$ (ver `docs/GALAXIA.md`), pero el

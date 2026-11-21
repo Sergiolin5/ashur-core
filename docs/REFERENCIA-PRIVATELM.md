@@ -24,8 +24,8 @@ No se copia código: se recrea lo que sirve.
 
 ## Estructura que conviene reutilizar
 - **Capas vista / controlador / servicio:** `lib/views/`, `lib/controllers/`, `lib/services/`, con el diagrama de
-  `README.md` (Technical Architecture). La idea de capas sirve; el gestor de estado (GetX, `pubspec.yaml`) sigue
-  abierto en `docs/DECISIONES-ABIERTAS.md`.
+  `README.md` (Technical Architecture). La idea de capas sirve; el gestor de estado (GetX, `pubspec.yaml`) no se
+  adopta: la app usa lo que trae Flutter (`docs/adr/0006-estado-en-flutter.md`).
 - **Importación condicional por plataforma** para que cada plataforma compile solo lo suyo:
   `lib/services/inference_service.dart` (import de `inference_android.dart` o `inference_stub.dart`) y
   `lib/services/openai_server_service.dart` (export `_stub` / `_io`).
