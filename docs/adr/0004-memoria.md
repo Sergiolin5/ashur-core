@@ -47,8 +47,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 ### Clave compartida
 - Los endpoints de la memoria piden el encabezado `X-Ashur-Clave`, que se compara con la variable de entorno
   `ASHUR_CLAVE` mediante `secrets.compare_digest`. `/vivo` queda abierto.
-- **Administradores:** editar y borrar piden además el encabezado `X-Ashur-Clave-Admin`, que se compara con
-  `ASHUR_CLAVE_ADMIN`. Así los dueños del sistema son los únicos que cambian la memoria.
+- **Administradores:** editar y borrar piden el encabezado `X-Ashur-Clave-Admin`, que se compara con
+  `ASHUR_CLAVE_ADMIN`. Esa clave alcanza sola: no hace falta enviar también `X-Ashur-Clave`. Así los dueños del sistema son los únicos que cambian la memoria.
 - **Cerrado por defecto:** si `ASHUR_CLAVE` no está configurada, la memoria responde 503, y si
   `ASHUR_CLAVE_ADMIN` no está configurada, nadie puede editar ni borrar. Una clave ausente o
   equivocada responde 401.
