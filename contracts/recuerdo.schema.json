@@ -12,7 +12,7 @@
         "origen",
         "fecha",
         "sensibilidad",
-        "personas",
+        "identidades",
         "objetos",
         "opinion"
       ],
@@ -40,10 +40,11 @@
             "sensible"
           ]
         },
-        "personas": {
+        "identidades": {
+          "description": "Las identidades involucradas: personas o mascotas.",
           "type": "array",
           "items": {
-            "$ref": "#/$defs/persona"
+            "$ref": "#/$defs/identidad"
           }
         },
         "objetos": {
@@ -66,11 +67,11 @@
         }
       }
     },
-    "persona": {
+    "identidad": {
       "type": "object",
       "required": [
         "nombre",
-        "contacto_id"
+        "identidad_id"
       ],
       "additionalProperties": false,
       "properties": {
@@ -78,8 +79,8 @@
           "type": "string",
           "minLength": 1
         },
-        "contacto_id": {
-          "description": "id de la persona en la lista de contactos; null si no está en la lista.",
+        "identidad_id": {
+          "description": "id en la lista de identidades del core; null si no está en la lista.",
           "oneOf": [
             {
               "type": "null"
@@ -127,7 +128,7 @@
         "origen",
         "fecha",
         "sensibilidad",
-        "personas",
+        "identidades",
         "objetos",
         "opinion"
       ],
@@ -149,8 +150,8 @@
         "sensibilidad": {
           "$ref": "#/$defs/nuevo/properties/sensibilidad"
         },
-        "personas": {
-          "$ref": "#/$defs/nuevo/properties/personas"
+        "identidades": {
+          "$ref": "#/$defs/nuevo/properties/identidades"
         },
         "objetos": {
           "$ref": "#/$defs/nuevo/properties/objetos"

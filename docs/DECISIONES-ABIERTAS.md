@@ -12,10 +12,10 @@ La fórmula ya está decidida (`docs/GALAXIA.md`): el polvo crece un poco con el
 recuerdos. Falta agregar al contrato la fecha en que Ashur empezó a aprender y la cantidad de recuerdos, y decidir de
 dónde sale esa fecha. Se hace junto con la definición de qué otras cosas son cuerpos de la galaxia.
 
-## 8. Enlace de la memoria con el inventario y los contactos
-Cada objeto de un recuerdo trae un `inventario_id`, y cada persona un `contacto_id`, pero ni el inventario ni la
-lista de contactos existen todavía. Falta decidir cómo se enlazan cuando existan, y qué pasa con un recuerdo si se
-borra un objeto o un contacto.
+## 8. Enlace de la memoria con el inventario y las identidades
+Cada objeto de un recuerdo trae un `inventario_id`, y cada identidad un `identidad_id`, pero ni el inventario ni la
+lista de identidades existen todavía. Falta decidir cómo se enlazan cuando existan, qué pasa con un recuerdo si se
+borra un objeto o una identidad, y qué guarda cada identidad (por ejemplo, su clase: persona, mascota).
 
 ## 10. Búsqueda por significado
 Cómo encuentra Ashur los recuerdos relacionados con lo que se habla (por ejemplo, con embeddings). Cualquier

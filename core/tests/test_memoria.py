@@ -48,9 +48,9 @@ def test_el_ejemplo_del_contrato_es_valido():
         lambda d: d["objetos"][1].pop("inventario_id"),
         lambda d: d.pop("opinion"),
         lambda d: d.update(fecha="2026-11-20T18:30:00"),
-        lambda d: d["personas"][1].pop("contacto_id"),
+        lambda d: d["identidades"][1].pop("identidad_id"),
     ],
-    ids=["sensibilidad-desconocida", "campo-extra", "falta-inventario-id", "falta-opinion", "fecha-sin-zona", "falta-contacto-id"],
+    ids=["sensibilidad-desconocida", "campo-extra", "falta-inventario-id", "falta-opinion", "fecha-sin-zona", "falta-identidad-id"],
 )
 def test_rechaza_lo_que_el_schema_no_permite(cambio):
     datos = leer_ejemplo()
@@ -131,3 +131,31 @@ def test_rechaza_una_base_con_esquema_mas_nuevo(tmp_path):
     con.close()
     with pytest.raises(RuntimeError):
         memoria.abrir(ruta)
+
+
+def test_migra_una_base_de_la_version_1(tmp_path):
+    ruta = str(tmp_path / "ashur.db")
+    con = sqlite3.connect(ruta)
+    con.execute(
+        "CREATE TABLE recuerdos (id INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT NOT NULL, origen TEXT NOT NULL,"
+        " fecha TEXT NOT NULL, sensibilidad TEXT NOT NULL, personas TEXT NOT NULL, objetos TEXT NOT NULL,"
+        " opinion TEXT)"
+    )
+    con.execute(
+        "INSERT INTO recuerdos (texto, origen, fecha, sensibilidad, personas, objetos, opinion)"
+        " VALUES ('Un paseo.', 'diario', '2026-11-20T18:30:00-05:00', 'normal', ?, '[]', NULL)",
+        (json.dumps([{"nombre": "Ana", "contacto_id": "per-1"}, {"nombre": "Bruno", "contacto_id": None}]),),
+    )
+    con.execute("PRAGMA user_version = 1")
+    con.commit()
+    con.close()
+
+    for _ in range(2):  # la segunda vez no debe cambiar nada
+        con = memoria.abrir(ruta)
+        assert con.execute("PRAGMA user_version").fetchone()[0] == 2
+        [recuerdo] = memoria.listar(con)
+        assert [i.model_dump() for i in recuerdo.identidades] == [
+            {"nombre": "Ana", "identidad_id": "per-1"},
+            {"nombre": "Bruno", "identidad_id": None},
+        ]
+        con.close()

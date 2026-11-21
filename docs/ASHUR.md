@@ -10,7 +10,7 @@ El core es lo mínimo que Ashur necesita para existir, y tiene cuatro partes:
 1. **Memoria:** lo que Ashur aprende y recuerda.
 2. **Chat:** la conversación con Ashur, al estilo de WhatsApp.
 3. **Inventario de objetos físicos:** las cosas que Sergio tiene y dónde están.
-4. **Contactos:** las personas que conoce Sergio, como un inventario pero de personas.
+4. **Identidades:** las personas y las mascotas que conoce Ashur, como un inventario pero de seres.
 
 Todo lo demás (casa, salud, tiempo, hábitos, herramientas, WhatsApp) es un módulo independiente que se integra al core
 siguiendo el contrato de `docs/MODULOS.md`. El core vive en `core/` como servidor REST, y el cliente es la app

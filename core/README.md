@@ -1,5 +1,5 @@
 # core
-Servidor REST de Ashur: memoria, chat, inventario de objetos físicos y contactos, y el registro de módulos.
+Servidor REST de Ashur: memoria, chat, inventario de objetos físicos e identidades, y el registro de módulos.
 Stack: Python 3.13, FastAPI y SQLite, desplegado como contenedor en ZimaOS (`docs/adr/0003-stack-servidor.md`).
 
 Desde esta carpeta:

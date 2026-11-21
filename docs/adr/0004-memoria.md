@@ -20,7 +20,7 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 | `origen` | De dónde vino: chat, diario o el id de un módulo. |
 | `fecha` | Cuándo pasó, en ISO 8601 con zona horaria. La envía el cliente, porque un recuerdo del diario de ayer lleva la fecha de ayer. |
 | `sensibilidad` | `normal`, `privado` o `sensible`. |
-| `personas` | Cada una con `nombre` y `contacto_id`, que es `null` si la persona no está en la lista de contactos. |
+| `identidades` | Las personas y mascotas involucradas, cada una con `nombre` e `identidad_id`, que es `null` si no está en la lista de identidades. |
 | `objetos` | Cada uno con `nombre` e `inventario_id`, que es `null` si el objeto no está en el inventario. |
 | `opinion` | Lo que Ashur opina del recuerdo, o `null` si todavía no tiene opinión. |
 
@@ -29,8 +29,10 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   ni qué nivel de inferencia puede usarlo.
 
 ### Almacenamiento
-- **Base de datos:** una tabla `recuerdos` en SQLite. `personas` y `objetos` se guardan como JSON en sus columnas.
-- **Versión del esquema:** se lleva con `PRAGMA user_version`. Una base vacía se crea en la versión 1; una base con
+- **Base de datos:** una tabla `recuerdos` en SQLite. `identidades` y `objetos` se guardan como JSON en sus columnas.
+- **Versión del esquema:** se lleva con `PRAGMA user_version` y va en la 2. Una base vacía se crea en la versión 2,
+  y una de la versión 1 (con `personas` y `contacto_id`) se migra sola a `identidades` e `identidad_id`. La
+  migración corre dentro de `BEGIN IMMEDIATE`, así que dos pedidos a la vez no la repiten; una base con
   una versión más nueva que la que conoce el código hace que cada pedido a la memoria falle con un error, en
   lugar de adivinar.
 - **Conexiones:** se abre una conexión por pedido, porque FastAPI atiende los endpoints en varios hilos.
@@ -56,8 +58,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 - **Dependencias:** usa `fastapi.security.APIKeyHeader`, que viene con FastAPI, así que no agrega paquetes.
 
 ## Costos
-- **Los enlaces todavía no apuntan a nada:** `contacto_id` e `inventario_id` esperan a que existan la lista de
-  contactos y el inventario. La lista de contactos es parte del core, como el inventario pero de personas.
+- **Los enlaces todavía no apuntan a nada:** `identidad_id` e `inventario_id` esperan a que existan la lista de
+  identidades y el inventario. Las identidades son parte del core: personas y mascotas, como un inventario de seres.
 - **La clave viaja sin cifrar en la red de casa:** el core habla HTTP, así que en la red local la clave va en claro.
   Por Tailscale va cifrada.
 - **Dos claves fijas:** no distinguen dispositivos ni personas, y cambiar una obliga a cambiarla en todos los
@@ -65,6 +67,6 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 
 ## Pendiente
 Están en `docs/DECISIONES-ABIERTAS.md`, puntos 8, 10 y 11:
-- el enlace con el inventario y con la lista de contactos;
+- el enlace con el inventario y con la lista de identidades;
 - la búsqueda por significado;
 - las reglas por nivel de sensibilidad y de consentimiento.

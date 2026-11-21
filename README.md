@@ -5,7 +5,7 @@ Este monorepo contiene su core, su app y sus módulos.
 
 | Carpeta | Contenido |
 | --- | --- |
-| `core/` | Servidor REST: memoria, chat, inventario de objetos físicos y contactos. |
+| `core/` | Servidor REST: memoria, chat, inventario de objetos físicos e identidades. |
 | `app/` | Cliente Flutter para iOS, macOS, Windows y Android. |
 | `modules/` | Módulos independientes que se integran al core. |
 | `contracts/` | Contratos de datos entre el core y la app. |

@@ -4,14 +4,14 @@
   "origen": "diario",
   "fecha": "2026-11-20T18:30:00-05:00",
   "sensibilidad": "normal",
-  "personas": [
+  "identidades": [
     {
       "nombre": "Ana",
-      "contacto_id": "per-1"
+      "identidad_id": "ide-1"
     },
     {
       "nombre": "Bruno",
-      "contacto_id": null
+      "identidad_id": null
     }
   ],
   "objetos": [
