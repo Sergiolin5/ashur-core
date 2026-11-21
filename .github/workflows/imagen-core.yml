@@ -1,4 +1,5 @@
 # Construye la imagen del core y la publica en GHCR (docs/adr/0003-stack-servidor.md).
+# Se llama ashur-nucleo porque ghcr.io/sergiolin5/ashur-core es la imagen del repo anterior.
 name: Imagen del core
 
 on:
@@ -15,7 +16,7 @@ jobs:
   imagen:
     runs-on: ubuntu-latest
     env:
-      IMAGEN: ghcr.io/sergiolin5/ashur-core
+      IMAGEN: ghcr.io/sergiolin5/ashur-nucleo
     steps:
       - uses: actions/checkout@v4
       - name: Iniciar sesión en GHCR
