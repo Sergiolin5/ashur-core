@@ -1,6 +1,6 @@
 # Referencia: PrivateLM
 
-Clon de solo lectura en `/Users/sermolin/Developer/_referencias/cross-platform-llm-client`
+Clon de solo lectura en `/Volumes/Ashur/Developer/_referencias/cross-platform-llm-client`
 (commit `8a5f3b0`, licencia MIT en `LICENSE`). Las rutas de abajo son relativas a esa carpeta.
 No se copia código: se recrea lo que sirve.
 

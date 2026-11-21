@@ -6,7 +6,7 @@
 ## Contexto
 Ashur necesita un cliente en iOS, macOS, Windows y Android. En el repo anterior, mantener dos clientes iguales
 (panel web y app nativa de iOS) obligó a llevar una lista de paridad con un chequeo en CI
-(`/Users/sermolin/Developer/ashur/docs/ios/NATIVO.md`, `ios/paridad.json`). PrivateLM demuestra un cliente de chat
+(`/Volumes/Ashur/Developer/ashur/docs/ios/NATIVO.md`, `ios/paridad.json`). PrivateLM demuestra un cliente de chat
 con IA funcionando en Flutter (`docs/REFERENCIA-PRIVATELM.md`).
 
 ## Decisión
@@ -30,7 +30,7 @@ prioridad.
 - **Windows y Android:** no tienen HomeKit ni HealthKit. Casa y Salud en esas plataformas tendrán que pasar por el core
   o por otra vía.
 - **Cuenta gratuita de Apple:** el repo anterior anotó como probable, no comprobado, que HealthKit y HomeKit funcionan
-  con un Personal Team (`/Users/sermolin/Developer/ashur/docs/ios/ETAPA3.md`, Entorno). Hay que verificarlo en
+  con un Personal Team (`/Volumes/Ashur/Developer/ashur/docs/ios/ETAPA3.md`, Entorno). Hay que verificarlo en
   Signing & Capabilities antes de prometerlo.
 
 ### 2. Windows no se compila desde la Mac
