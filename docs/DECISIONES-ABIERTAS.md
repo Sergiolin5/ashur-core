@@ -23,8 +23,3 @@ Si el chat de Ashur se conecta con WhatsApp real o solo se parece a WhatsApp, y 
 La densidad del polvo crece con el tiempo que Ashur lleva aprendiendo, $t_A$ (ver `docs/GALAXIA.md`), pero el
 contrato todavía no trae ese dato. Hay que decidir si se agrega un campo al esquema (por ejemplo, la fecha en que
 Ashur empezó a aprender) o si el cliente lo deja fijo mientras tanto.
-
-## Nota para la fase 2: el JSON de ejemplo como asset
-Flutter no puede declarar como asset un archivo fuera de la carpeta del proyecto (`app/`), así que
-`contracts/galaxy-state.ejemplo.json` no se puede referenciar directo con `../contracts/`. Hay que decidir cómo
-llega a `app/` (por ejemplo, una copia o un enlace simbólico) sin que deje de existir una sola fuente.

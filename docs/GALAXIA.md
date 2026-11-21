@@ -69,15 +69,16 @@ $$
 \mathbf{p}_i(t) = \mathbf{c}_i + d_i\begin{pmatrix}\cos\theta_i(t)\\ \sin\theta_i(t)\end{pmatrix}
 $$
 
-El periodo $T_i$ sigue la tercera ley de Kepler, de modo que las órbitas lejanas son más lentas:
+Todos los planetas tienen el mismo periodo, así que giran a la misma velocidad angular (decisión de Sergio,
+2026-11-21):
 
 $$
-T_i = T_0\left(\frac{d_i}{d_{\min}}\right)^{3/2}
+T_i = T_0, \qquad \dot{\theta}_i = \frac{2\pi}{T_0}
 $$
 
-con $T_0$ (periodo de la órbita más cercana) como parámetro. Los electrones y los asteroides usan las mismas
-fórmulas con sus propias distancias, cortas y fijas, porque orbitan muy cerca de su centro (el núcleo o el planeta
-que bloquean).
+con $T_0$ como parámetro. La galaxia gira entonces como un disco: los planetas no cambian de posición entre sí.
+Los electrones y los asteroides usan las mismas fórmulas con sus propias distancias y periodos, cortos y fijos,
+porque orbitan muy cerca de su centro (el núcleo o el planeta que bloquean).
 
 ### Estrellas fugaces
 Una estrella fugaz sale del cuerpo `origen` en el instante $t_0$ y llega al cuerpo `destino` tras una duración

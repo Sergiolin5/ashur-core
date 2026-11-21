@@ -1,3 +1,3 @@
 # app
 Cliente Flutter de Ashur, un solo código para iOS, macOS, Windows y Android (en ese orden).
-Todavía vacío: el proyecto Flutter y la galaxia llegan en la fase 2.
+La galaxia está en lib/galaxia/ y se describe en docs/GALAXIA.md y docs/adr/0002-render-galaxia.md.
