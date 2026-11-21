@@ -5,13 +5,14 @@ Ashur es una IA personal que aprende de Sergio a partir de sus chats, su diario,
 Es un solo asistente, con una sola memoria, que Sergio usa desde todos sus dispositivos.
 
 ## El core
-El core es lo mínimo que Ashur necesita para existir, y tiene tres partes:
+El core es lo mínimo que Ashur necesita para existir, y tiene cuatro partes:
 
 1. **Memoria:** lo que Ashur aprende y recuerda.
 2. **Chat:** la conversación con Ashur, al estilo de WhatsApp.
 3. **Inventario de objetos físicos:** las cosas que Sergio tiene y dónde están.
+4. **Contactos:** las personas que conoce Sergio, como un inventario pero de personas.
 
-Todo lo demás (casa, salud, tiempo, hábitos, herramientas) es un módulo independiente que se integra al core
+Todo lo demás (casa, salud, tiempo, hábitos, herramientas, WhatsApp) es un módulo independiente que se integra al core
 siguiendo el contrato de `docs/MODULOS.md`. El core vive en `core/` como servidor REST, y el cliente es la app
 Flutter de `app/` (ver `docs/adr/0001-cliente-flutter.md`).
 
@@ -20,8 +21,7 @@ Flutter de `app/` (ver `docs/adr/0001-cliente-flutter.md`).
 - **Pestañas:**
   - **Estado:** cómo están Ashur, sus agentes y sus módulos.
   - **Casa:** la casa y sus dispositivos.
-  - **Tercera pestaña:** todavía sin nombre. En el prototipo se llama "Herramientas" de forma provisional
-    (ver `docs/DECISIONES-ABIERTAS.md`).
+  - **Workbench:** la tercera pestaña (`docs/adr/0005-workbench-y-whatsapp.md`).
 - La app no tiene temas ni ajustes de apariencia.
 
 ## Tres niveles de inferencia

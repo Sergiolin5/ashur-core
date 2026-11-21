@@ -1,6 +1,6 @@
 # Contrato de módulos
 
-Todo lo que no es core (memoria, chat, inventario de objetos físicos) es un módulo. Cada módulo vive en su propia
+Todo lo que no es core (memoria, chat, inventario de objetos físicos y contactos) es un módulo. Cada módulo vive en su propia
 carpeta `modules/<id>/`, no depende de otro módulo y cumple este contrato. `modules/_plantilla/` es el punto de partida.
 Las carpetas que empiezan con `_` no se registran.
 

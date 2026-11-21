@@ -57,5 +57,6 @@ Las dos reglas que eligió Sergio son un interruptor cada una:
 ## Navegación
 - Tocar el núcleo abre "Chats" con un zoom hacia adentro centrado en el punto tocado (`rutaZoom` en
   `app/lib/pantallas.dart`).
-- La barra de abajo tiene exactamente tres pestañas: Estado, Casa y Herramientas (provisional). Cada una abre su
+- La barra de abajo tiene exactamente tres pestañas: Estado, Casa y Workbench (el nombre se decidió en
+  `docs/adr/0005-workbench-y-whatsapp.md`). Cada una abre su
   pantalla vacía encima de la galaxia, con una flecha para volver. La galaxia sigue siendo la pantalla de inicio.

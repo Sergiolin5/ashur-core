@@ -6,7 +6,7 @@ Estas reglas valen para toda sesión de Claude Code (u otra IA) que trabaje en e
 - Toda la documentación, los mensajes de commit y las respuestas a Sergio van en español.
 
 ## Modularidad
-- El core es solo memoria, chat e inventario de objetos físicos. Todo lo demás es un módulo en `modules/`.
+- El core es solo memoria, chat, inventario de objetos físicos y contactos. Todo lo demás es un módulo en `modules/`.
 - Un módulo cumple el contrato de `docs/MODULOS.md` y no depende de otro módulo.
 - Un módulo por tarea: una tarea no toca dos módulos ni mezcla un módulo con cambios del core.
 - La galaxia es un contrato de datos (`contracts/galaxy-state.schema.json`): el cliente solo la dibuja.

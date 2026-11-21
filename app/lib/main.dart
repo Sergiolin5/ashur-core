@@ -31,7 +31,7 @@ class AppAshur extends StatelessWidget {
 class Inicio extends StatelessWidget {
   const Inicio({super.key});
 
-  static const pestanas = ['Estado', 'Casa', 'Herramientas'];
+  static const pestanas = ['Estado', 'Casa', 'Workbench'];
 
   @override
   Widget build(BuildContext context) {
