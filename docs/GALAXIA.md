@@ -105,12 +105,25 @@ r_k(\theta) = a\,e^{b\theta},
 k = 0, 1, \dots, N - 1
 $$
 
-con $a$, $b$, $N$ y $\omega$ como parámetros. La densidad del polvo crece con el tiempo de aprendizaje $t_A$ y se
-satura, para que la galaxia nunca se llene del todo:
+con $a$, $b$, $N$ y $\omega$ como parámetros. La densidad del polvo tiene dos fuentes, cada una con su propio
+tope para que la galaxia nunca se llene del todo:
 
 $$
-\rho(t_A) = \rho_0 + \left(\rho_{\max} - \rho_0\right)\left(1 - e^{-t_A / \lambda}\right)
+\rho = \rho_0
++ \Delta_t\left(1 - e^{-t_A/\tau}\right)
++ \Delta_R\left(1 - e^{-n_R/m}\right),
+\qquad
+\Delta_t \ll \Delta_R,
+\qquad
+\Delta_t + \Delta_R = \rho_{\max} - \rho_0
 $$
 
-donde $\lambda$ marca qué tan rápido se llena. El contrato todavía no trae $t_A$; está anotado en
-`docs/DECISIONES-ABIERTAS.md`.
+- **Tiempo:** $t_A$ es el tiempo que Ashur lleva aprendiendo. Suma partículas minúsculas que el primer día no se
+  notan ($t_A/\tau \approx 0$) y que, por mucho tiempo que pase, nunca aportan más de $\Delta_t$.
+- **Recuerdos:** $n_R$ es la cantidad de recuerdos. Es la fuente principal, y $m$ marca cuántos recuerdos hacen falta
+  para acercarse a su tope $\Delta_R$.
+- Los valores de $\tau$, $m$, $\Delta_t$ y $\Delta_R$ son provisionales y viven en el cliente, no en el contrato.
+- Pueden sumarse más fuentes con la misma forma cuando se definan.
+
+El contrato todavía no trae $t_A$ ni $n_R$: se agregan cuando se defina qué otras cosas son cuerpos de la galaxia
+(`docs/DECISIONES-ABIERTAS.md`, punto 6).

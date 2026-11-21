@@ -8,9 +8,9 @@ decidir qué más guarda la app en el dispositivo (caché, borradores) y con qu�
 Ashur vive en el core, no en la app.
 
 ## 6. Tiempo de aprendizaje en el contrato de la galaxia
-La densidad del polvo crece con el tiempo que Ashur lleva aprendiendo, $t_A$ (ver `docs/GALAXIA.md`), pero el
-contrato todavía no trae ese dato. Hay que decidir si se agrega un campo al esquema (por ejemplo, la fecha en que
-Ashur empezó a aprender) o si el cliente lo deja fijo mientras tanto.
+La fórmula ya está decidida (`docs/GALAXIA.md`): el polvo crece un poco con el tiempo y sobre todo con los
+recuerdos. Falta agregar al contrato la fecha en que Ashur empezó a aprender y la cantidad de recuerdos, y decidir de
+dónde sale esa fecha. Se hace junto con la definición de qué otras cosas son cuerpos de la galaxia.
 
 ## 8. Enlace de la memoria con el inventario y los contactos
 Cada objeto de un recuerdo trae un `inventario_id`, y cada persona un `contacto_id`, pero ni el inventario ni la
