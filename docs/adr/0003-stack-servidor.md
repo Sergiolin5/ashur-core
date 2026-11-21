@@ -24,7 +24,8 @@ código.
   y no se usa.
 - **REST:** FastAPI, servido con uvicorn.
 - **Base de datos:** SQLite, con el módulo `sqlite3` de la librería estándar.
-- **Pruebas:** `pytest`, y `httpx` para el `TestClient` de FastAPI.
+- **Pruebas:** `pytest`, y `httpx2` para el `TestClient` de FastAPI. Starlette marca `httpx` como obsoleto para su
+  `TestClient` y pide `httpx2`, que mantiene Pydantic.
 - **Contrato:** `contracts/galaxy-state.schema.json` sigue siendo la fuente de verdad. Los modelos de pydantic del
   core lo copian a mano y, desde el primer día, un test valida `contracts/galaxy-state.ejemplo.json` con esos
   modelos para detectar diferencias.
@@ -32,7 +33,7 @@ código.
   SQLite vive en un volumen local montado desde el servidor, nunca dentro del contenedor (si viviera adentro, cada
   actualización de la imagen borraría la memoria de Ashur) ni en una carpeta de red.
 
-Sergio aprobó estas dependencias: Python 3.13 (con uv), `fastapi`, `uvicorn`, `pydantic`, `httpx` y `pytest`, más
+Sergio aprobó estas dependencias: Python 3.13 (con uv), `fastapi`, `uvicorn`, `pydantic`, `httpx2` y `pytest`, más
 el `Dockerfile`.
 
 ## Costos
