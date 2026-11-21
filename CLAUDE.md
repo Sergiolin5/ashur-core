@@ -22,5 +22,5 @@ Estas reglas valen para toda sesión de Claude Code (u otra IA) que trabaje en e
 - Consulta al advisor antes de dar una tarea por cerrada.
 
 ## Fuera del repo
-- `/Volumes/Ashur/Developer/ashur` (repo anterior) y `/Volumes/Ashur/Developer/_referencias/` son solo lectura.
+- `../ashur` (repo anterior) y `../_referencias/` son solo lectura. Las rutas que empiezan con `../` son relativas a la raíz de este repo.
 - `/Users/sermolin/.ashur` es la instalación en ejecución: nunca se lee ni se modifica.

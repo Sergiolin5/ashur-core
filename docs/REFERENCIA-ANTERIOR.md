@@ -1,6 +1,6 @@
 # Referencia: repo anterior (Jarvis/Ashur)
 
-Repo de solo lectura en `/Volumes/Ashur/Developer/ashur` (último commit `acd3fc3`). Las rutas son relativas a esa
+Repo de solo lectura en `../ashur` (último commit `acd3fc3`). Las rutas son relativas a esa
 carpeta. Solo aprendizajes: no se copia código. Cada punto es algo que se leyó en el archivo citado.
 
 1. **El core vive en un servidor siempre encendido; los demás dispositivos son nodos que van y vienen.** `README.md`.

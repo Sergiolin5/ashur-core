@@ -7,7 +7,7 @@ Las pestañas son Estado, Casa y una tercera. En el prototipo se llama "Herramie
 
 ## 2. Stack del servidor (`core/`)
 Lenguaje, framework REST y base de datos del core. El repo anterior usaba Python con FastAPI y SQLite
-(`/Volumes/Ashur/Developer/ashur/core/`), solo como antecedente.
+(`../ashur/core/`), solo como antecedente.
 
 ## 3. Manejo de estado en Flutter
 Qué patrón o paquete maneja el estado de la app. PrivateLM usa GetX. Cualquier paquete necesita aprobación.
