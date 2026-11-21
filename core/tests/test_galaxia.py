@@ -29,3 +29,21 @@ def test_orbita_es_obligatoria_aunque_pueda_ser_null():
     del datos["cuerpos"][0]["orbita"]
     with pytest.raises(ValidationError):
         EstadoGalaxia.model_validate(datos)
+
+
+@pytest.mark.parametrize(
+    "cambio",
+    [
+        lambda d: d["cuerpos"][0].pop("ref"),
+        lambda d: d["cuerpos"][1].update(ref={"tipo": "recuerdo", "id": "x"}),
+        lambda d: d.pop("aprendizaje"),
+        lambda d: d["aprendizaje"].update(inicio="2026-11-01T09:00:00"),
+        lambda d: d["aprendizaje"].update(recuerdos=-1),
+    ],
+    ids=["falta-ref", "ref-tipo-desconocido", "falta-aprendizaje", "inicio-sin-zona", "recuerdos-negativos"],
+)
+def test_rechaza_lo_nuevo_que_el_schema_no_permite(cambio):
+    datos = leer_ejemplo()
+    cambio(datos)
+    with pytest.raises(ValidationError):
+        EstadoGalaxia.model_validate(datos)

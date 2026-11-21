@@ -1,22 +1,27 @@
 {
+  "aprendizaje": { "inicio": "2026-11-01T09:00:00-05:00", "recuerdos": 120 },
   "cuerpos": [
-    { "tipo": "nucleo", "id": "ashur", "nombre": "Ashur", "masa": 100, "orbita": null },
+    { "tipo": "nucleo", "id": "ashur", "nombre": "Ashur", "masa": 100, "orbita": null, "ref": null },
 
-    { "tipo": "agente", "id": "agente-chat", "nombre": "Conversación", "masa": 3, "orbita": { "centro": "ashur", "fase": 0.0 } },
-    { "tipo": "agente", "id": "agente-diario", "nombre": "Diario", "masa": 2, "orbita": { "centro": "ashur", "fase": 0.33 } },
-    { "tipo": "agente", "id": "agente-inventario", "nombre": "Inventario", "masa": 2, "orbita": { "centro": "ashur", "fase": 0.66 } },
+    { "tipo": "agente", "id": "agente-chat", "nombre": "Conversación", "masa": 3, "orbita": { "centro": "ashur", "fase": 0.0 }, "ref": { "tipo": "agente", "id": "chat" } },
+    { "tipo": "agente", "id": "agente-diario", "nombre": "Diario", "masa": 2, "orbita": { "centro": "ashur", "fase": 0.33 }, "ref": { "tipo": "agente", "id": "diario" } },
+    { "tipo": "agente", "id": "agente-inventario", "nombre": "Inventario", "masa": 2, "orbita": { "centro": "ashur", "fase": 0.66 }, "ref": { "tipo": "agente", "id": "inventario" } },
 
-    { "tipo": "planeta", "id": "memoria", "nombre": "Memoria", "masa": 40, "orbita": { "centro": "ashur", "fase": 0.1 } },
-    { "tipo": "planeta", "id": "objetos", "nombre": "Objetos", "masa": 25, "orbita": { "centro": "ashur", "fase": 0.3 } },
-    { "tipo": "planeta", "id": "casa", "nombre": "Casa", "masa": 18, "orbita": { "centro": "ashur", "fase": 0.5 } },
-    { "tipo": "planeta", "id": "habitos", "nombre": "Hábitos", "masa": 12, "orbita": { "centro": "ashur", "fase": 0.7 } },
-    { "tipo": "planeta", "id": "tiempo", "nombre": "Uso del tiempo", "masa": 6, "orbita": { "centro": "ashur", "fase": 0.9 } },
+    { "tipo": "planeta", "id": "identidades", "nombre": "Identidades", "masa": 40, "orbita": { "centro": "ashur", "fase": 0.1 }, "ref": null },
+    { "tipo": "planeta", "id": "objetos", "nombre": "Objetos", "masa": 25, "orbita": { "centro": "ashur", "fase": 0.3 }, "ref": null },
+    { "tipo": "planeta", "id": "casa", "nombre": "Casa", "masa": 18, "orbita": { "centro": "ashur", "fase": 0.5 }, "ref": { "tipo": "modulo", "id": "casa" } },
+    { "tipo": "planeta", "id": "habitos", "nombre": "Hábitos", "masa": 12, "orbita": { "centro": "ashur", "fase": 0.7 }, "ref": { "tipo": "modulo", "id": "habitos" } },
+    { "tipo": "planeta", "id": "tiempo", "nombre": "Uso del tiempo", "masa": 6, "orbita": { "centro": "ashur", "fase": 0.9 }, "ref": { "tipo": "modulo", "id": "tiempo" } },
 
-    { "tipo": "asteroide", "id": "bloqueo-casa", "nombre": "Sin acceso a HomeKit", "masa": 1, "orbita": { "centro": "casa", "fase": 0.2 } },
-    { "tipo": "asteroide", "id": "bloqueo-tiempo", "nombre": "Falta permiso de Tiempo en pantalla", "masa": 1, "orbita": { "centro": "tiempo", "fase": 0.6 } }
+    { "tipo": "personaje", "id": "personaje-ana", "nombre": "Ana", "masa": 2, "orbita": { "centro": "identidades", "fase": 0.2 }, "ref": { "tipo": "identidad", "id": "ide-1" } },
+    { "tipo": "personaje", "id": "personaje-nube", "nombre": "Nube", "masa": 2, "orbita": { "centro": "identidades", "fase": 0.7 }, "ref": { "tipo": "identidad", "id": "ide-2" } },
+    { "tipo": "luna", "id": "luna-bruno", "nombre": "Bruno", "masa": 8, "orbita": { "centro": "identidades", "fase": 0.4 }, "ref": { "tipo": "identidad", "id": "ide-3" } },
+
+    { "tipo": "asteroide", "id": "bloqueo-casa", "nombre": "Sin acceso a HomeKit", "masa": 1, "orbita": { "centro": "casa", "fase": 0.2 }, "ref": null },
+    { "tipo": "asteroide", "id": "bloqueo-tiempo", "nombre": "Falta permiso de Tiempo en pantalla", "masa": 1, "orbita": { "centro": "tiempo", "fase": 0.6 }, "ref": null }
   ],
   "eventos": [
-    { "tipo": "llega", "origen": "agente-chat", "destino": "memoria" },
+    { "tipo": "llega", "origen": "agente-chat", "destino": "ashur" },
     { "tipo": "crea", "origen": "agente-diario", "destino": "tiempo" },
     { "tipo": "transforma", "origen": "agente-inventario", "destino": "objetos" }
   ]

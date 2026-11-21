@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 
 const rutaEjemplo = '../contracts/galaxy-state.ejemplo.json';
 
-enum TipoCuerpo { nucleo, agente, planeta, asteroide }
+enum TipoCuerpo { nucleo, agente, planeta, asteroide, personaje, luna }
+
+enum TipoRef { identidad, modulo, agente }
 
 enum TipoEvento { llega, crea, transforma }
 
@@ -21,6 +23,32 @@ class Orbita {
       );
 }
 
+/// La cosa real del sistema que representa un cuerpo.
+class Ref {
+  const Ref({required this.tipo, required this.id});
+
+  final TipoRef tipo;
+  final String id;
+
+  factory Ref.fromJson(Map<String, dynamic> j) => Ref(
+        tipo: TipoRef.values.byName(j['tipo'] as String),
+        id: j['id'] as String,
+      );
+}
+
+/// Lo que hace crecer el polvo: desde cuándo aprende Ashur y cuántos recuerdos tiene.
+class Aprendizaje {
+  const Aprendizaje({required this.inicio, required this.recuerdos});
+
+  final DateTime inicio;
+  final int recuerdos;
+
+  factory Aprendizaje.fromJson(Map<String, dynamic> j) => Aprendizaje(
+        inicio: DateTime.parse(j['inicio'] as String),
+        recuerdos: j['recuerdos'] as int,
+      );
+}
+
 class Cuerpo {
   const Cuerpo({
     required this.tipo,
@@ -28,6 +56,7 @@ class Cuerpo {
     required this.nombre,
     required this.masa,
     required this.orbita,
+    required this.ref,
   });
 
   final TipoCuerpo tipo;
@@ -35,6 +64,7 @@ class Cuerpo {
   final String nombre;
   final double masa;
   final Orbita? orbita;
+  final Ref? ref;
 
   factory Cuerpo.fromJson(Map<String, dynamic> j) => Cuerpo(
         tipo: TipoCuerpo.values.byName(j['tipo'] as String),
@@ -44,6 +74,7 @@ class Cuerpo {
         orbita: j['orbita'] == null
             ? null
             : Orbita.fromJson(j['orbita'] as Map<String, dynamic>),
+        ref: j['ref'] == null ? null : Ref.fromJson(j['ref'] as Map<String, dynamic>),
       );
 }
 
@@ -62,12 +93,14 @@ class Evento {
 }
 
 class EstadoGalaxia {
-  const EstadoGalaxia({required this.cuerpos, required this.eventos});
+  const EstadoGalaxia({required this.aprendizaje, required this.cuerpos, required this.eventos});
 
+  final Aprendizaje aprendizaje;
   final List<Cuerpo> cuerpos;
   final List<Evento> eventos;
 
   factory EstadoGalaxia.fromJson(Map<String, dynamic> j) => EstadoGalaxia(
+        aprendizaje: Aprendizaje.fromJson(j['aprendizaje'] as Map<String, dynamic>),
         cuerpos: [
           for (final c in j['cuerpos'] as List) Cuerpo.fromJson(c as Map<String, dynamic>)
         ],

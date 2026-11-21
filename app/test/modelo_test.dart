@@ -13,6 +13,9 @@ void main() {
     expect(cuantos(TipoCuerpo.agente), 3);
     expect(cuantos(TipoCuerpo.planeta), 5);
     expect(cuantos(TipoCuerpo.asteroide), 2);
+    expect(cuantos(TipoCuerpo.personaje), 2);
+    expect(cuantos(TipoCuerpo.luna), 1);
+    expect(estado.aprendizaje.recuerdos, 120);
     expect(estado.eventos.length, 3);
 
     // Lo que el esquema JSON no puede comprobar: que cada referencia apunte a un cuerpo que existe.

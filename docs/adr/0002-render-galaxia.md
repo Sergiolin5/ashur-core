@@ -42,7 +42,7 @@ pantalla.
 | Ciclo y desfase de las estrellas | 7 s, 2.3 s | `cicloEstrellas`, `desfaseEstrellas` |
 | $N$, $a$, $b$ (brazos de polvo) | 2, 0.06, 0.28 | `brazos`, `espiralA`, `espiralB` |
 | $\omega$ (giro del polvo) | 0.03 rad/s | `omegaPolvo` |
-| $\rho$ (granos de polvo) | 700 | `densidadPolvo` |
+| $\rho$ (granos de polvo) | Se calcula del contrato; ver `docs/adr/0008-cuerpos-reales-de-la-galaxia.md` | `densidadPolvo()` |
 
 Las dos reglas que eligió Sergio son un interruptor cada una:
 - `pesadosCerca = true`: los planetas más pesados orbitan más cerca del núcleo.
@@ -51,8 +51,6 @@ Las dos reglas que eligió Sergio son un interruptor cada una:
 ## Lo que el cliente supone porque el contrato no lo trae
 - **Instantes de los eventos:** los eventos no tienen hora, así que cada estrella fugaz se repite en bucle,
   desfasada de las demás.
-- **Tiempo de aprendizaje $t_A$:** no está en el contrato, así que la densidad del polvo es fija
-  (ver `docs/DECISIONES-ABIERTAS.md`).
 - **Toque del núcleo:** se acepta un toque dentro de su radio, con un mínimo de 22 px para que sea fácil de tocar.
 
 ## Navegación

@@ -7,11 +7,6 @@ La clave del core ya se guarda con `flutter_secure_storage` (`docs/adr/0007-clav
 decidir qué más guarda la app en el dispositivo (caché, borradores) y con qué. PrivateLM usa Hive. La memoria de
 Ashur vive en el core, no en la app.
 
-## 6. Tiempo de aprendizaje en el contrato de la galaxia
-La fórmula ya está decidida (`docs/GALAXIA.md`): el polvo crece un poco con el tiempo y sobre todo con los
-recuerdos. Falta agregar al contrato la fecha en que Ashur empezó a aprender y la cantidad de recuerdos, y decidir de
-dónde sale esa fecha. Se hace junto con la definición de qué otras cosas son cuerpos de la galaxia.
-
 ## 8. Enlace de la memoria con el inventario y las identidades
 Cada objeto de un recuerdo trae un `inventario_id`, y cada identidad un `identidad_id`, pero ni el inventario ni la
 lista de identidades existen todavía. Falta decidir cómo se enlazan cuando existan, qué pasa con un recuerdo si se
@@ -24,3 +19,19 @@ paquete o modelo nuevo necesita aprobación.
 ## 11. Reglas por sensibilidad y consentimiento
 Hoy `sensibilidad` es solo un dato. Falta decidir, antes de usar Ashur en serio, qué nivel de inferencia puede
 usar cada nivel de sensibilidad y qué consentimiento hace falta.
+
+## 12. Cómo se ven los objetos del inventario
+Los objetos no son cuerpos de la galaxia todavía. Sergio quiere decidir su forma según el objeto, cuidando que el
+planeta Objetos no se llene.
+
+## 13. Qué es una luna, además de una identidad
+Hoy una luna es una identidad que se volvió importante (`docs/GALAXIA.md`). Sergio quiere que las lunas sean algo
+representativo o grande; falta decidir si otras cosas también pueden serlo.
+
+## 14. Zoom y nivel de detalle
+La galaxia usa escalas como las reales: todo está lejos y se ve más al acercarse. Falta construir el zoom y decidir
+qué se ve en cada escala (`docs/adr/0008-cuerpos-reales-de-la-galaxia.md`).
+
+## 15. De dónde sale la fecha en que Ashur empezó a aprender
+El contrato trae `aprendizaje.inicio`, pero el core todavía no publica la galaxia. Falta decidir de dónde sale esa
+fecha (por ejemplo, el momento en que se creó la base de la memoria).

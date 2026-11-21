@@ -4,42 +4,99 @@
   "title": "Estado de la galaxia de Ashur",
   "description": "Lo que el cliente dibuja en la pantalla de inicio. Glosario en docs/GALAXIA.md.",
   "type": "object",
-  "required": ["cuerpos", "eventos"],
+  "required": [
+    "aprendizaje",
+    "cuerpos",
+    "eventos"
+  ],
   "additionalProperties": false,
   "properties": {
+    "aprendizaje": {
+      "$ref": "#/$defs/aprendizaje"
+    },
     "cuerpos": {
       "type": "array",
-      "items": { "$ref": "#/$defs/cuerpo" }
+      "items": {
+        "$ref": "#/$defs/cuerpo"
+      }
     },
     "eventos": {
       "type": "array",
-      "items": { "$ref": "#/$defs/evento" }
+      "items": {
+        "$ref": "#/$defs/evento"
+      }
     }
   },
   "$defs": {
+    "aprendizaje": {
+      "description": "Lo que hace crecer el polvo (docs/GALAXIA.md).",
+      "type": "object",
+      "required": [
+        "inicio",
+        "recuerdos"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "inicio": {
+          "description": "Cuándo empezó Ashur a aprender, en ISO 8601 con zona horaria.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "recuerdos": {
+          "description": "Cuántos recuerdos tiene Ashur.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "cuerpo": {
       "type": "object",
-      "required": ["tipo", "id", "nombre", "masa", "orbita"],
+      "required": [
+        "tipo",
+        "id",
+        "nombre",
+        "masa",
+        "orbita",
+        "ref"
+      ],
       "additionalProperties": false,
       "properties": {
         "tipo": {
-          "description": "nucleo = Ashur y sus memorias; agente = electrón; planeta = habilidad o módulo; asteroide = bloqueo.",
-          "enum": ["nucleo", "agente", "planeta", "asteroide"]
+          "description": "nucleo = Ashur y sus memorias; agente = electrón; planeta = habilidad, módulo o colección del core; asteroide = bloqueo; personaje = identidad que vive en el planeta Identidades; luna = identidad que creció y orbita Identidades.",
+          "enum": [
+            "nucleo",
+            "agente",
+            "planeta",
+            "asteroide",
+            "personaje",
+            "luna"
+          ]
         },
-        "id": { "type": "string", "minLength": 1 },
-        "nombre": { "type": "string", "minLength": 1 },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nombre": {
+          "type": "string",
+          "minLength": 1
+        },
         "masa": {
           "description": "Importancia aprendida. El cliente deriva de ella el tamaño y el radio de la órbita.",
           "type": "number",
           "minimum": 0
         },
         "orbita": {
-          "description": "null solo para el núcleo.",
+          "description": "null solo para el núcleo. Un personaje usa centro para decir en qué planeta vive.",
           "oneOf": [
-            { "type": "null" },
+            {
+              "type": "null"
+            },
             {
               "type": "object",
-              "required": ["centro", "fase"],
+              "required": [
+                "centro",
+                "fase"
+              ],
               "additionalProperties": false,
               "properties": {
                 "centro": {
@@ -56,18 +113,55 @@
               }
             }
           ]
+        },
+        "ref": {
+          "description": "La cosa real del sistema que representa el cuerpo. null para el núcleo, las colecciones y los asteroides.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "tipo",
+                "id"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "tipo": {
+                  "enum": [
+                    "identidad",
+                    "modulo",
+                    "agente"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
         }
       }
     },
     "evento": {
       "description": "Una estrella fugaz: un mensaje o texto aprendido en tiempo real.",
       "type": "object",
-      "required": ["tipo", "origen", "destino"],
+      "required": [
+        "tipo",
+        "origen",
+        "destino"
+      ],
       "additionalProperties": false,
       "properties": {
         "tipo": {
           "description": "llega = alimenta un planeta existente; crea = da origen al planeta destino, que acaba de aparecer; transforma = la estrella se convierte en otra cosa al llegar a su destino.",
-          "enum": ["llega", "crea", "transforma"]
+          "enum": [
+            "llega",
+            "crea",
+            "transforma"
+          ]
         },
         "origen": {
           "description": "id del cuerpo de donde sale la estrella.",

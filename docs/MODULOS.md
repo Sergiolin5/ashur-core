@@ -9,7 +9,7 @@ Cada módulo tiene un manifiesto `modulo.json` en su raíz con:
 
 | Campo | Qué es |
 | --- | --- |
-| `id` | Identificador único, en minúsculas y sin espacios. Es también el id de su planeta en la galaxia. |
+| `id` | Identificador único, en minúsculas y sin espacios. Su planeta en la galaxia lo nombra en `ref` (`{"tipo": "modulo", "id": ...}`). |
 | `nombre` | Nombre visible para Sergio. |
 | `version` | Versión del módulo. |
 | `descripcion` | Una frase sobre lo que hace. |
@@ -25,7 +25,8 @@ El módulo no guarda memoria propia: lo que aprende se lo entrega al core, que e
   (`docs/adr/0003-stack-servidor.md`).
 
 ## 3. Cómo aparece en la galaxia
-- Cada módulo registrado es un **planeta** con `id` igual al `id` del módulo y `nombre` igual al del manifiesto.
+- Cada módulo registrado es un **planeta** con `ref: {"tipo": "modulo", "id": <id del módulo>}` y `nombre` igual al
+  del manifiesto. El `id` del planeta es propio de la galaxia (`docs/adr/0008-cuerpos-reales-de-la-galaxia.md`).
 - La **masa** la calcula el core según la importancia que aprendió; el módulo no la declara.
 - Si el módulo está bloqueado (le falta un permiso, no responde, espera una respuesta), el core publica un
   **asteroide** que orbita su planeta.

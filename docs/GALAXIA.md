@@ -8,17 +8,22 @@ dibuja, sin inventar valores.
 
 | Elemento | Qué representa | Cómo se comporta |
 | --- | --- | --- |
-| **Núcleo** | Ashur y sus memorias. | Está en el centro de la galaxia. Tocarlo abre el chat. |
+| **Núcleo** | Ashur y sus recuerdos. | Está en el centro de la galaxia. Tocarlo abre el chat. Los recuerdos no son cuerpos uno por uno: dan masa al núcleo y hacen crecer el polvo. |
 | **Electrones** | Los agentes. | Orbitan cerca del núcleo. |
-| **Planetas** | Las habilidades y los módulos. | Su masa y su tamaño crecen según la importancia que Ashur aprendió. |
+| **Planetas** | Las habilidades, los módulos y las colecciones del core (Identidades, Objetos). | Su masa y su tamaño crecen según la importancia que Ashur aprendió. |
+| **Personajes** | Las identidades (personas y mascotas) que viven en el planeta Identidades. | Están sobre su planeta y se ven al acercarse. |
+| **Lunas** | Una identidad que se volvió importante. | Orbita el planeta Identidades. |
 | **Asteroides** | Los bloqueos. | Orbitan el planeta que bloquean: un módulo caído, un permiso que falta, una duda sin respuesta. |
 | **Estrellas fugaces** | Los mensajes y el texto aprendido en tiempo real. | Viajan de un origen a un destino. Al llegar alimentan un planeta, crean uno nuevo o se transforman. |
-| **Brazos espirales de polvo** | El tiempo que Ashur lleva aprendiendo. | Giran sin parar, y su densidad crece con el tiempo. |
+| **Brazos espirales de polvo** | Lo que Ashur lleva aprendiendo: el tiempo y los recuerdos. | Giran sin parar, y su densidad crece un poco con el tiempo y sobre todo con los recuerdos. |
 
 ## Reglas
 1. Tocar el núcleo abre el chat.
 2. El tamaño de un planeta y el radio de su órbita se derivan solo de su masa.
 3. Cada estrella fugaz corresponde a un evento del contrato, con su `origen` y su `destino`.
+4. Cada cuerpo que representa una cosa real del sistema la nombra en `ref`, con su tipo y su id.
+5. Las escalas son como en la vida real: todo está muy lejos, y se ve más al acercarse (`docs/DECISIONES-ABIERTAS.md`,
+   punto 14).
 
 ## Modelo matemático
 Esta sección traduce el glosario a fórmulas para que el dibujo sea predecible. Las constantes marcadas como
@@ -125,5 +130,31 @@ $$
 - Los valores de $\tau$, $m$, $\Delta_t$ y $\Delta_R$ son provisionales y viven en el cliente, no en el contrato.
 - Pueden sumarse más fuentes con la misma forma cuando se definan.
 
-El contrato todavía no trae $t_A$ ni $n_R$: se agregan cuando se defina qué otras cosas son cuerpos de la galaxia
-(`docs/DECISIONES-ABIERTAS.md`, punto 6).
+El contrato los trae en `aprendizaje`: $t_A$ se mide desde `aprendizaje.inicio` y $n_R$ es `aprendizaje.recuerdos`.
+
+### Evolución de una identidad
+Una identidad (una persona o una mascota) es una sola cosa del sistema, y lo que se ve de ella depende de su masa
+$m$, la importancia que Ashur aprendió. Con los umbrales $\theta_1 < \theta_2 < \theta_3$, su nivel $k$ es:
+
+| Nivel $k$ | Masa | Qué se ve |
+| --- | --- | --- |
+| 0 | $m < \theta_1$ | Nada: es un contacto sin peso en la galaxia. |
+| 1 | $\theta_1 \le m < \theta_2$ | Un personaje en el planeta Identidades (tipo `personaje`). |
+| 2 | $\theta_2 \le m < \theta_3$ | Una luna que orbita Identidades (tipo `luna`). |
+| 3 | $\theta_3 \le m$ | Su propio planeta (tipo `planeta`). |
+
+La importancia sube y baja, como en la memoria de una persona. Para que una identidad no parpadee entre dos niveles
+cuando su masa ronda un umbral, sube al nivel $j$ cuando $m \ge \theta_j$ y solo baja de él cuando
+$m < (1 - \eta)\,\theta_j$, con $0 < \eta < 1$:
+
+$$
+k_{t+1} =
+\begin{cases}
+k_t + 1 & \text{si } k_t < 3 \text{ y } m \ge \theta_{k_t + 1} \\
+k_t - 1 & \text{si } k_t > 0 \text{ y } m < (1 - \eta)\,\theta_{k_t} \\
+k_t & \text{en otro caso}
+\end{cases}
+$$
+
+El core calcula el nivel y publica el `tipo`; el cliente solo lo dibuja. Los valores de $\theta_1$, $\theta_2$,
+$\theta_3$ y $\eta$ son parámetros provisionales del core, que todavía no lo implementa.

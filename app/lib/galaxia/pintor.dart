@@ -23,6 +23,9 @@ const distanciaMax = 0.88; // d_max
 const distanciaAgente = 0.17;
 const radioAgente = 0.012;
 const distanciaAsteroide = 0.035; // por fuera del radio del planeta que bloquea
+const distanciaLuna = 0.06; // por fuera del radio de Identidades
+const radioLuna = 0.008;
+const periodoLuna = 11.0; // s
 const radioAsteroide = 0.009;
 
 // ── Parámetros de tiempo, en segundos ──
@@ -39,13 +42,28 @@ const espiralA = 0.06; // a
 const espiralB = 0.28; // b
 const vueltasBrazo = 2.6; // hasta qué ángulo llega cada brazo, en vueltas
 const omegaPolvo = 0.03; // ω, rad/s
-const densidadPolvo = 700; // ρ fija: el contrato aún no trae t_A
+// ρ = ρ0 + Δt(1 − e^{−t_A/τ}) + ΔR(1 − e^{−n_R/m}) (docs/GALAXIA.md). Valores provisionales.
+const polvoBase = 150; // ρ0
+const polvoTiempo = 60; // Δt: el tiempo suma poco
+const polvoRecuerdos = 490; // ΔR: los recuerdos son la fuente principal
+const tauPolvoDias = 365.0; // τ
+const recuerdosPolvo = 500.0; // m
+
+/// Cantidad de granos de polvo para un estado, con t_A medido desde aprendizaje.inicio.
+int densidadPolvo(Aprendizaje a, DateTime ahora) {
+  final dias = math.max(0, ahora.difference(a.inicio).inSeconds) / 86400;
+  return (polvoBase +
+          polvoTiempo * (1 - math.exp(-dias / tauPolvoDias)) +
+          polvoRecuerdos * (1 - math.exp(-a.recuerdos / recuerdosPolvo)))
+      .round();
+}
 
 const _fondo = Color(0xFF05060B);
 const _colorNucleo = Color(0xFFFFE6A8);
 const _colorAgente = Color(0xFF9FD8FF);
 const _colorPlaneta = Color(0xFF8C9EFF);
 const _colorAsteroide = Color(0xFF9E8F80);
+const _colorLuna = Color(0x66D8DCE8); // tenue: se verá mejor con el zoom
 const _colorEstrella = Color(0xFFFFFFFF);
 const _colorPolvo = Color(0xFFB8A6FF);
 
@@ -79,6 +97,8 @@ class Geometria {
         TipoCuerpo.nucleo => radioNucleo,
         TipoCuerpo.agente => radioAgente,
         TipoCuerpo.asteroide => radioAsteroide,
+        TipoCuerpo.luna => radioLuna,
+        TipoCuerpo.personaje => 0, // se ve solo con el zoom, que todavía no existe
         TipoCuerpo.planeta =>
           radioPlanetaMin + (radioPlanetaMax - radioPlanetaMin) * math.sqrt(masaNormalizada(c)),
       };
@@ -92,6 +112,11 @@ class Geometria {
       case TipoCuerpo.asteroide:
         final planeta = _porId[c.orbita!.centro];
         return (planeta == null ? 0 : radio(planeta)) + escala * distanciaAsteroide;
+      case TipoCuerpo.luna:
+        final planeta = _porId[c.orbita!.centro];
+        return (planeta == null ? 0 : radio(planeta)) + escala * distanciaLuna;
+      case TipoCuerpo.personaje:
+        return 0; // vive en su planeta
       case TipoCuerpo.planeta:
         final m = masaNormalizada(c);
         final f = pesadosCerca ? 1 - m : m;
@@ -103,6 +128,8 @@ class Geometria {
         TipoCuerpo.nucleo => 1,
         TipoCuerpo.agente => periodoAgente,
         TipoCuerpo.asteroide => periodoAsteroide,
+        TipoCuerpo.luna => periodoLuna,
+        TipoCuerpo.personaje => 1,
         TipoCuerpo.planeta =>
           periodoKepler ? periodoBase * math.pow(d / (escala * distanciaMin), 1.5) : periodoBase,
       };
@@ -129,19 +156,22 @@ class Geometria {
 }
 
 class PintorGalaxia extends CustomPainter {
-  PintorGalaxia({required this.estado, required this.tiempo}) : super(repaint: tiempo);
+  PintorGalaxia({required this.estado, required this.tiempo})
+      : _granos = _sembrarPolvo(densidadPolvo(estado.aprendizaje, DateTime.now())),
+        super(repaint: tiempo);
 
   final EstadoGalaxia estado;
   final ValueNotifier<double> tiempo;
 
   // Posición fija de cada grano de polvo a lo largo de su brazo, con una semilla constante.
-  static final List<(int, double, double)> _granos = () {
+  final List<(int, double, double)> _granos;
+
+  static List<(int, double, double)> _sembrarPolvo(int cantidad) {
     final azar = math.Random(7);
     return [
-      for (var i = 0; i < densidadPolvo; i++)
-        (i % brazos, azar.nextDouble(), azar.nextDouble() * 2 - 1),
+      for (var i = 0; i < cantidad; i++) (i % brazos, azar.nextDouble(), azar.nextDouble() * 2 - 1),
     ];
-  }();
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -200,6 +230,10 @@ class PintorGalaxia extends CustomPainter {
         canvas.drawCircle(p, r, Paint()..color = _colorAgente);
       case TipoCuerpo.planeta:
         canvas.drawCircle(p, r, Paint()..color = _colorPlaneta);
+      case TipoCuerpo.luna:
+        canvas.drawCircle(p, r, Paint()..color = _colorLuna);
+      case TipoCuerpo.personaje:
+        break; // se dibuja cuando exista el zoom
       case TipoCuerpo.asteroide:
         final camino = Path();
         for (var i = 0; i < 6; i++) {
