@@ -69,3 +69,13 @@ def borrar_recuerdo(id_: int, con=Depends(conexion)) -> Response:
     if not memoria.borrar(con, id_):
         raise HTTPException(status_code=404, detail="No existe ese recuerdo.")
     return Response(status_code=204)
+
+
+@app.get("/aprendizaje", response_model=memoria.Aprendizaje, dependencies=[Depends(exigir_clave)])
+def ver_aprendizaje(con=Depends(conexion)) -> memoria.Aprendizaje:
+    return memoria.aprendizaje(con)
+
+
+@app.patch("/aprendizaje", response_model=memoria.Aprendizaje, dependencies=[Depends(exigir_clave_admin)])
+def cambiar_inicio(cambio: memoria.CambioInicio, con=Depends(conexion)) -> memoria.Aprendizaje:
+    return memoria.cambiar_inicio(con, cambio.inicio)

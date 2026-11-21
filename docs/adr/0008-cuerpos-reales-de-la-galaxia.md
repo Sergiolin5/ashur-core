@@ -24,4 +24,4 @@ sin perder la estética. Además, quedaba abierto cómo llega al cliente lo que 
 - **Zoom y nivel de detalle:** ya está, en `docs/adr/0009-zoom-de-la-galaxia.md`.
 - **Umbrales de las identidades:** el core todavía no los calcula, y el core todavía no publica la galaxia.
 - **Objetos del inventario** (decisión 12) y **otras lunas** (decisión 13).
-- **De dónde sale `aprendizaje.inicio`** (decisión 15).
+- **De dónde sale `aprendizaje.inicio`:** ya está, en `docs/adr/0004-memoria.md`.

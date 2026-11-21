@@ -129,7 +129,8 @@ $$
 - Los valores de $\tau$, $m$, $\Delta_t$ y $\Delta_R$ son provisionales y viven en el cliente, no en el contrato.
 - Pueden sumarse más fuentes con la misma forma cuando se definan.
 
-El contrato los trae en `aprendizaje`: $t_A$ se mide desde `aprendizaje.inicio` y $n_R$ es `aprendizaje.recuerdos`.
+El contrato los trae en `aprendizaje`: $t_A$ se mide desde `aprendizaje.inicio` y $n_R$ es `aprendizaje.recuerdos`. El
+core los publica en `GET /aprendizaje`: `inicio` es el momento en que creó su base de memoria.
 
 ### Evolución de una identidad
 Una identidad (una persona o una mascota) es una sola cosa del sistema, y lo que se ve de ella depende de su masa

@@ -152,10 +152,43 @@ def test_migra_una_base_de_la_version_1(tmp_path):
 
     for _ in range(2):  # la segunda vez no debe cambiar nada
         con = memoria.abrir(ruta)
-        assert con.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert con.execute("PRAGMA user_version").fetchone()[0] == 3
         [recuerdo] = memoria.listar(con)
         assert [i.model_dump() for i in recuerdo.identidades] == [
             {"nombre": "Ana", "identidad_id": "per-1"},
             {"nombre": "Bruno", "identidad_id": None},
         ]
         con.close()
+
+
+def test_aprendizaje_empieza_al_crear_la_base_y_cuenta_recuerdos(cliente):
+    antes = cliente.get("/aprendizaje")
+    assert antes.status_code == 200
+    assert antes.json()["recuerdos"] == 0
+    inicio = antes.json()["inicio"]
+    cliente.post("/recuerdos", json=nuevo_ejemplo())
+    despues = cliente.get("/aprendizaje").json()
+    assert despues == {"inicio": inicio, "recuerdos": 1}
+
+
+def test_solo_un_administrador_cambia_el_inicio(cliente):
+    nuevo = {"inicio": "2026-01-01T00:00:00-05:00"}
+    assert cliente.patch("/aprendizaje", json=nuevo).status_code == 401
+    cambiado = cliente.patch("/aprendizaje", json=nuevo, headers=ADMIN)
+    assert cambiado.status_code == 200
+    assert cambiado.json()["inicio"] == "2026-01-01T00:00:00-05:00"
+    assert cliente.patch("/aprendizaje", json={"inicio": "2026-01-01T00:00:00"}, headers=ADMIN).status_code == 422
+    assert TestClient(app).get("/aprendizaje").status_code == 401
+
+
+def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
+    ruta = str(tmp_path / "ashur.db")
+    con = memoria.abrir(ruta)
+    con.execute("DROP TABLE meta")
+    con.execute("PRAGMA user_version = 2")
+    con.commit()
+    con.close()
+    con = memoria.abrir(ruta)
+    assert con.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert memoria.aprendizaje(con).recuerdos == 0
+    con.close()

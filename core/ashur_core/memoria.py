@@ -2,11 +2,12 @@
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-VERSION_ESQUEMA = 2
+VERSION_ESQUEMA = 3
 
 
 class Identidad(BaseModel):
@@ -86,8 +87,10 @@ def abrir(ruta: str) -> sqlite3.Connection:
                     opinion TEXT
                 )"""
             )
-        elif version == 1:
+        if version == 1:
             _migrar_1_a_2(conexion)
+        if version < 3:
+            _migrar_2_a_3(conexion)
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
@@ -97,6 +100,16 @@ def abrir(ruta: str) -> sqlite3.Connection:
         raise
     conexion.isolation_level = ""  # de aquí en adelante, transacciones normales con commit()
     return conexion
+
+
+def _migrar_2_a_3(conexion: sqlite3.Connection) -> None:
+    """Versión 3: tabla meta con la fecha en que Ashur empezó a aprender. Una base nueva guarda ese momento; una base
+    que ya existía guarda el momento en que se migra, porque no sabe cuándo se creó."""
+    conexion.execute("CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)")
+    conexion.execute(
+        "INSERT INTO meta (clave, valor) VALUES ('inicio_aprendizaje', ?)",
+        (datetime.now(timezone.utc).isoformat(),),
+    )
 
 
 def _migrar_1_a_2(conexion: sqlite3.Connection) -> None:
@@ -184,3 +197,30 @@ def borrar(conexion: sqlite3.Connection, id_: int) -> bool:
     cursor = conexion.execute("DELETE FROM recuerdos WHERE id = ?", (id_,))
     conexion.commit()
     return cursor.rowcount > 0
+
+
+class Aprendizaje(BaseModel):
+    """Lo que hace crecer el polvo de la galaxia (contracts/galaxy-state.schema.json, campo aprendizaje)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    inicio: AwareDatetime
+    recuerdos: int = Field(ge=0)
+
+
+class CambioInicio(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inicio: AwareDatetime
+
+
+def aprendizaje(conexion: sqlite3.Connection) -> Aprendizaje:
+    inicio = conexion.execute("SELECT valor FROM meta WHERE clave = 'inicio_aprendizaje'").fetchone()[0]
+    recuerdos = conexion.execute("SELECT COUNT(*) FROM recuerdos").fetchone()[0]
+    return Aprendizaje(inicio=inicio, recuerdos=recuerdos)
+
+
+def cambiar_inicio(conexion: sqlite3.Connection, inicio: datetime) -> Aprendizaje:
+    conexion.execute("UPDATE meta SET valor = ? WHERE clave = 'inicio_aprendizaje'", (inicio.isoformat(),))
+    conexion.commit()
+    return aprendizaje(conexion)

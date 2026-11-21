@@ -24,14 +24,17 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 | `objetos` | Cada uno con `nombre` e `inventario_id`, que es `null` si el objeto no está en el inventario. |
 | `opinion` | Lo que Ashur opina del recuerdo, o `null` si todavía no tiene opinión. |
 
+- **Inicio del aprendizaje:** es el momento en que el core creó su base de memoria (decisión 15). Una base que ya
+  existía antes de la versión 3 toma el momento de su migración. Los administradores pueden cambiarlo.
 - **Ashur guarda los recuerdos directamente,** sin pedirle aprobación a Sergio (decisión 9, 2026-11-21).
 - **Todo se guarda, también lo sensible.** La `sensibilidad` es solo un dato: no cambia cómo se guarda un recuerdo
   ni qué nivel de inferencia puede usarlo.
 
 ### Almacenamiento
 - **Base de datos:** una tabla `recuerdos` en SQLite. `identidades` y `objetos` se guardan como JSON en sus columnas.
-- **Versión del esquema:** se lleva con `PRAGMA user_version` y va en la 2. Una base vacía se crea en la versión 2,
-  y una de la versión 1 (con `personas` y `contacto_id`) se migra sola a `identidades` e `identidad_id`. La
+- **Versión del esquema:** se lleva con `PRAGMA user_version` y va en la 3. Una base vacía se crea en la versión 3.
+  Una de la versión 1 (con `personas` y `contacto_id`) se migra sola a `identidades` e `identidad_id`, y la versión 3
+  agrega la tabla `meta` con la fecha en que Ashur empezó a aprender. La
   migración corre dentro de `BEGIN IMMEDIATE`, así que dos pedidos a la vez no la repiten; una base con
   una versión más nueva que la que conoce el código hace que cada pedido a la memoria falle con un error, en
   lugar de adivinar.
@@ -45,6 +48,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 | `GET /recuerdos` | Lista todos los recuerdos. |
 | `PATCH /recuerdos/{id}` | Edita un recuerdo: solo cambia los campos enviados (solo administradores). |
 | `DELETE /recuerdos/{id}` | Borra un recuerdo (204), o responde 404 si no existe (solo administradores). |
+| `GET /aprendizaje` | Devuelve `{inicio, recuerdos}`: desde cuándo aprende Ashur y cuántos recuerdos tiene. |
+| `PATCH /aprendizaje` | Cambia `inicio` (solo administradores). |
 
 ### Clave compartida
 - Los endpoints de la memoria piden el encabezado `X-Ashur-Clave`, que se compara con la variable de entorno

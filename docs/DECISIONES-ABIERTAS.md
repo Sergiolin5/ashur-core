@@ -27,7 +27,3 @@ planeta Objetos no se llene.
 ## 13. Qué es una luna, además de una identidad
 Hoy una luna es una identidad que se volvió importante (`docs/GALAXIA.md`). Sergio quiere que las lunas sean algo
 representativo o grande; falta decidir si otras cosas también pueden serlo.
-
-## 15. De dónde sale la fecha en que Ashur empezó a aprender
-El contrato trae `aprendizaje.inicio`, pero el core todavía no publica la galaxia. Falta decidir de dónde sale esa
-fecha (por ejemplo, el momento en que se creó la base de la memoria).
