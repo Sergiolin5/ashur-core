@@ -40,12 +40,17 @@ el `Dockerfile`.
 - **Contrato copiado a mano:** los modelos de pydantic pueden quedar distintos al schema. El test con el JSON de
   ejemplo detecta parte de esas diferencias, no todas. Validar contra el propio schema necesitaría `jsonschema`, que
   no está aprobado.
-- **La imagen no se verifica en la Mac:** no hay Docker en la Mac, así que el `Dockerfile` solo se prueba en el
-  servidor.
+- **La imagen no se construye en la Mac:** no hay Docker en la Mac, así que el `Dockerfile` solo se prueba en
+  GitHub Actions y en el servidor.
+
+## Despliegue verificado (2026-11-21)
+- **Servidor:** ZimaOS 1.8 en un AMD Ryzen 5 3600 (x86_64), así que la imagen se construye para `linux/amd64`.
+- **Imagen:** `.github/workflows/imagen-core.yml` la construye en cada push a `main` que toque `core/` y la publica
+  como `ghcr.io/sergiolin5/ashur-nucleo` (pública), con las etiquetas `latest` y la del commit. No se llama
+  `ashur-core` porque `ghcr.io/sergiolin5/ashur-core` es la imagen del repo anterior, que sigue en uso.
+- **Instalación:** el panel de ZimaOS solo instala apps personalizadas desde una imagen ya publicada. La app se llama
+  "Ashur Core (nuevo)", publica el puerto 8720 y monta una carpeta propia del servidor en `/datos`, separada de la
+  del Ashur anterior. `/vivo` responde desde la red privada.
 
 ## Pendiente
-- **Arquitectura del servidor ZimaOS** (x86_64 o ARM). Las imágenes oficiales de Python existen para las dos, así
-  que no cambia esta decisión.
-- **Cómo se construye y se instala la imagen en ZimaOS:** si se construye en el servidor o se instala desde un
-  archivo compose. Está sin verificar.
 - **Registro de módulos:** el mecanismo concreto sigue sin definir (`docs/MODULOS.md`, sección 2).

@@ -1,4 +1,4 @@
-# Sin verificar: en la Mac no hay Docker (docs/adr/0003-stack-servidor.md).
+# Se construye en GitHub Actions (.github/workflows/imagen-core.yml); en la Mac no hay Docker.
 FROM python:3.13-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.20 /uv /usr/local/bin/uv
