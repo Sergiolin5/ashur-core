@@ -28,10 +28,10 @@ planeta Objetos no se llene.
 Hoy una luna es una identidad que se volvió importante (`docs/GALAXIA.md`). Sergio quiere que las lunas sean algo
 representativo o grande; falta decidir si otras cosas también pueden serlo.
 
-## 14. Zoom y nivel de detalle
-La galaxia usa escalas como las reales: todo está lejos y se ve más al acercarse. Falta construir el zoom y decidir
-qué se ve en cada escala (`docs/adr/0008-cuerpos-reales-de-la-galaxia.md`).
-
 ## 15. De dónde sale la fecha en que Ashur empezó a aprender
 El contrato trae `aprendizaje.inicio`, pero el core todavía no publica la galaxia. Falta decidir de dónde sale esa
 fecha (por ejemplo, el momento en que se creó la base de la memoria).
+
+## 16. Seguir un cuerpo con la cámara
+Con zoom, los planetas siguen girando y salen de la pantalla en pocos segundos. Falta decidir si la cámara sigue al
+cuerpo que se está mirando, o si la galaxia se detiene mientras uno se acerca.

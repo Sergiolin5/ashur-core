@@ -51,7 +51,8 @@ Las dos reglas que eligió Sergio son un interruptor cada una:
 ## Lo que el cliente supone porque el contrato no lo trae
 - **Instantes de los eventos:** los eventos no tienen hora, así que cada estrella fugaz se repite en bucle,
   desfasada de las demás.
-- **Toque del núcleo:** se acepta un toque dentro de su radio, con un mínimo de 22 px para que sea fácil de tocar.
+- **Toque del núcleo:** se acepta un toque dentro de su radio, con un mínimo de 22 px para que sea fácil de tocar. Con zoom se mide
+  en pantalla (`docs/adr/0009-zoom-de-la-galaxia.md`).
 
 ## Navegación
 - Tocar el núcleo abre "Chats" con un zoom hacia adentro centrado en el punto tocado (`rutaZoom` en

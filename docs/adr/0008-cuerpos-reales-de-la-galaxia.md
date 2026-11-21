@@ -18,17 +18,10 @@ sin perder la estética. Además, quedaba abierto cómo llega al cliente lo que 
 - **Polvo:** el contrato trae `aprendizaje: {inicio, recuerdos}`, y el cliente calcula la densidad con la fórmula de
   `docs/GALAXIA.md`. Los parámetros viven en `app/lib/galaxia/pintor.dart` y son provisionales.
 - **Cliente:** las lunas se dibujan como puntos tenues que orbitan su planeta, con el mismo cálculo que los
-  asteroides. Los personajes no se dibujan todavía, porque solo se ven con el zoom.
+  asteroides. Los personajes se ven al acercarse (`docs/adr/0009-zoom-de-la-galaxia.md`).
 
 ## Pendiente
-- **Zoom y nivel de detalle** (decisión 14). Sin verificar:
-  - Moverse y acercarse con `InteractiveViewer` y `TransformationController`, que vienen con Flutter, y pasar la
-    matriz al pintor.
-  - Tocar el núcleo con el zoom puesto: el toque se convierte con la matriz inversa y mantiene el mínimo de 22 px en
-    pantalla del ADR 0002.
-  - Acercarse con dos dedos y tocar con uno pueden chocar.
-  - No dibujar lo que queda fuera de la pantalla o mide menos de un píxel.
-  - Repensar el polvo en coordenadas del mundo.
+- **Zoom y nivel de detalle:** ya está, en `docs/adr/0009-zoom-de-la-galaxia.md`.
 - **Umbrales de las identidades:** el core todavía no los calcula, y el core todavía no publica la galaxia.
 - **Objetos del inventario** (decisión 12) y **otras lunas** (decisión 13).
 - **De dónde sale `aprendizaje.inicio`** (decisión 15).

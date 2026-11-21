@@ -22,8 +22,7 @@ dibuja, sin inventar valores.
 2. El tamaño de un planeta y el radio de su órbita se derivan solo de su masa.
 3. Cada estrella fugaz corresponde a un evento del contrato, con su `origen` y su `destino`.
 4. Cada cuerpo que representa una cosa real del sistema la nombra en `ref`, con su tipo y su id.
-5. Las escalas son como en la vida real: todo está muy lejos, y se ve más al acercarse (`docs/DECISIONES-ABIERTAS.md`,
-   punto 14).
+5. Las escalas son como en la vida real: todo está muy lejos, y se ve más al acercarse (ver «Zoom y nivel de detalle»).
 
 ## Modelo matemático
 Esta sección traduce el glosario a fórmulas para que el dibujo sea predecible. Las constantes marcadas como
@@ -158,3 +157,39 @@ $$
 
 El core calcula el nivel y publica el `tipo`; el cliente solo lo dibuja. Los valores de $\theta_1$, $\theta_2$,
 $\theta_3$ y $\eta$ son parámetros provisionales del core, que todavía no lo implementa.
+
+### Zoom y nivel de detalle
+La galaxia tiene escalas como las reales: todo está lejos y se ve más al acercarse. Una cámara con zoom $z$
+($1 \le z \le z_{\max}$) y desplazamiento $\mathbf{d}$, en píxeles, lleva cada punto $\mathbf{w}$ del mundo a un punto
+$\mathbf{s}$ de la pantalla, con $\mathbf{c}$ el centro de la pantalla:
+
+$$
+\mathbf{s} = \mathbf{c} + z\left(\mathbf{w} - \mathbf{c}\right) + \mathbf{d},
+\qquad
+\mathbf{w} = \mathbf{c} + \frac{\mathbf{s} - \mathbf{c} - \mathbf{d}}{z}
+$$
+
+Al acercar alrededor de un punto $\mathbf{f}$ de la pantalla (entre los dos dedos, o donde está el puntero), lo que
+está debajo de $\mathbf{f}$ no se mueve. Con $\mathbf{w}_f$ el punto del mundo bajo $\mathbf{f}$ y $z'$ el zoom nuevo:
+
+$$
+\mathbf{d}' = \mathbf{f} - \mathbf{c} - z'\left(\mathbf{w}_f - \mathbf{c}\right)
+$$
+
+- Las posiciones y los radios de los cuerpos se multiplican por $z$; el polvo, las líneas de las órbitas y las
+  estrellas fugaces mantienen su tamaño en píxeles, así que el polvo se ve más disperso de cerca.
+- En $z = 1$ la galaxia vuelve al centro ($\mathbf{d} = 0$), y $|\mathbf{d}|$ no pasa de un límite para no perderla.
+- **Nivel de detalle:** algo con radio $R$ en el mundo mide $zR$ en pantalla, y su opacidad es
+
+$$
+\alpha = \operatorname{clamp}\!\left(\frac{zR - r_{\min}}{r_{\text{total}} - r_{\min}},\ 0,\ 1\right)
+$$
+
+- Los **personajes** aparecen cuando el planeta Identidades mide al menos $r_P$ en pantalla, como puntos dentro del
+  planeta en el ángulo $2\pi\varphi_i$, y con su nombre cuando mide $2r_P$.
+- No se dibuja lo que queda fuera de la pantalla ni lo que mide menos de unos $0.3$ px.
+- El toque del núcleo se mide en pantalla: $\left|\mathbf{s}_{\text{toque}} - \mathbf{s}_{\text{núcleo}}\right| \le
+  \max(zR, 22\,\text{px})$.
+
+Los valores de $z_{\max}$, $r_{\min}$, $r_{\text{total}}$ y $r_P$ son provisionales y viven en
+`app/lib/galaxia/camara.dart`.
