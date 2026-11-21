@@ -179,6 +179,10 @@ $$
 - Las posiciones y los radios de los cuerpos se multiplican por $z$; el polvo, las líneas de las órbitas y las
   estrellas fugaces mantienen su tamaño en píxeles, así que el polvo se ve más disperso de cerca.
 - En $z = 1$ la galaxia vuelve al centro ($\mathbf{d} = 0$), y $|\mathbf{d}|$ no pasa de un límite para no perderla.
+- **Seguir un cuerpo:** al acercar con dos dedos (o con la rueda), la cámara se queda con el cuerpo más cercano al
+  foco, si está a menos de $\max(zR, 48\,\text{px})$. Mientras la galaxia gira, ese cuerpo se mantiene en el punto
+  $\mathbf{a}$ de la pantalla donde se acercó, con $\mathbf{d} = \mathbf{a} - \mathbf{c} - z\left(\mathbf{w}(t) -
+  \mathbf{c}\right)$. Mover la vista con un dedo o volver a $z = 1$ lo suelta.
 - **Nivel de detalle:** algo con radio $R$ en el mundo mide $zR$ en pantalla, y su opacidad es
 
 $$

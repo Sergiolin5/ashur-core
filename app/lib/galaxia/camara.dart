@@ -13,6 +13,10 @@ const radioVisibleTotal = 6.0; // r_full
 /// Un planeta muestra a sus personajes cuando mide al menos esto en pantalla, en píxeles.
 const radioPlanetaConPersonajes = 40.0;
 
+/// Al acercar, la cámara sigue al cuerpo que esté a menos de esto del foco, en píxeles. Es más que el toque del
+/// núcleo porque el foco queda entre los dos dedos y el cuerpo se mueve.
+const alcanceSeguir = 48.0;
+
 /// Por debajo de esto, en píxeles, no se dibuja.
 const radioMinimoDibujo = 0.3;
 
@@ -21,7 +25,7 @@ const desplazamientoMaximo = 1.2;
 
 @immutable
 class Camara {
-  const Camara({this.zoom = 1, this.desplazamiento = Offset.zero});
+  const Camara({this.zoom = 1, this.desplazamiento = Offset.zero, this.sigue, this.ancla = Offset.zero});
 
   /// z: cuánto se acerca la vista.
   final double zoom;
@@ -29,7 +33,27 @@ class Camara {
   /// d: cuánto se movió la vista, en píxeles.
   final Offset desplazamiento;
 
+  /// id del cuerpo que la cámara sigue, o null si no sigue a ninguno.
+  final String? sigue;
+
+  /// Punto de la pantalla donde se mantiene el cuerpo seguido.
+  final Offset ancla;
+
   static const inicial = Camara();
+
+  /// Empieza a seguir al cuerpo [id], manteniéndolo en el punto [ancla] de la pantalla.
+  Camara seguir(String id, Offset ancla) =>
+      Camara(zoom: zoom, desplazamiento: desplazamiento, sigue: id, ancla: ancla);
+
+  /// Deja de seguir cualquier cuerpo.
+  Camara soltar() => Camara(zoom: zoom, desplazamiento: desplazamiento);
+
+  /// Corre la vista para que el cuerpo seguido, que está en [mundo], quede en el ancla: d = a − c − z (w − c).
+  Camara centrarEn(Offset mundo, Size tamano) {
+    final centro = tamano.center(Offset.zero);
+    return Camara(zoom: zoom, desplazamiento: ancla - centro - (mundo - centro) * zoom, sigue: sigue, ancla: ancla)
+        .limitada(tamano);
+  }
 
   /// s = c + z (w − c) + d
   Offset aPantalla(Offset mundo, Offset centro) => centro + (mundo - centro) * zoom + desplazamiento;
@@ -42,10 +66,11 @@ class Camara {
     final centro = tamano.center(Offset.zero);
     final z = nuevoZoom.clamp(1.0, zoomMaximo);
     final debajo = aMundo(foco, centro);
-    return Camara(zoom: z, desplazamiento: foco - centro - (debajo - centro) * z).limitada(tamano);
+    return Camara(zoom: z, desplazamiento: foco - centro - (debajo - centro) * z, sigue: sigue, ancla: ancla)
+        .limitada(tamano);
   }
 
-  /// Mueve la vista [delta] píxeles.
+  /// Mueve la vista [delta] píxeles. Moverla a mano suelta el cuerpo seguido.
   Camara mover(Offset delta, Size tamano) =>
       Camara(zoom: zoom, desplazamiento: desplazamiento + delta).limitada(tamano);
 
@@ -54,7 +79,9 @@ class Camara {
     if (zoom <= 1) return inicial;
     final limite = desplazamientoMaximo * math.min(tamano.width, tamano.height) / 2 * zoom;
     final d = desplazamiento.distance;
-    return d <= limite ? this : Camara(zoom: zoom, desplazamiento: desplazamiento * (limite / d));
+    return d <= limite
+        ? this
+        : Camara(zoom: zoom, desplazamiento: desplazamiento * (limite / d), sigue: sigue, ancla: ancla);
   }
 }
 

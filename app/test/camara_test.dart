@@ -59,4 +59,22 @@ void main() {
     expect(dondeQuedo.dx, greaterThan(tamano.width));
     expect(tocaNucleo(estado, tamano, 0, corrida, centro), isFalse);
   });
+
+  test('al seguir un cuerpo, este se queda en el ancla aunque gire, y moverse lo suelta', () async {
+    final estado = await EstadoGalaxia.cargar(rootBundle);
+    const ancla = Offset(200, 400);
+    final g0 = Geometria(estado, tamano, 0);
+    final cerca = Camara.inicial
+        .acercar(4, Camara.inicial.aPantalla(g0.posicion('identidades', 0), centro), tamano);
+    expect(cuerpoEn(estado, tamano, 0, cerca, cerca.aPantalla(g0.posicion('identidades', 0), centro)), 'identidades');
+
+    final siguiendo = cerca.seguir('identidades', ancla);
+    for (final t in [0.0, 3.0, 9.0]) {
+      final g = Geometria(estado, tamano, t);
+      final camara = siguiendo.centrarEn(g.posicion('identidades', t), tamano);
+      expect((camara.aPantalla(g.posicion('identidades', t), centro) - ancla).distance, lessThan(1e-6));
+    }
+    expect(siguiendo.mover(const Offset(5, 0), tamano).sigue, isNull);
+    expect(siguiendo.acercar(1, ancla, tamano).sigue, isNull);
+  });
 }
