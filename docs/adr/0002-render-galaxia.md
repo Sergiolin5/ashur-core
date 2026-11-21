@@ -5,7 +5,8 @@
 
 ## Contexto
 La pantalla de inicio dibuja la galaxia de `docs/GALAXIA.md` a partir del contrato
-`contracts/galaxy-state.schema.json`, en movimiento continuo y sin paquetes de terceros.
+`contracts/galaxy-state.schema.json`, en movimiento continuo y sin paquetes de terceros. Lo de no usar paquetes
+fue solo para este prototipo: la regla del repo es pedir aprobación antes de agregar uno (`CLAUDE.md`).
 
 ## Decisión
 - **Dibujo:** un solo `CustomPainter` (`app/lib/galaxia/pintor.dart`) que se repinta cada cuadro. Lo mueve un
