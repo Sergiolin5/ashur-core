@@ -26,6 +26,9 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 
 - **Inicio del aprendizaje:** es el momento en que el core creó su base de memoria (decisión 15). Una base que ya
   existía antes de la versión 3 toma el momento de su migración. Los administradores pueden cambiarlo.
+- **Archivar en vez de borrar** (decisión 8, 2026-11-21): cuando existan el inventario y la lista de identidades, un
+  objeto o una identidad que ya no se quiere ver se archiva, no se borra. Desaparece de la galaxia y de las listas,
+  los recuerdos conservan su enlace, y un administrador puede restaurarlo.
 - **Ashur guarda los recuerdos directamente,** sin pedirle aprobación a Sergio (decisión 9, 2026-11-21).
 - **Todo se guarda, también lo sensible.** La `sensibilidad` es solo un dato: no cambia cómo se guarda un recuerdo
   ni qué nivel de inferencia puede usarlo.
@@ -71,7 +74,6 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   clientes que la usan.
 
 ## Pendiente
-Están en `docs/DECISIONES-ABIERTAS.md`, puntos 8, 10 y 11:
-- el enlace con el inventario y con la lista de identidades;
+Están en `docs/DECISIONES-ABIERTAS.md`, puntos 10 y 11:
 - la búsqueda por significado;
 - las reglas por nivel de sensibilidad y de consentimiento.
