@@ -23,4 +23,4 @@ Estas reglas valen para toda sesión de Claude Code (u otra IA) que trabaje en e
 
 ## Fuera del repo
 - `../ashur` (repo anterior) y `../_referencias/` son solo lectura. Las rutas que empiezan con `../` son relativas a la raíz de este repo.
-- `/Users/sermolin/.ashur` es la instalación en ejecución: nunca se lee ni se modifica.
+- `~/.ashur` (en la Mac de Sergio) es la instalación en ejecución: nunca se lee ni se modifica.
