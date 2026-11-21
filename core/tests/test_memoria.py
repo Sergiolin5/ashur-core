@@ -11,6 +11,8 @@ from ashur_core.app import app
 
 EJEMPLO = Path(__file__).resolve().parents[2] / "contracts" / "recuerdo.ejemplo.json"
 CLAVE = "clave-de-prueba"
+CLAVE_ADMIN = "clave-admin-de-prueba"
+ADMIN = {"X-Ashur-Clave-Admin": CLAVE_ADMIN}
 
 
 def leer_ejemplo():
@@ -27,6 +29,7 @@ def nuevo_ejemplo():
 def cliente(tmp_path, monkeypatch):
     monkeypatch.setenv("ASHUR_DB", str(tmp_path / "ashur.db"))
     monkeypatch.setenv("ASHUR_CLAVE", CLAVE)
+    monkeypatch.setenv("ASHUR_CLAVE_ADMIN", CLAVE_ADMIN)
     return TestClient(app, headers={"X-Ashur-Clave": CLAVE})
 
 
@@ -68,9 +71,31 @@ def test_crear_listar_y_borrar(cliente):
 
     assert cliente.get("/recuerdos").json() == [recuerdo]
 
-    assert cliente.delete("/recuerdos/1").status_code == 204
+    assert cliente.delete("/recuerdos/1", headers=ADMIN).status_code == 204
     assert cliente.get("/recuerdos").json() == []
-    assert cliente.delete("/recuerdos/1").status_code == 404
+    assert cliente.delete("/recuerdos/1", headers=ADMIN).status_code == 404
+
+
+def test_editar_solo_cambia_lo_enviado(cliente):
+    cliente.post("/recuerdos", json=nuevo_ejemplo())
+    editado = cliente.patch("/recuerdos/1", json={"opinion": None, "sensibilidad": "privado"}, headers=ADMIN)
+    assert editado.status_code == 200
+    assert editado.json()["opinion"] is None
+    assert editado.json()["sensibilidad"] == "privado"
+    assert editado.json()["texto"] == leer_ejemplo()["texto"]
+    assert cliente.get("/recuerdos").json() == [editado.json()]
+    assert cliente.patch("/recuerdos/9", json={"texto": "x"}, headers=ADMIN).status_code == 404
+    assert cliente.patch("/recuerdos/1", json={"extra": 1}, headers=ADMIN).status_code == 422
+    assert cliente.patch("/recuerdos/1", json={"texto": None}, headers=ADMIN).status_code == 422
+
+
+def test_editar_y_borrar_piden_la_clave_de_administrador(cliente, monkeypatch):
+    cliente.post("/recuerdos", json=nuevo_ejemplo())
+    assert cliente.patch("/recuerdos/1", json={"texto": "x"}).status_code == 401
+    assert cliente.delete("/recuerdos/1").status_code == 401
+    assert cliente.delete("/recuerdos/1", headers={"X-Ashur-Clave-Admin": CLAVE}).status_code == 401
+    monkeypatch.delenv("ASHUR_CLAVE_ADMIN")
+    assert cliente.delete("/recuerdos/1", headers=ADMIN).status_code == 503
 
 
 def test_sin_clave_o_con_clave_equivocada_responde_401(cliente):

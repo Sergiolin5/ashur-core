@@ -21,6 +21,18 @@ def exigir_clave(clave: str | None = Security(_encabezado_clave)) -> None:
         raise HTTPException(status_code=401, detail="Clave inválida.")
 
 
+_encabezado_admin = APIKeyHeader(name="X-Ashur-Clave-Admin", auto_error=False)
+
+
+def exigir_clave_admin(clave: str | None = Security(_encabezado_admin)) -> None:
+    """Solo los administradores editan y borran recuerdos. Sin ASHUR_CLAVE_ADMIN, nadie puede."""
+    esperada = os.environ.get("ASHUR_CLAVE_ADMIN")
+    if not esperada:
+        raise HTTPException(status_code=503, detail="ASHUR_CLAVE_ADMIN no está configurada.")
+    if clave is None or not secrets.compare_digest(clave, esperada):
+        raise HTTPException(status_code=401, detail="Clave de administrador inválida.")
+
+
 def conexion() -> Iterator:
     con = memoria.abrir(os.environ.get("ASHUR_DB", "/datos/ashur.db"))
     try:
@@ -44,7 +56,15 @@ def listar_recuerdos(con=Depends(conexion)) -> list[memoria.Recuerdo]:
     return memoria.listar(con)
 
 
-@app.delete("/recuerdos/{id_}", status_code=204, dependencies=[Depends(exigir_clave)])
+@app.patch("/recuerdos/{id_}", response_model=memoria.Recuerdo, dependencies=[Depends(exigir_clave_admin)])
+def editar_recuerdo(id_: int, cambios: memoria.CambiosRecuerdo, con=Depends(conexion)) -> memoria.Recuerdo:
+    editado = memoria.editar(con, id_, cambios)
+    if editado is None:
+        raise HTTPException(status_code=404, detail="No existe ese recuerdo.")
+    return editado
+
+
+@app.delete("/recuerdos/{id_}", status_code=204, dependencies=[Depends(exigir_clave_admin)])
 def borrar_recuerdo(id_: int, con=Depends(conexion)) -> Response:
     if not memoria.borrar(con, id_):
         raise HTTPException(status_code=404, detail="No existe ese recuerdo.")

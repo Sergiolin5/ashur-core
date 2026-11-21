@@ -17,4 +17,5 @@ Variables de entorno (`docs/adr/0004-memoria.md`):
 | Variable | Qué es |
 | --- | --- |
 | `ASHUR_CLAVE` | Clave que piden los endpoints de la memoria en el encabezado `X-Ashur-Clave`. Sin ella, la memoria responde 503. |
+| `ASHUR_CLAVE_ADMIN` | Clave de administrador en el encabezado `X-Ashur-Clave-Admin`, para editar y borrar recuerdos. Sin ella, nadie puede. |
 | `ASHUR_DB` | Ruta de la base SQLite. Por defecto, `/datos/ashur.db`. |

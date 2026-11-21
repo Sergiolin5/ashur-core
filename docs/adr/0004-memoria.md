@@ -41,12 +41,16 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 | --- | --- |
 | `POST /recuerdos` | Guarda un recuerdo nuevo y lo devuelve con su `id` (201). |
 | `GET /recuerdos` | Lista todos los recuerdos. |
-| `DELETE /recuerdos/{id}` | Borra un recuerdo (204), o responde 404 si no existe. |
+| `PATCH /recuerdos/{id}` | Edita un recuerdo: solo cambia los campos enviados (solo administradores). |
+| `DELETE /recuerdos/{id}` | Borra un recuerdo (204), o responde 404 si no existe (solo administradores). |
 
 ### Clave compartida
 - Los endpoints de la memoria piden el encabezado `X-Ashur-Clave`, que se compara con la variable de entorno
   `ASHUR_CLAVE` mediante `secrets.compare_digest`. `/vivo` queda abierto.
-- **Cerrado por defecto:** si `ASHUR_CLAVE` no está configurada, la memoria responde 503. Una clave ausente o
+- **Administradores:** editar y borrar piden además el encabezado `X-Ashur-Clave-Admin`, que se compara con
+  `ASHUR_CLAVE_ADMIN`. Así los dueños del sistema son los únicos que cambian la memoria.
+- **Cerrado por defecto:** si `ASHUR_CLAVE` no está configurada, la memoria responde 503, y si
+  `ASHUR_CLAVE_ADMIN` no está configurada, nadie puede editar ni borrar. Una clave ausente o
   equivocada responde 401.
 - **Dónde vive la clave:** Sergio la crea y la pone en el panel de ZimaOS. Nunca entra al repo, que es público.
 - **Dependencias:** usa `fastapi.security.APIKeyHeader`, que viene con FastAPI, así que no agrega paquetes.
@@ -56,8 +60,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   contactos y el inventario. La lista de contactos es parte del core, como el inventario pero de personas.
 - **La clave viaja sin cifrar en la red de casa:** el core habla HTTP, así que en la red local la clave va en claro.
   Por Tailscale va cifrada.
-- **Una sola clave para todo:** no distingue dispositivos ni permisos, y cambiarla obliga a cambiarla en todos los
-  clientes.
+- **Dos claves fijas:** no distinguen dispositivos ni personas, y cambiar una obliga a cambiarla en todos los
+  clientes que la usan.
 
 ## Pendiente
 Están en `docs/DECISIONES-ABIERTAS.md`, puntos 8, 10 y 11:
