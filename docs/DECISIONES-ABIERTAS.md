@@ -2,11 +2,6 @@
 
 Cada una espera la decisión de Sergio. Cuando se cierre, se registra como ADR en `docs/adr/` y se quita de aquí.
 
-## 4. Almacenamiento en Flutter
-La clave del core ya se guarda con `flutter_secure_storage` (`docs/adr/0007-clave-en-el-dispositivo.md`). Falta
-decidir qué más guarda la app en el dispositivo (caché, borradores) y con qué. PrivateLM usa Hive. La memoria de
-Ashur vive en el core, no en la app.
-
 ## 8. Enlace de la memoria con el inventario y las identidades
 Cada objeto de un recuerdo trae un `inventario_id`, y cada identidad un `identidad_id`, pero ni el inventario ni la
 lista de identidades existen todavía. Falta decidir cómo se enlazan cuando existan, qué pasa con un recuerdo si se
