@@ -17,9 +17,6 @@ Cada objeto de un recuerdo trae un `inventario_id`, y cada persona un `contacto_
 lista de contactos existen todavía. Falta decidir cómo se enlazan cuando existan, y qué pasa con un recuerdo si se
 borra un objeto o un contacto.
 
-## 9. Quién decide qué se recuerda
-Si Ashur guarda un recuerdo apenas lo aprende o se lo propone primero a Sergio para que lo apruebe.
-
 ## 10. Búsqueda por significado
 Cómo encuentra Ashur los recuerdos relacionados con lo que se habla (por ejemplo, con embeddings). Cualquier
 paquete o modelo nuevo necesita aprobación.

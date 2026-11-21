@@ -24,6 +24,7 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 | `objetos` | Cada uno con `nombre` e `inventario_id`, que es `null` si el objeto no está en el inventario. |
 | `opinion` | Lo que Ashur opina del recuerdo, o `null` si todavía no tiene opinión. |
 
+- **Ashur guarda los recuerdos directamente,** sin pedirle aprobación a Sergio (decisión 9, 2026-11-21).
 - **Todo se guarda, también lo sensible.** La `sensibilidad` es solo un dato: no cambia cómo se guarda un recuerdo
   ni qué nivel de inferencia puede usarlo.
 
@@ -59,8 +60,7 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   clientes.
 
 ## Pendiente
-Están en `docs/DECISIONES-ABIERTAS.md`, puntos 8 a 11:
+Están en `docs/DECISIONES-ABIERTAS.md`, puntos 8, 10 y 11:
 - el enlace con el inventario y con la lista de contactos;
-- si Ashur guarda los recuerdos directamente o se los propone primero a Sergio;
 - la búsqueda por significado;
 - las reglas por nivel de sensibilidad y de consentimiento.
