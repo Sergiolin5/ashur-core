@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "recuerdo.schema.json",
+  "title": "Recuerdo de Ashur",
+  "description": "Lo que Ashur guarda en su memoria. Ver docs/adr/0004-memoria.md.",
+  "$defs": {
+    "nuevo": {
+      "description": "Lo que el cliente envía para crear un recuerdo.",
+      "type": "object",
+      "required": [
+        "texto",
+        "origen",
+        "fecha",
+        "sensibilidad",
+        "personas",
+        "objetos",
+        "opinion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "texto": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origen": {
+          "description": "De dónde vino: chat, diario o el id de un módulo.",
+          "type": "string",
+          "minLength": 1
+        },
+        "fecha": {
+          "description": "Cuándo pasó, en ISO 8601 con zona horaria.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "sensibilidad": {
+          "description": "Solo un dato por ahora: no cambia cómo se guarda ni quién lo usa.",
+          "enum": [
+            "normal",
+            "privado",
+            "sensible"
+          ]
+        },
+        "personas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/persona"
+          }
+        },
+        "objetos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/objeto"
+          }
+        },
+        "opinion": {
+          "description": "Lo que Ashur opina de este recuerdo. null si todavía no tiene opinión.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        }
+      }
+    },
+    "persona": {
+      "type": "object",
+      "required": [
+        "nombre",
+        "contacto_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contacto_id": {
+          "description": "id de la persona en la lista de contactos; null si no está en la lista.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        }
+      }
+    },
+    "objeto": {
+      "type": "object",
+      "required": [
+        "nombre",
+        "inventario_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inventario_id": {
+          "description": "id del objeto en el inventario; null si no está en el inventario.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        }
+      }
+    },
+    "recuerdo": {
+      "description": "Un recuerdo guardado: los campos de uno nuevo más su id.",
+      "type": "object",
+      "required": [
+        "id",
+        "texto",
+        "origen",
+        "fecha",
+        "sensibilidad",
+        "personas",
+        "objetos",
+        "opinion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "texto": {
+          "$ref": "#/$defs/nuevo/properties/texto"
+        },
+        "origen": {
+          "$ref": "#/$defs/nuevo/properties/origen"
+        },
+        "fecha": {
+          "$ref": "#/$defs/nuevo/properties/fecha"
+        },
+        "sensibilidad": {
+          "$ref": "#/$defs/nuevo/properties/sensibilidad"
+        },
+        "personas": {
+          "$ref": "#/$defs/nuevo/properties/personas"
+        },
+        "objetos": {
+          "$ref": "#/$defs/nuevo/properties/objetos"
+        },
+        "opinion": {
+          "$ref": "#/$defs/nuevo/properties/opinion"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/recuerdo"
+}

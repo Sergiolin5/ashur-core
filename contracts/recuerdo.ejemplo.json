@@ -1,0 +1,28 @@
+{
+  "id": 1,
+  "texto": "Ana le prestó a Bruno la bicicleta roja para ir al parque.",
+  "origen": "diario",
+  "fecha": "2026-11-20T18:30:00-05:00",
+  "sensibilidad": "normal",
+  "personas": [
+    {
+      "nombre": "Ana",
+      "contacto_id": "per-1"
+    },
+    {
+      "nombre": "Bruno",
+      "contacto_id": null
+    }
+  ],
+  "objetos": [
+    {
+      "nombre": "bicicleta roja",
+      "inventario_id": "obj-1"
+    },
+    {
+      "nombre": "casco",
+      "inventario_id": null
+    }
+  ],
+  "opinion": "Ana presta sus cosas con confianza."
+}

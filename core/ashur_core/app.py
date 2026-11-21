@@ -1,8 +1,51 @@
-from fastapi import FastAPI
+import os
+import secrets
+from collections.abc import Iterator
+
+from fastapi import Depends, FastAPI, HTTPException, Response, Security
+from fastapi.security import APIKeyHeader
+
+from ashur_core import memoria
 
 app = FastAPI(title="Ashur Core")
+
+_encabezado_clave = APIKeyHeader(name="X-Ashur-Clave", auto_error=False)
+
+
+def exigir_clave(clave: str | None = Security(_encabezado_clave)) -> None:
+    """Sin ASHUR_CLAVE configurada, la memoria queda cerrada (docs/adr/0004-memoria.md)."""
+    esperada = os.environ.get("ASHUR_CLAVE")
+    if not esperada:
+        raise HTTPException(status_code=503, detail="ASHUR_CLAVE no está configurada.")
+    if clave is None or not secrets.compare_digest(clave, esperada):
+        raise HTTPException(status_code=401, detail="Clave inválida.")
+
+
+def conexion() -> Iterator:
+    con = memoria.abrir(os.environ.get("ASHUR_DB", "/datos/ashur.db"))
+    try:
+        yield con
+    finally:
+        con.close()
 
 
 @app.get("/vivo")
 def vivo() -> dict[str, bool]:
     return {"vivo": True}
+
+
+@app.post("/recuerdos", status_code=201, response_model=memoria.Recuerdo, dependencies=[Depends(exigir_clave)])
+def crear_recuerdo(nuevo: memoria.RecuerdoNuevo, con=Depends(conexion)) -> memoria.Recuerdo:
+    return memoria.crear(con, nuevo)
+
+
+@app.get("/recuerdos", response_model=list[memoria.Recuerdo], dependencies=[Depends(exigir_clave)])
+def listar_recuerdos(con=Depends(conexion)) -> list[memoria.Recuerdo]:
+    return memoria.listar(con)
+
+
+@app.delete("/recuerdos/{id_}", status_code=204, dependencies=[Depends(exigir_clave)])
+def borrar_recuerdo(id_: int, con=Depends(conexion)) -> Response:
+    if not memoria.borrar(con, id_):
+        raise HTTPException(status_code=404, detail="No existe ese recuerdo.")
+    return Response(status_code=204)
