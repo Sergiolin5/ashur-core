@@ -5,10 +5,6 @@ Cada una espera la decisión de Sergio. Cuando se cierre, se registra como ADR e
 ## 1. Nombre de la tercera pestaña
 Las pestañas son Estado, Casa y una tercera. En el prototipo se llama "Herramientas", de forma provisional.
 
-## 2. Stack del servidor (`core/`)
-Lenguaje, framework REST y base de datos del core. El repo anterior usaba Python con FastAPI y SQLite
-(`../ashur/core/`), solo como antecedente.
-
 ## 3. Manejo de estado en Flutter
 Qué patrón o paquete maneja el estado de la app. PrivateLM usa GetX. Cualquier paquete necesita aprobación.
 

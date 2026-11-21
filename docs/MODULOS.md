@@ -21,8 +21,8 @@ El módulo no guarda memoria propia: lo que aprende se lo entrega al core, que e
 - El core descubre cada módulo leyendo su `modulo.json`.
 - Al registrarlo, el core guarda el manifiesto y empieza a ofrecer sus acciones a Ashur.
 - Una acción que `escribe` necesita la aprobación de Sergio antes de ejecutarse.
-- El mecanismo concreto (endpoint REST, carpeta compartida u otro) depende del stack del servidor, que sigue
-  abierto en `docs/DECISIONES-ABIERTAS.md`.
+- El mecanismo concreto (endpoint REST, carpeta compartida u otro) está por definir sobre el stack del servidor
+  (`docs/adr/0003-stack-servidor.md`).
 
 ## 3. Cómo aparece en la galaxia
 - Cada módulo registrado es un **planeta** con `id` igual al `id` del módulo y `nombre` igual al del manifiesto.
