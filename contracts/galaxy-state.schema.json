@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "galaxy-state.schema.json",
+  "title": "Estado de la galaxia de Ashur",
+  "description": "Lo que el cliente dibuja en la pantalla de inicio. Glosario en docs/GALAXIA.md.",
+  "type": "object",
+  "required": ["cuerpos", "eventos"],
+  "additionalProperties": false,
+  "properties": {
+    "cuerpos": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cuerpo" }
+    },
+    "eventos": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evento" }
+    }
+  },
+  "$defs": {
+    "cuerpo": {
+      "type": "object",
+      "required": ["tipo", "id", "nombre", "masa", "orbita"],
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "description": "nucleo = Ashur y sus memorias; agente = electrón; planeta = habilidad o módulo; asteroide = bloqueo.",
+          "enum": ["nucleo", "agente", "planeta", "asteroide"]
+        },
+        "id": { "type": "string", "minLength": 1 },
+        "nombre": { "type": "string", "minLength": 1 },
+        "masa": {
+          "description": "Importancia aprendida. El cliente deriva de ella el tamaño y el radio de la órbita.",
+          "type": "number",
+          "minimum": 0
+        },
+        "orbita": {
+          "description": "null solo para el núcleo.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["centro", "fase"],
+              "additionalProperties": false,
+              "properties": {
+                "centro": {
+                  "description": "id del cuerpo alrededor del cual orbita. Un asteroide orbita el planeta que bloquea.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fase": {
+                  "description": "Posición inicial en la órbita, como fracción de vuelta (0 a 1).",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "evento": {
+      "description": "Una estrella fugaz: un mensaje o texto aprendido en tiempo real.",
+      "type": "object",
+      "required": ["tipo", "origen", "destino"],
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "description": "llega = alimenta un planeta existente; crea = da origen al planeta destino, que acaba de aparecer; transforma = la estrella se convierte en otra cosa al llegar a su destino.",
+          "enum": ["llega", "crea", "transforma"]
+        },
+        "origen": {
+          "description": "id del cuerpo de donde sale la estrella.",
+          "type": "string",
+          "minLength": 1
+        },
+        "destino": {
+          "description": "id del cuerpo al que llega la estrella. En un evento crea, es el planeta creado.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

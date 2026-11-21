@@ -1,0 +1,9 @@
+{
+  "id": "plantilla",
+  "nombre": "Plantilla",
+  "version": "0.1.0",
+  "descripcion": "Punto de partida para un módulo nuevo; reemplaza estos valores.",
+  "acciones": [
+    { "id": "ejemplo", "descripcion": "Acción de ejemplo que solo lee.", "escribe": false }
+  ]
+}
