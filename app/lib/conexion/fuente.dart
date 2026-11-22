@@ -12,7 +12,7 @@ const claveClave = 'ashur.clave';
 const claveCache = 'ashur.cache.galaxia';
 
 /// Cómo está la conexión con el core, para la pestaña Estado.
-enum EstadoConexion { sinConfigurar, conectando, conectado, sinConexion, claveInvalida, coreSinClave, error }
+enum EstadoConexion { sinConfigurar, bloqueada, conectando, conectado, sinConexion, claveInvalida, coreSinClave, error }
 
 /// Guarda lo último que mandó el core. En la app es un archivo JSON (cache_archivo.dart); en las pruebas, memoria.
 abstract class Cache {
@@ -46,21 +46,49 @@ class FuenteGalaxia extends ChangeNotifier {
 
   /// Un cliente con la dirección y la clave guardadas, o null si falta alguna.
   Future<ClienteCore?> cliente() async {
-    final (direccion, clave) = await ajustes();
+    final String? direccion, clave;
+    try {
+      (direccion, clave) = await ajustes();
+    } on SecretoBloqueado {
+      return null;
+    }
     if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) return null;
     return ClienteCore(direccion: Uri.parse(direccion), clave: clave);
   }
 
-  Future<(String?, String?)> ajustes() async => (await almacen.leer(claveDireccion), await almacen.leer(claveClave));
+  /// La clave se lee una vez por sesión, con Face ID, y queda en memoria hasta cerrar la app.
+  String? _claveDesbloqueada;
+
+  /// Lee la dirección y la clave. Lanza SecretoBloqueado si Face ID falla.
+  Future<(String?, String?)> ajustes() async {
+    final direccion = await almacen.leer(claveDireccion);
+    _claveDesbloqueada ??= await almacen.leer(claveClave, protegido: true);
+    return (direccion, _claveDesbloqueada);
+  }
 
   Future<void> guardarAjustes(String direccion, String clave) async {
     await almacen.escribir(claveDireccion, direccion.trim().replaceAll(RegExp(r'/+$'), ''));
-    await almacen.escribir(claveClave, clave.trim());
+    await almacen.escribir(claveClave, clave.trim(), protegido: true);
+    _claveDesbloqueada = clave.trim();
     await actualizar();
   }
 
   Future<void> actualizar() async {
-    final (direccion, clave) = await ajustes();
+    final String? direccion, clave;
+    try {
+      (direccion, clave) = await ajustes();
+    } on SecretoBloqueado catch (e) {
+      // Face ID falló: se muestra lo último guardado y se ofrece desbloquear o volver a pegar la clave.
+      estado = EstadoConexion.bloqueada;
+      detalle = e.motivo;
+      final guardada = await cache.leer();
+      if (guardada != null) {
+        galaxia = EstadoGalaxia.fromJson(jsonDecode(guardada) as Map<String, dynamic>);
+        esEjemplo = false;
+      }
+      notifyListeners();
+      return;
+    }
     if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) {
       galaxia = await cargarEjemplo();
       esEjemplo = true;

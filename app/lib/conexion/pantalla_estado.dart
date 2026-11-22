@@ -38,7 +38,7 @@ class _PantallaEstadoState extends State<PantallaEstado> {
       if (!mounted) return;
       _direccion.text = ajustes.$1 ?? '';
       _clave.text = ajustes.$2 ?? '';
-    });
+    }, onError: (_) {});
   }
 
   @override
@@ -106,6 +106,12 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                 ),
                 const SizedBox(height: 20),
                 Text(_texto(widget.fuente)),
+                if (widget.fuente.estado == EstadoConexion.bloqueada)
+                  CupertinoButton(
+                    padding: const EdgeInsets.only(top: 12),
+                    onPressed: () => widget.fuente.actualizar(),
+                    child: const Text('Desbloquear con Face ID'),
+                  ),
                 const SizedBox(height: 24),
                 const Text('Dirección del core'),
                 const SizedBox(height: 6),
