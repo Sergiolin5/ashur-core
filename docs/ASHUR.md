@@ -47,9 +47,10 @@ Ashur aprovecha el hardware que Sergio ya tiene en lugar de pedirle hardware nue
 útil como nodo de casa y presta su procesador y su memoria. Por eso la nube es el respaldo, no la base.
 
 ## Flujo multi-IA
-Varias IA pueden proponer, escribir o investigar, pero **Claude es el revisor final**: ningún cambio entra al repo
-sin pasar por su revisión. En Claude Code, esa revisión incluye consultar al advisor antes de cerrar una tarea
-(ver `CLAUDE.md` y `docs/HERRAMIENTAS.md`).
+Varias IA pueden proponer, escribir o investigar, pero **Ashur Code es el revisor final**: ningún cambio entra al
+repo sin pasar por su revisión. Ashur Code es la IA que trabaja dentro de este repo, en Claude Code, y su revisión
+incluye consultar al advisor antes de cerrar una tarea (ver `CLAUDE.md` y `docs/HERRAMIENTAS.md`). Sus commits llevan
+`Co-Authored-By: Ashur Code <ashur-code@ashur.invalid>`.
 
 ## Mapa de la documentación
 | Documento | Contenido |

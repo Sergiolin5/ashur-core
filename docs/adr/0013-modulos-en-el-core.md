@@ -40,7 +40,7 @@ esqueleto, y dejó abierta la puerta a módulos como servicios aparte más adela
 
 ## Costos
 - **Los módulos corren con todos los privilegios del core:** pueden leer las variables de entorno (las claves) y la
-  base. La única barrera es la revisión de Claude Code antes de integrarlos.
+  base. La única barrera es la revisión de Ashur Code antes de integrarlos.
 - **Paquetes:** un módulo que necesita un paquete tiene que cambiar `core/pyproject.toml`, lo que pide la aprobación de
   Sergio y, por `CLAUDE.md`, es una tarea aparte del módulo.
 - **Sin límite de tiempo:** una acción que se cuelga ocupa un hilo del servidor.

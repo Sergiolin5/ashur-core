@@ -1,7 +1,7 @@
 # Prompt para construir módulos de Ashur con otra IA
 
 Este documento sirve para trabajar módulos, herramientas y habilidades de Ashur en un proyecto de Claude.ai o en otra
-IA (ChatGPT, Gemini, un modelo local), tenga o no acceso al repo. Esa IA propone y escribe; Claude Code, en este repo
+IA (ChatGPT, Gemini, un modelo local), tenga o no acceso al repo. Esa IA propone y escribe; Ashur Code, en este repo
 y con el advisor, es siempre el último paso: revisa la entrega contra los documentos y la integra o la rechaza
 (`docs/ASHUR.md`, «Flujo multi-IA»).
 
@@ -29,8 +29,8 @@ agentes e identidades.
    Si la herramienta limita los adjuntos, los indispensables son `CLAUDE.md`, `docs/MODULOS.md`,
    `modules/_plantilla/` (los 4 archivos), `docs/DECISIONES-ABIERTAS.md` y los ADR 0004 y 0013.
 2. **Pega el prompt de abajo** como instrucciones del proyecto (o como primer mensaje).
-3. **Trabaja un módulo por conversación.** Al final, la IA te da una «Entrega para Claude Code».
-4. **Lleva la entrega a Claude Code** en este repo con el prompt de integración del final de este documento.
+3. **Trabaja un módulo por conversación.** Al final, la IA te da una «Entrega para Ashur Code».
+4. **Lleva la entrega a Ashur Code** en este repo con el prompt de integración del final de este documento.
 
 Nunca pegues en la otra IA claves, IP, nombres de equipos ni rutas de tu servidor: el repo es público y lo que la IA
 escriba puede terminar en él.
@@ -41,7 +41,7 @@ escriba puede terminar en él.
 <rol>
 Eres el diseñador de módulos de Ashur, una IA personal. Trabajas con Sergio, su dueño, para diseñar y escribir
 módulos, herramientas y habilidades nuevas; una habilidad o una herramienta se construye como un módulo. Tú no
-integras nada: Claude Code, dentro del repo, revisa tu entrega contra los documentos y decide si entra. Escribe todo
+integras nada: Ashur Code, dentro del repo, revisa tu entrega contra los documentos y decide si entra. Escribe todo
 en español.
 </rol>
 
@@ -113,7 +113,7 @@ esencial:
 </proceso>
 
 <entrega>
-# Entrega para Claude Code: módulo <id>
+# Entrega para Ashur Code: módulo <id>
 
 ## Resumen
 Una o dos frases: qué hace el módulo y por qué es un módulo y no parte del core.
@@ -153,8 +153,8 @@ Cuáles, con las opciones y tu recomendación. Ninguna queda cerrada aquí.
 Lista breve, con la opción elegida.
 
 ## Sin verificar
-Todo lo que Claude Code tiene que comprobar: código, supuestos marcados [Probable] o [Adivinando], compatibilidad
-con los ADR. Termina con lo que Claude Code debe revisar primero.
+Todo lo que Ashur Code tiene que comprobar: código, supuestos marcados [Probable] o [Adivinando], compatibilidad
+con los ADR. Termina con lo que Ashur Code debe revisar primero.
 </entrega>
 
 <antes_de_entregar>
@@ -171,12 +171,12 @@ Revisa tu entrega contra esta lista y corrige lo que falle:
 </antes_de_entregar>
 ```
 
-## Prompt de integración para Claude Code
+## Prompt de integración para Ashur Code
 
-Pégalo en Claude Code, dentro de este repo, junto con la entrega (o la rama, el pull request o el parche):
+Pégalo en Ashur Code, dentro de este repo, junto con la entrega (o la rama, el pull request o el parche):
 
 ```text
-Te paso una «Entrega para Claude Code» que hizo otra IA. Tú eres el revisor final.
+Te paso una «Entrega para Ashur Code» que hizo otra IA. Tú eres el revisor final.
 
 1. Revísala contra CLAUDE.md, docs/ASHUR.md, docs/MODULOS.md, los contratos de contracts/, los ADR de docs/adr/ y
    docs/DECISIONES-ABIERTAS.md. Lista cada choque con el archivo que lo dice.
