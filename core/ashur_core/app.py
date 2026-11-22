@@ -52,8 +52,9 @@ def crear_recuerdo(nuevo: memoria.RecuerdoNuevo, con=Depends(conexion)) -> memor
 
 
 @app.get("/recuerdos", response_model=list[memoria.Recuerdo], dependencies=[Depends(exigir_clave)])
-def listar_recuerdos(con=Depends(conexion)) -> list[memoria.Recuerdo]:
-    return memoria.listar(con)
+def listar_recuerdos(buscar: str | None = None, con=Depends(conexion)) -> list[memoria.Recuerdo]:
+    """Sin buscar, todos los recuerdos. Con buscar, los que tienen esas palabras, los más relevantes primero."""
+    return memoria.listar(con) if buscar is None else memoria.buscar(con, buscar)
 
 
 @app.patch("/recuerdos/{id_}", response_model=memoria.Recuerdo, dependencies=[Depends(exigir_clave_admin)])

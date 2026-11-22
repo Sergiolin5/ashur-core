@@ -152,7 +152,7 @@ def test_migra_una_base_de_la_version_1(tmp_path):
 
     for _ in range(2):  # la segunda vez no debe cambiar nada
         con = memoria.abrir(ruta)
-        assert con.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
         [recuerdo] = memoria.listar(con)
         assert [i.model_dump() for i in recuerdo.identidades] == [
             {"nombre": "Ana", "identidad_id": "per-1"},
@@ -185,10 +185,47 @@ def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE meta")
+    for objeto in ("TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda"):
+        con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 2")
     con.commit()
     con.close()
     con = memoria.abrir(ruta)
-    assert con.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
     assert memoria.aprendizaje(con).recuerdos == 0
+    con.close()
+
+
+def test_buscar_por_palabras_sin_tildes_y_por_prefijo(cliente):
+    cliente.post("/recuerdos", json=nuevo_ejemplo())
+    otro = nuevo_ejemplo() | {"texto": "Fuimos al médico por la mañana.", "opinion": None}
+    cliente.post("/recuerdos", json=otro)
+
+    def textos(consulta):
+        return [r["texto"] for r in cliente.get("/recuerdos", params={"buscar": consulta}).json()]
+
+    assert textos("medico") == ["Fuimos al médico por la mañana."]
+    assert textos("bici") == [leer_ejemplo()["texto"]]
+    assert textos("confianza") == [leer_ejemplo()["texto"]]  # también busca en la opinión
+    assert textos("bici médico") == []
+    assert textos("¿?") == []
+
+    cliente.patch("/recuerdos/2", json={"texto": "Fuimos al dentista."}, headers=ADMIN)
+    assert textos("medico") == []
+    assert textos("dentista") == ["Fuimos al dentista."]
+    cliente.delete("/recuerdos/2", headers=ADMIN)
+    assert textos("dentista") == []
+
+
+def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
+    ruta = str(tmp_path / "ashur.db")
+    con = memoria.abrir(ruta)
+    memoria.crear(con, memoria.RecuerdoNuevo.model_validate(nuevo_ejemplo()))
+    for objeto in ("TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda"):
+        con.execute(f"DROP {objeto}")
+    con.execute("PRAGMA user_version = 3")
+    con.commit()
+    con.close()
+    con = memoria.abrir(ruta)
+    assert [r.id for r in memoria.buscar(con, "bicicleta")] == [1]
     con.close()

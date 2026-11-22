@@ -26,6 +26,11 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 
 - **Inicio del aprendizaje:** es el momento en que el core creó su base de memoria (decisión 15). Una base que ya
   existía antes de la versión 3 toma el momento de su migración. Los administradores pueden cambiarlo.
+- **Búsqueda por palabras** (decisión 10, 2026-11-21): un índice FTS5 de SQLite sobre `texto` y `opinion`, que no
+  agrega paquetes. Usa el tokenizador `unicode61` con `remove_diacritics`, así que "medico" encuentra "médico", y cada
+  palabra se busca también como prefijo ("bici" encuentra "bicicleta"). Unos disparadores mantienen el índice al crear,
+  editar y borrar. La búsqueda por significado llega después, con embeddings que calcule el modelo de los nodos de
+  casa, guardados en la misma base.
 - **Archivar en vez de borrar** (decisión 8, 2026-11-21): cuando existan el inventario y la lista de identidades, un
   objeto o una identidad que ya no se quiere ver se archiva, no se borra. Desaparece de la galaxia y de las listas,
   los recuerdos conservan su enlace, y un administrador puede restaurarlo.
@@ -35,9 +40,9 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 
 ### Almacenamiento
 - **Base de datos:** una tabla `recuerdos` en SQLite. `identidades` y `objetos` se guardan como JSON en sus columnas.
-- **Versión del esquema:** se lleva con `PRAGMA user_version` y va en la 3. Una base vacía se crea en la versión 3.
+- **Versión del esquema:** se lleva con `PRAGMA user_version` y va en la 4. Una base vacía se crea en la versión 4.
   Una de la versión 1 (con `personas` y `contacto_id`) se migra sola a `identidades` e `identidad_id`, y la versión 3
-  agrega la tabla `meta` con la fecha en que Ashur empezó a aprender. La
+  agrega la tabla `meta` con la fecha en que Ashur empezó a aprender. La versión 4 agrega el índice de búsqueda. La
   migración corre dentro de `BEGIN IMMEDIATE`, así que dos pedidos a la vez no la repiten; una base con
   una versión más nueva que la que conoce el código hace que cada pedido a la memoria falle con un error, en
   lugar de adivinar.
@@ -48,7 +53,7 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 | Método y ruta | Qué hace |
 | --- | --- |
 | `POST /recuerdos` | Guarda un recuerdo nuevo y lo devuelve con su `id` (201). |
-| `GET /recuerdos` | Lista todos los recuerdos. |
+| `GET /recuerdos` | Lista todos los recuerdos. Con `?buscar=...`, solo los que tienen esas palabras, los más relevantes primero. |
 | `PATCH /recuerdos/{id}` | Edita un recuerdo: solo cambia los campos enviados (solo administradores). |
 | `DELETE /recuerdos/{id}` | Borra un recuerdo (204), o responde 404 si no existe (solo administradores). |
 | `GET /aprendizaje` | Devuelve `{inicio, recuerdos}`: desde cuándo aprende Ashur y cuántos recuerdos tiene. |
@@ -70,10 +75,12 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   identidades y el inventario. Las identidades son parte del core: personas y mascotas, como un inventario de seres.
 - **La clave viaja sin cifrar en la red de casa:** el core habla HTTP, así que en la red local la clave va en claro.
   Por Tailscale va cifrada.
+- **FTS5 no entiende el español:** no reduce las palabras a su raíz, así que "perros" no encuentra "perro" salvo
+  por el prefijo, y "fui" no encuentra "ir". La búsqueda por significado lo resuelve más adelante.
 - **Dos claves fijas:** no distinguen dispositivos ni personas, y cambiar una obliga a cambiarla en todos los
   clientes que la usan.
 
 ## Pendiente
 Están en `docs/DECISIONES-ABIERTAS.md`, puntos 10 y 11:
-- la búsqueda por significado;
+- la búsqueda por significado, con embeddings de los nodos de casa;
 - las reglas por nivel de sensibilidad y de consentimiento.

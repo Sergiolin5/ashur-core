@@ -1,13 +1,14 @@
 """Memoria de Ashur: modelos de contracts/recuerdo.schema.json y su tabla SQLite (docs/adr/0004-memoria.md)."""
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-VERSION_ESQUEMA = 3
+VERSION_ESQUEMA = 4
 
 
 class Identidad(BaseModel):
@@ -91,6 +92,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
             _migrar_1_a_2(conexion)
         if version < 3:
             _migrar_2_a_3(conexion)
+        if version < 4:
+            _migrar_3_a_4(conexion)
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
@@ -100,6 +103,30 @@ def abrir(ruta: str) -> sqlite3.Connection:
         raise
     conexion.isolation_level = ""  # de aquí en adelante, transacciones normales con commit()
     return conexion
+
+
+def _migrar_3_a_4(conexion: sqlite3.Connection) -> None:
+    """Versión 4: índice de búsqueda por palabras (FTS5) sobre el texto y la opinión, sin tildes."""
+    conexion.execute(
+        "CREATE VIRTUAL TABLE recuerdos_busqueda USING fts5(texto, opinion, content='recuerdos', content_rowid='id',"
+        " tokenize='unicode61 remove_diacritics 2')"
+    )
+    conexion.execute(
+        "CREATE TRIGGER recuerdos_ai AFTER INSERT ON recuerdos BEGIN"
+        " INSERT INTO recuerdos_busqueda (rowid, texto, opinion) VALUES (new.id, new.texto, new.opinion); END"
+    )
+    conexion.execute(
+        "CREATE TRIGGER recuerdos_ad AFTER DELETE ON recuerdos BEGIN"
+        " INSERT INTO recuerdos_busqueda (recuerdos_busqueda, rowid, texto, opinion)"
+        " VALUES ('delete', old.id, old.texto, old.opinion); END"
+    )
+    conexion.execute(
+        "CREATE TRIGGER recuerdos_au AFTER UPDATE ON recuerdos BEGIN"
+        " INSERT INTO recuerdos_busqueda (recuerdos_busqueda, rowid, texto, opinion)"
+        " VALUES ('delete', old.id, old.texto, old.opinion);"
+        " INSERT INTO recuerdos_busqueda (rowid, texto, opinion) VALUES (new.id, new.texto, new.opinion); END"
+    )
+    conexion.execute("INSERT INTO recuerdos_busqueda (recuerdos_busqueda) VALUES ('rebuild')")
 
 
 def _migrar_2_a_3(conexion: sqlite3.Connection) -> None:
@@ -157,6 +184,22 @@ def crear(conexion: sqlite3.Connection, nuevo: RecuerdoNuevo) -> Recuerdo:
 def listar(conexion: sqlite3.Connection) -> list[Recuerdo]:
     filas = conexion.execute(
         "SELECT id, texto, origen, fecha, sensibilidad, identidades, objetos, opinion FROM recuerdos ORDER BY id"
+    ).fetchall()
+    return [_desde_fila(f) for f in filas]
+
+
+def buscar(conexion: sqlite3.Connection, texto: str) -> list[Recuerdo]:
+    """Recuerdos que tienen todas las palabras de [texto], o palabras que empiezan con ellas, sin importar tildes.
+    Los más relevantes primero."""
+    palabras = re.findall(r"\w+", texto)
+    if not palabras:
+        return []
+    consulta = " ".join(f'"{p}"*' for p in palabras)
+    filas = conexion.execute(
+        "SELECT r.id, r.texto, r.origen, r.fecha, r.sensibilidad, r.identidades, r.objetos, r.opinion"
+        " FROM recuerdos_busqueda JOIN recuerdos r ON r.id = recuerdos_busqueda.rowid"
+        " WHERE recuerdos_busqueda MATCH ? ORDER BY rank",
+        (consulta,),
     ).fetchall()
     return [_desde_fila(f) for f in filas]
 
