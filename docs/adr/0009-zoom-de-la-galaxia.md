@@ -43,6 +43,15 @@ se ven de cerca (`docs/adr/0008-cuerpos-reales-de-la-galaxia.md`).
 - En el simulador de iPhone: acercar con dos dedos, que la cámara siga al planeta varios segundos, que un dedo lo
   suelte, y abrir el chat tocando el núcleo con zoom.
 
+## iPhone Duo
+- **Abierto:** si Flutter informa un pliegue o una bisagra vertical (`MediaQuery.displayFeaturesOf`), la galaxia se
+  dibuja a la derecha del pliegue, como se ve con el teléfono cerrado (`app/lib/main.dart`, `margenPorPliegue`). Sin
+  pliegue no cambia nada, así que el iPad y la Mac no se ven afectados.
+- **Revisado para el Duo:** `ios/Runner/Info.plist` declara pantalla de inicio y las cuatro orientaciones en iPad, no
+  usa `UIRequiresFullScreen`, y la app ya usa escenas (`SceneDelegate.swift`).
+- **Sin verificar:** que iOS le pase el pliegue del Duo a Flutter. No hay simulador del Duo en la Mac; se prueba en el
+  teléfono de Sergio.
+
 ## Pendiente
 - **Trackpad y rueda en macOS:** sin probar en la Mac.
 - Los valores de la cámara son provisionales.

@@ -1,3 +1,5 @@
+import 'dart:ui' show DisplayFeature, DisplayFeatureType;
+
 import 'package:flutter/widgets.dart';
 
 import 'galaxia/vista.dart';
@@ -40,9 +42,13 @@ class Inicio extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: VistaGalaxia(
-              alTocarNucleo: (punto, tamano) => Navigator.of(context)
-                  .push(rutaZoom(const PantallaVacia(titulo: 'Chats'), punto, tamano)),
+            // Con el teléfono abierto, la galaxia queda en la mitad derecha, como se ve con el teléfono cerrado.
+            child: Padding(
+              padding: EdgeInsets.only(left: margenPorPliegue(MediaQuery.displayFeaturesOf(context))),
+              child: VistaGalaxia(
+                alTocarNucleo: (punto, tamano) => Navigator.of(context)
+                    .push(rutaZoom(const PantallaVacia(titulo: 'Chats'), punto, tamano)),
+              ),
             ),
           ),
           SafeArea(
@@ -68,4 +74,14 @@ class Inicio extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Cuánto correr la galaxia a la derecha: hasta el borde derecho de un pliegue o bisagra vertical, si la pantalla
+/// tiene uno. Sin pliegue, 0.
+double margenPorPliegue(List<DisplayFeature> caracteristicas) {
+  for (final c in caracteristicas) {
+    final esPliegue = c.type == DisplayFeatureType.fold || c.type == DisplayFeatureType.hinge;
+    if (esPliegue && c.bounds.height > c.bounds.width) return c.bounds.right;
+  }
+  return 0;
 }
