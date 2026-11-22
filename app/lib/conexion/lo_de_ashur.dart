@@ -3,15 +3,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
+import '../diseno.dart';
 import 'almacen.dart';
 import 'fuente.dart';
 import 'cliente.dart';
 
-const _decoracionCampo = BoxDecoration(
-  color: Color(0xFF141622),
-  border: Border.fromBorderSide(BorderSide(color: Color(0x33FFFFFF))),
-  borderRadius: BorderRadius.all(Radius.circular(8)),
-);
+final _decoracionCampo = campoAshur();
 const _estiloCampo = TextStyle(color: Color(0xFFE8E8F0), fontSize: 15);
 const _estiloPista = TextStyle(color: Color(0x80E8E8F0), fontSize: 15);
 
@@ -76,9 +73,11 @@ class _LoDeAshurState extends State<LoDeAshur> {
 
   Future<void> _cargar() async {
     try {
-      _adminDisponible = (await widget.fuente.ajustes()).$3?.trim().isNotEmpty == true;
+      _adminDisponible =
+          (await widget.fuente.ajustes()).$3?.trim().isNotEmpty == true;
     } on SecretoBloqueado {
-      _adminDisponible = false; // Face ID falló: cliente() deja la conexión en bloqueada.
+      _adminDisponible =
+          false; // Face ID falló: cliente() deja la conexión en bloqueada.
     }
     _cliente = widget.clienteOverride ?? await widget.fuente.cliente();
     if (_cliente == null) {

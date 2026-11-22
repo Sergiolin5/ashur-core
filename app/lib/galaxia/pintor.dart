@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import 'camara.dart';
+import '../diseno.dart';
 import 'modelo.dart';
 
 // ── Reglas elegidas por Sergio (2026-11-21) ──
@@ -34,7 +35,8 @@ const periodoBase = 150.0; // T_0
 const periodoAgente = 40.0;
 const periodoAsteroide = 30.0;
 const duracionEstrella = 2.4; // τ
-const cicloEstrellas = 7.0; // cada estrella se repite en bucle; el contrato aún no trae instantes
+const cicloEstrellas =
+    7.0; // cada estrella se repite en bucle; el contrato aún no trae instantes
 const desfaseEstrellas = 2.3;
 
 // ── Polvo ──
@@ -60,8 +62,9 @@ int densidadPolvo(Aprendizaje a, DateTime ahora) {
 }
 
 const _fondo = Color(0xFF05060B);
-const _colorNucleo = Color(0xFFFFE6A8);
-const _colorAgente = Color(0xFF9FD8FF);
+const _colorNucleo = PaletaAshur.cian;
+const _colorAgente = PaletaAshur.plata;
+
 /// Cada planeta toma un color de esta paleta según su id, siempre el mismo.
 /// Desde este radio en pantalla, en píxeles, el planeta muestra su nombre.
 const radioPlanetaConNombre = 14.0;
@@ -85,20 +88,23 @@ Color colorDePlaneta(String id) {
 
 // Fondo de estrellas lejanas: casi no se mueven al desplazar ni al acercar (paralaje).
 const estrellasFondo = 260;
-const paralajeFondo = 0.04; // fracción del zoom y del desplazamiento que les llega
+const paralajeFondo =
+    0.04; // fracción del zoom y del desplazamiento que les llega
 const _colorAsteroide = Color(0xFF9E8F80);
 const _colorLuna = Color(0xFFD8DCE8);
 const _colorPersonaje = Color(0xFFFFD1A8);
 const _colorEstrella = Color(0xFFFFFFFF);
-const _colorPolvo = Color(0xFFB8A6FF);
+const _colorPolvo = Color(0xFF5C9FC7);
 
 /// Geometría de la galaxia en un instante: dónde está cada cuerpo y qué tamaño tiene.
 class Geometria {
   Geometria(this.estado, Size tamano, double t)
-      : centro = tamano.center(Offset.zero),
-        escala = math.min(tamano.width, tamano.height) / 2 {
+    : centro = tamano.center(Offset.zero),
+      escala = math.min(tamano.width, tamano.height) / 2 {
     final planetas = estado.cuerpos.where((c) => c.tipo == TipoCuerpo.planeta);
-    _masaMax = planetas.isEmpty ? 1 : planetas.map((c) => c.masa).reduce(math.max);
+    _masaMax = planetas.isEmpty
+        ? 1
+        : planetas.map((c) => c.masa).reduce(math.max);
     if (_masaMax <= 0) _masaMax = 1;
     for (final c in estado.cuerpos) {
       _porId[c.id] = c;
@@ -117,15 +123,19 @@ class Geometria {
 
   double masaNormalizada(Cuerpo c) => (c.masa / _masaMax).clamp(0.0, 1.0);
 
-  double radio(Cuerpo c) => escala *
+  double radio(Cuerpo c) =>
+      escala *
       switch (c.tipo) {
         TipoCuerpo.nucleo => radioNucleo,
         TipoCuerpo.agente => radioAgente,
         TipoCuerpo.asteroide => radioAsteroide,
         TipoCuerpo.luna => radioLuna,
-        TipoCuerpo.personaje => 0, // se ve solo con el zoom, que todavía no existe
+        TipoCuerpo.personaje =>
+          0, // se ve solo con el zoom, que todavía no existe
         TipoCuerpo.planeta =>
-          radioPlanetaMin + (radioPlanetaMax - radioPlanetaMin) * math.sqrt(masaNormalizada(c)),
+          radioPlanetaMin +
+              (radioPlanetaMax - radioPlanetaMin) *
+                  math.sqrt(masaNormalizada(c)),
       };
 
   double _distancia(Cuerpo c) {
@@ -136,7 +146,8 @@ class Geometria {
         return escala * distanciaAgente;
       case TipoCuerpo.asteroide:
         final planeta = _porId[c.orbita!.centro];
-        return (planeta == null ? 0 : radio(planeta)) + escala * distanciaAsteroide;
+        return (planeta == null ? 0 : radio(planeta)) +
+            escala * distanciaAsteroide;
       case TipoCuerpo.luna:
         final planeta = _porId[c.orbita!.centro];
         return (planeta == null ? 0 : radio(planeta)) + escala * distanciaLuna;
@@ -150,14 +161,16 @@ class Geometria {
   }
 
   double _periodo(Cuerpo c, double d) => switch (c.tipo) {
-        TipoCuerpo.nucleo => 1,
-        TipoCuerpo.agente => periodoAgente,
-        TipoCuerpo.asteroide => periodoAsteroide,
-        TipoCuerpo.luna => periodoLuna,
-        TipoCuerpo.personaje => 1,
-        TipoCuerpo.planeta =>
-          periodoKepler ? periodoBase * math.pow(d / (escala * distanciaMin), 1.5) : periodoBase,
-      };
+    TipoCuerpo.nucleo => 1,
+    TipoCuerpo.agente => periodoAgente,
+    TipoCuerpo.asteroide => periodoAsteroide,
+    TipoCuerpo.luna => periodoLuna,
+    TipoCuerpo.personaje => 1,
+    TipoCuerpo.planeta =>
+      periodoKepler
+          ? periodoBase * math.pow(d / (escala * distanciaMin), 1.5)
+          : periodoBase,
+  };
 
   /// p_i(t) = c_i + d_i (cos θ_i, sin θ_i), con θ_i(t) = 2π(φ_i + t / T_i).
   Offset posicion(String id, double t) {
@@ -165,11 +178,13 @@ class Geometria {
     if (ya != null) return ya;
     final c = _porId[id];
     if (c == null || c.orbita == null) return _posiciones[id] = centro;
-    _posiciones[id] = centro; // evita ciclos si el contrato trae una órbita circular
+    _posiciones[id] =
+        centro; // evita ciclos si el contrato trae una órbita circular
     final base = posicion(c.orbita!.centro, t);
     final d = _distancia(c);
     final theta = 2 * math.pi * (c.orbita!.fase + t / _periodo(c, d));
-    return _posiciones[id] = base + Offset(math.cos(theta), math.sin(theta)) * d;
+    return _posiciones[id] =
+        base + Offset(math.cos(theta), math.sin(theta)) * d;
   }
 
   Cuerpo? cuerpo(String id) => _porId[id];
@@ -183,9 +198,14 @@ class Geometria {
 }
 
 class PintorGalaxia extends CustomPainter {
-  PintorGalaxia({required this.estado, required this.tiempo, required this.camara})
-      : _granos = _sembrarPolvo(densidadPolvo(estado.aprendizaje, DateTime.now())),
-        super(repaint: Listenable.merge([tiempo, camara]));
+  PintorGalaxia({
+    required this.estado,
+    required this.tiempo,
+    required this.camara,
+  }) : _granos = _sembrarPolvo(
+         densidadPolvo(estado.aprendizaje, DateTime.now()),
+       ),
+       super(repaint: Listenable.merge([tiempo, camara]));
 
   final EstadoGalaxia estado;
   final ValueNotifier<double> tiempo;
@@ -199,14 +219,20 @@ class PintorGalaxia extends CustomPainter {
     final azar = math.Random(11);
     return [
       for (var i = 0; i < estrellasFondo; i++)
-        (azar.nextDouble(), azar.nextDouble(), 0.3 + azar.nextDouble() * 0.9, 0.08 + azar.nextDouble() * 0.35),
+        (
+          azar.nextDouble(),
+          azar.nextDouble(),
+          0.3 + azar.nextDouble() * 0.9,
+          0.08 + azar.nextDouble() * 0.35,
+        ),
     ];
   }();
 
   static List<(int, double, double)> _sembrarPolvo(int cantidad) {
     final azar = math.Random(7);
     return [
-      for (var i = 0; i < cantidad; i++) (i % brazos, azar.nextDouble(), azar.nextDouble() * 2 - 1),
+      for (var i = 0; i < cantidad; i++)
+        (i % brazos, azar.nextDouble(), azar.nextDouble() * 2 - 1),
     ];
   }
 
@@ -250,8 +276,11 @@ class PintorGalaxia extends CustomPainter {
       final theta = avance * thetaMax;
       final r = g.escala * espiralA * math.exp(espiralB * theta);
       if (r > g.escala * 1.3) continue;
-      final ang = theta + 2 * math.pi * k / brazos + omegaPolvo * t + dispersion * 0.35;
-      final p = v.aPantalla(g.centro + Offset(math.cos(ang), math.sin(ang)) * r);
+      final ang =
+          theta + 2 * math.pi * k / brazos + omegaPolvo * t + dispersion * 0.35;
+      final p = v.aPantalla(
+        g.centro + Offset(math.cos(ang), math.sin(ang)) * r,
+      );
       if (!v.seVe(p, 2)) continue;
       pintura.color = _colorPolvo.withValues(alpha: 0.10 + 0.25 * (1 - avance));
       canvas.drawCircle(p, 0.8 + 1.2 * (1 - avance), pintura);
@@ -265,7 +294,8 @@ class PintorGalaxia extends CustomPainter {
       ..color = const Color(0x22FFFFFF);
     for (final c in estado.cuerpos) {
       if (c.tipo != TipoCuerpo.planeta) continue;
-      final radio = (g.posicion(c.id, tiempo.value) - g.centro).distance * v.camara.zoom;
+      final radio =
+          (g.posicion(c.id, tiempo.value) - g.centro).distance * v.camara.zoom;
       canvas.drawCircle(v.aPantalla(g.centro), radio, pintura);
     }
   }
@@ -280,10 +310,12 @@ class PintorGalaxia extends CustomPainter {
           p,
           r * 2.2,
           Paint()
-            ..shader = RadialGradient(colors: [
-              _colorNucleo.withValues(alpha: 0.45),
-              _colorNucleo.withValues(alpha: 0),
-            ]).createShader(Rect.fromCircle(center: p, radius: r * 2.2)),
+            ..shader = RadialGradient(
+              colors: [
+                _colorNucleo.withValues(alpha: 0.45),
+                _colorNucleo.withValues(alpha: 0),
+              ],
+            ).createShader(Rect.fromCircle(center: p, radius: r * 2.2)),
         );
         canvas.drawCircle(p, r, Paint()..color = _colorNucleo);
       case TipoCuerpo.agente:
@@ -294,8 +326,12 @@ class PintorGalaxia extends CustomPainter {
           p,
           r * 2.6,
           Paint()
-            ..shader = RadialGradient(colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)])
-                .createShader(Rect.fromCircle(center: p, radius: r * 2.6)),
+            ..shader = RadialGradient(
+              colors: [
+                color.withValues(alpha: 0.28),
+                color.withValues(alpha: 0),
+              ],
+            ).createShader(Rect.fromCircle(center: p, radius: r * 2.6)),
         );
         canvas.drawCircle(
           p,
@@ -303,14 +339,24 @@ class PintorGalaxia extends CustomPainter {
           Paint()
             ..shader = RadialGradient(
               center: const Alignment(-0.35, -0.35),
-              colors: [Color.lerp(color, const Color(0xFFFFFFFF), 0.25)!, color, Color.lerp(color, _fondo, 0.45)!],
+              colors: [
+                Color.lerp(color, const Color(0xFFFFFFFF), 0.25)!,
+                color,
+                Color.lerp(color, _fondo, 0.45)!,
+              ],
               stops: const [0, 0.55, 1],
             ).createShader(Rect.fromCircle(center: p, radius: r)),
         );
         // De cerca, el nombre del planeta, para saber cuál es cuál (decisión 18).
         if (r >= radioPlanetaConNombre) {
           final texto = TextPainter(
-            text: TextSpan(text: c.nombre, style: TextStyle(color: color.withValues(alpha: 0.9), fontSize: 12)),
+            text: TextSpan(
+              text: c.nombre,
+              style: TextStyle(
+                color: color.withValues(alpha: 0.9),
+                fontSize: 12,
+              ),
+            ),
             textDirection: TextDirection.ltr,
           )..layout();
           texto.paint(canvas, p + Offset(-texto.width / 2, r * 1.15 + 4));
@@ -318,7 +364,11 @@ class PintorGalaxia extends CustomPainter {
       case TipoCuerpo.luna:
         // Tenue de lejos; se ve del todo al acercarse.
         final alfa = 0.35 + 0.65 * opacidadPorTamano(r);
-        canvas.drawCircle(p, r, Paint()..color = _colorLuna.withValues(alpha: alfa));
+        canvas.drawCircle(
+          p,
+          r,
+          Paint()..color = _colorLuna.withValues(alpha: alfa),
+        );
       case TipoCuerpo.personaje:
         break; // se dibujan en _personajes
       case TipoCuerpo.asteroide:
@@ -340,9 +390,16 @@ class PintorGalaxia extends CustomPainter {
       final local = (t - i * desfaseEstrellas) % cicloEstrellas;
       if (t < i * desfaseEstrellas || local > duracionEstrella) continue;
       final s = local / duracionEstrella;
-      final cabeza = v.aPantalla(Offset.lerp(g.posicion(e.origen, t), g.posicion(e.destino, t), s)!);
-      final cola =
-          v.aPantalla(Offset.lerp(g.posicion(e.origen, t), g.posicion(e.destino, t), math.max(0, s - 0.12))!);
+      final cabeza = v.aPantalla(
+        Offset.lerp(g.posicion(e.origen, t), g.posicion(e.destino, t), s)!,
+      );
+      final cola = v.aPantalla(
+        Offset.lerp(
+          g.posicion(e.origen, t),
+          g.posicion(e.destino, t),
+          math.max(0, s - 0.12),
+        )!,
+      );
       if (!v.seVe(cabeza, 4) && !v.seVe(cola, 4)) continue;
       canvas.drawLine(
         cola,
@@ -350,10 +407,9 @@ class PintorGalaxia extends CustomPainter {
         Paint()
           ..strokeWidth = 1.6
           ..strokeCap = StrokeCap.round
-          ..shader = LinearGradient(colors: [
-            _colorEstrella.withValues(alpha: 0),
-            _colorEstrella,
-          ]).createShader(Rect.fromPoints(cola, cabeza)),
+          ..shader = LinearGradient(
+            colors: [_colorEstrella.withValues(alpha: 0), _colorEstrella],
+          ).createShader(Rect.fromPoints(cola, cabeza)),
       );
       canvas.drawCircle(cabeza, 2.2, Paint()..color = _colorEstrella);
     }
@@ -366,18 +422,27 @@ class PintorGalaxia extends CustomPainter {
       final planeta = g.cuerpo(c.orbita!.centro);
       if (planeta == null) continue;
       final radioPlaneta = g.radio(planeta) * v.camara.zoom;
-      final alfa = ((radioPlaneta - radioPlanetaConPersonajes) / radioPlanetaConPersonajes).clamp(0.0, 1.0);
+      final alfa =
+          ((radioPlaneta - radioPlanetaConPersonajes) /
+                  radioPlanetaConPersonajes)
+              .clamp(0.0, 1.0);
       if (alfa == 0) continue;
       final centroPlaneta = v.aPantalla(g.posicion(planeta.id, t));
       final angulo = 2 * math.pi * c.orbita!.fase;
-      final p = centroPlaneta + Offset(math.cos(angulo), math.sin(angulo)) * radioPlaneta * 0.55;
+      final p =
+          centroPlaneta +
+          Offset(math.cos(angulo), math.sin(angulo)) * radioPlaneta * 0.55;
       if (!v.seVe(p, 40)) continue;
       // Una figura sencilla: cabeza y hombros, para que se lea como alguien y no como un punto.
       final cabeza = math.max(2.0, radioPlaneta * 0.045);
       final pintura = Paint()..color = _colorPersonaje.withValues(alpha: alfa);
       canvas.drawCircle(p - Offset(0, cabeza * 1.1), cabeza, pintura);
       canvas.drawArc(
-        Rect.fromCenter(center: p + Offset(0, cabeza * 1.4), width: cabeza * 3.2, height: cabeza * 3.2),
+        Rect.fromCenter(
+          center: p + Offset(0, cabeza * 1.4),
+          width: cabeza * 3.2,
+          height: cabeza * 3.2,
+        ),
         math.pi,
         math.pi,
         true,
@@ -388,7 +453,10 @@ class PintorGalaxia extends CustomPainter {
         final texto = TextPainter(
           text: TextSpan(
             text: c.nombre,
-            style: TextStyle(color: _colorPersonaje.withValues(alpha: alfa), fontSize: 11),
+            style: TextStyle(
+              color: _colorPersonaje.withValues(alpha: alfa),
+              fontSize: 11,
+            ),
           ),
           textDirection: TextDirection.ltr,
         )..layout();
@@ -398,7 +466,8 @@ class PintorGalaxia extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(PintorGalaxia old) => old.estado != estado || old.camara != camara;
+  bool shouldRepaint(PintorGalaxia old) =>
+      old.estado != estado || old.camara != camara;
 }
 
 /// La cámara aplicada a una pantalla concreta.
@@ -413,5 +482,8 @@ class _Vista {
 
   /// Si algo de [radio] píxeles alrededor de [p] cae dentro de la pantalla.
   bool seVe(Offset p, double radio) =>
-      p.dx + radio >= 0 && p.dy + radio >= 0 && p.dx - radio <= tamano.width && p.dy - radio <= tamano.height;
+      p.dx + radio >= 0 &&
+      p.dy + radio >= 0 &&
+      p.dx - radio <= tamano.width &&
+      p.dy - radio <= tamano.height;
 }

@@ -6,20 +6,12 @@ import 'package:flutter/cupertino.dart';
 
 import '../conexion/cliente.dart';
 import '../conexion/fuente.dart';
+import '../diseno.dart';
 import '../pantallas.dart';
 import 'objeto.dart';
 
-final _decoracionCampo = BoxDecoration(
-  color: const Color(0xFF141622),
-  border: Border.all(color: const Color(0x33FFFFFF)),
-  borderRadius: BorderRadius.circular(8),
-);
-
-final _decoracionTarjeta = BoxDecoration(
-  color: const Color(0xFF141622),
-  border: Border.all(color: const Color(0x33FFFFFF)),
-  borderRadius: BorderRadius.circular(8),
-);
+final _decoracionCampo = campoAshur();
+final _decoracionTarjeta = panelAshur();
 
 const _estiloCampo = TextStyle(color: colorTexto, fontSize: 15);
 const _estiloPista = TextStyle(color: Color(0x80E8E8F0), fontSize: 15);
@@ -221,7 +213,7 @@ class _PantallaInventarioState extends State<PantallaInventario> {
     final textoLugar = sinLugar ? 'Sin lugar' : objeto.lugar!;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: _decoracionTarjeta,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -345,130 +337,130 @@ class _PantallaInventarioState extends State<PantallaInventario> {
     return ColoredBox(
       color: colorFondo,
       child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const Padding(
-                      padding: EdgeInsets.only(right: 16),
-                      child: Text('‹', style: TextStyle(fontSize: 28)),
-                    ),
-                  ),
-                  const Text(
-                    'Inventario',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CabeceraAshur(
+                  titulo: 'Inventario',
+                  alVolver: () => Navigator.of(context).pop(),
+                  detalle: 'Objetos y lugares',
                 ),
-                children: [
-                  if (_error != null) ...[
-                    Text(
-                      _error!,
-                      style: const TextStyle(
-                        color: Color(0xFFFF8A8A),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_sinConfigurar) ...[
-                    Text(
-                      widget.fuente.estado == EstadoConexion.bloqueada
-                          ? 'Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'
-                          : 'Todavía no hay un core configurado.',
-                      style: const TextStyle(color: Color(0x80E8E8F0), fontSize: 14),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (!_tieneAdmin && !_sinConfigurar) ...[
-                    const Text(
-                      'Hace falta la clave de administrador en la pestaña Estado.',
-                      style: TextStyle(color: Color(0x80E8E8F0), fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
                     children: [
+                      if (_error != null) ...[
+                        Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: Color(0xFFFF8A8A),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_sinConfigurar) ...[
+                        Text(
+                          widget.fuente.estado == EstadoConexion.bloqueada
+                              ? 'Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'
+                              : 'Todavía no hay un core configurado.',
+                          style: const TextStyle(
+                            color: Color(0x80E8E8F0),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (!_tieneAdmin && !_sinConfigurar) ...[
+                        const Text(
+                          'Hace falta la clave de administrador en la pestaña Estado.',
+                          style: TextStyle(
+                            color: Color(0x80E8E8F0),
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Row(
+                        children: [
+                          const Text(
+                            'Ver archivados',
+                            style: TextStyle(color: colorTexto, fontSize: 15),
+                          ),
+                          const Spacer(),
+                          CupertinoSwitch(
+                            value: _verArchivados,
+                            onChanged: (valor) {
+                              setState(() => _verArchivados = valor);
+                              _cargar();
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       const Text(
-                        'Ver archivados',
-                        style: TextStyle(color: colorTexto, fontSize: 15),
+                        'Nuevo objeto',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      const Spacer(),
-                      CupertinoSwitch(
-                        value: _verArchivados,
-                        onChanged: (valor) {
-                          setState(() => _verArchivados = valor);
-                          _cargar();
-                        },
+                      const SizedBox(height: 8),
+                      CupertinoTextField(
+                        controller: _nombreController,
+                        placeholder: 'Nombre',
+                        decoration: _decoracionCampo,
+                        style: _estiloCampo,
+                        placeholderStyle: _estiloPista,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Nuevo objeto',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: _nombreController,
-                    placeholder: 'Nombre',
-                    decoration: _decoracionCampo,
-                    style: _estiloCampo,
-                    placeholderStyle: _estiloPista,
-                  ),
-                  const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: _lugarController,
-                    placeholder: 'Lugar (opcional)',
-                    decoration: _decoracionCampo,
-                    style: _estiloCampo,
-                    placeholderStyle: _estiloPista,
-                  ),
-                  const SizedBox(height: 8),
-                  CupertinoButton.filled(
-                    onPressed: _guardando ? null : _crearObjeto,
-                    child: const Text('Crear objeto'),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Objetos',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_cargando)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text('Cargando…'),
+                      const SizedBox(height: 8),
+                      CupertinoTextField(
+                        controller: _lugarController,
+                        placeholder: 'Lugar (opcional)',
+                        decoration: _decoracionCampo,
+                        style: _estiloCampo,
+                        placeholderStyle: _estiloPista,
                       ),
-                    )
-                  else if (_objetos.isEmpty)
-                    const Text(
-                      'No hay objetos.',
-                      style: TextStyle(color: Color(0x80E8E8F0)),
-                    )
-                  else
-                    for (final objeto in _objetos) ...[
-                      _tarjetaObjeto(objeto),
+                      const SizedBox(height: 8),
+                      CupertinoButton.filled(
+                        onPressed: _guardando ? null : _crearObjeto,
+                        child: const Text('Crear objeto'),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Objetos',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 12),
+                      if (_cargando)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('Cargando…'),
+                          ),
+                        )
+                      else if (_objetos.isEmpty)
+                        const Text(
+                          'No hay objetos.',
+                          style: TextStyle(color: Color(0x80E8E8F0)),
+                        )
+                      else
+                        for (final objeto in _objetos) ...[
+                          _tarjetaObjeto(objeto),
+                          const SizedBox(height: 12),
+                        ],
                     ],
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

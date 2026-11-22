@@ -3,15 +3,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
+import '../diseno.dart';
 import 'almacen.dart';
 import 'cliente.dart';
 import 'fuente.dart';
 
-const _fondoCampo = BoxDecoration(
-  color: Color(0xFF141622),
-  border: Border.fromBorderSide(BorderSide(color: Color(0x33FFFFFF))),
-  borderRadius: BorderRadius.all(Radius.circular(8)),
-);
+final _fondoCampo = campoAshur();
 const _textoCampo = TextStyle(color: Color(0xFFE8E8F0), fontSize: 15);
 
 class AjustesAvanzados extends StatefulWidget {
@@ -60,7 +57,8 @@ class _AjustesAvanzadosState extends State<AjustesAvanzados> {
     try {
       adminGuardada = (await widget.fuente.ajustes()).$3;
     } on SecretoBloqueado {
-      adminGuardada = null; // Face ID falló: cliente() deja la conexión en bloqueada.
+      adminGuardada =
+          null; // Face ID falló: cliente() deja la conexión en bloqueada.
     }
     _cliente = widget.clienteOverride ?? await widget.fuente.cliente();
     _admin = (_cliente?.claveAdmin ?? adminGuardada)?.trim().isNotEmpty == true;
