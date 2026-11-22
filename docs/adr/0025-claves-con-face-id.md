@@ -36,8 +36,11 @@ desbloqueado podía usarlas. Sergio pidió protegerlas con Face ID.
 - Quitar el reinicio tras un fallo hace fallar la prueba de volver a intentar; quitar la lectura compartida hace
   fallar la de una vez por sesión.
 
+## Verificado en el iPhone real (2026-11-22)
+- Sergio abrió la app: Face ID apareció una vez y conectó sin volver a pegar las claves (la migración las conservó).
+- Cerrada y abierta otra vez, con Face ID cancelado: la galaxia siguió visible y «Desbloquear con Face ID» funcionó.
+- En Inventario, renombrar un objeto con la clave de administrador funcionó.
+- Llamar a `actualizar()` justo después de `runApp` no impidió que apareciera Face ID.
+
 ## Sin verificar
-- **En el iPhone real:** que Face ID aparezca al abrir la app y que la migración conserve las claves que ya estaban.
-  `main.dart` llama a `actualizar()` justo después de `runApp`, antes del primer cuadro: si iOS no muestra Face ID
-  tan pronto y la app arranca siempre bloqueada, hay que mover esa llamada a después del primer cuadro.
 - Guardar encima de una entrada protegida que ya existe podría pedir Face ID otra vez.
