@@ -30,7 +30,10 @@ def cliente(tmp_path, monkeypatch):
     monkeypatch.setenv("ASHUR_DB", str(tmp_path / "ashur.db"))
     monkeypatch.setenv("ASHUR_CLAVE", CLAVE)
     monkeypatch.setenv("ASHUR_CLAVE_ADMIN", CLAVE_ADMIN)
-    return TestClient(app, headers={"X-Ashur-Clave": CLAVE})
+    c = TestClient(app, headers={"X-Ashur-Clave": CLAVE})
+    # El recuerdo de ejemplo enlaza a ide-1, así que esa identidad tiene que existir.
+    assert c.post("/identidades", json={"nombre": "Ana", "clase": "persona"}).json()["id"] == "ide-1"
+    return c
 
 
 # Contrato
@@ -185,7 +188,10 @@ def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE meta")
-    for objeto in ("TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda"):
+    for objeto in (
+        "TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda",
+        "TABLE identidades",
+    ):
         con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 2")
     con.commit()
@@ -221,7 +227,10 @@ def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
     memoria.crear(con, memoria.RecuerdoNuevo.model_validate(nuevo_ejemplo()))
-    for objeto in ("TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda"):
+    for objeto in (
+        "TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda",
+        "TABLE identidades",
+    ):
         con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 3")
     con.commit()
@@ -237,7 +246,8 @@ def test_la_galaxia_real_trae_el_aprendizaje_de_la_base(cliente):
     assert respuesta.status_code == 200
     datos = respuesta.json()
     assert datos["aprendizaje"] == cliente.get("/aprendizaje").json()
-    assert {c["id"] for c in datos["cuerpos"]} == {"ashur", "identidades", "objetos"}
+    # La identidad del recuerdo de ejemplo ya tiene una mención: aparece como personaje.
+    assert {c["id"] for c in datos["cuerpos"]} == {"ashur", "identidades", "objetos", "identidad-ide-1"}
     assert datos["eventos"] == []
     from ashur_core.galaxia import EstadoGalaxia
 

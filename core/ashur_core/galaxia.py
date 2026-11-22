@@ -3,6 +3,7 @@
 El schema es la fuente de verdad; estos modelos lo copian a mano (docs/adr/0003-stack-servidor.md).
 """
 
+import zlib
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
@@ -56,22 +57,32 @@ class EstadoGalaxia(BaseModel):
     eventos: list[Evento]
 
 
-def estado_actual(aprendizaje: Aprendizaje) -> EstadoGalaxia:
-    """La galaxia con lo que el core sabe hoy: el núcleo, las colecciones del core y lo que hace crecer el polvo.
-    Todavía no hay identidades, agentes ni módulos registrados, así que no hay personajes, lunas ni estrellas fugaces
-    (docs/adr/0011-app-conectada-al-core.md)."""
-    return EstadoGalaxia(
-        aprendizaje=aprendizaje,
-        cuerpos=[
-            Cuerpo(tipo="nucleo", id="ashur", nombre="Ashur", masa=1 + aprendizaje.recuerdos, orbita=None, ref=None),
+def _fase(id_: str) -> float:
+    """Una fase fija para cada identidad, para que no salte de lugar entre actualizaciones."""
+    return (zlib.crc32(id_.encode()) % 1000) / 1000
+
+
+def estado_actual(aprendizaje: Aprendizaje, identidades: list) -> EstadoGalaxia:
+    """La galaxia con lo que el core sabe hoy (docs/adr/0011-app-conectada-al-core.md, docs/adr/0012-identidades.md).
+    Cada identidad no archivada aparece según su nivel: personaje sobre Identidades, luna alrededor de Identidades o
+    planeta propio. El id del cuerpo no cambia al subir o bajar, para que la cámara pueda seguirlo."""
+    visibles = [i for i in identidades if not i.archivada and i.nivel > 0]
+    cuerpos = [
+        Cuerpo(tipo="nucleo", id="ashur", nombre="Ashur", masa=1 + aprendizaje.recuerdos, orbita=None, ref=None),
+        Cuerpo(
+            tipo="planeta", id="identidades", nombre="Identidades",
+            masa=1 + sum(i.menciones for i in visibles if i.nivel < 3),
+            orbita=Orbita(centro="ashur", fase=0.1), ref=None,
+        ),
+        Cuerpo(tipo="planeta", id="objetos", nombre="Objetos", masa=1, orbita=Orbita(centro="ashur", fase=0.6), ref=None),
+    ]
+    tipos = {1: "personaje", 2: "luna", 3: "planeta"}
+    for i in visibles:
+        centro = "ashur" if i.nivel == 3 else "identidades"
+        cuerpos.append(
             Cuerpo(
-                tipo="planeta", id="identidades", nombre="Identidades", masa=1,
-                orbita=Orbita(centro="ashur", fase=0.1), ref=None,
-            ),
-            Cuerpo(
-                tipo="planeta", id="objetos", nombre="Objetos", masa=1,
-                orbita=Orbita(centro="ashur", fase=0.6), ref=None,
-            ),
-        ],
-        eventos=[],
-    )
+                tipo=tipos[i.nivel], id=f"identidad-{i.id}", nombre=i.nombre, masa=i.menciones,
+                orbita=Orbita(centro=centro, fase=_fase(i.id)), ref=Ref(tipo="identidad", id=i.id),
+            )
+        )
+    return EstadoGalaxia(aprendizaje=aprendizaje, cuerpos=cuerpos, eventos=[])

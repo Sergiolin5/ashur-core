@@ -8,9 +8,10 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
+from ashur_core import identidades
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 4
+VERSION_ESQUEMA = 5
 
 
 class Identidad(BaseModel):
@@ -96,6 +97,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
             _migrar_2_a_3(conexion)
         if version < 4:
             _migrar_3_a_4(conexion)
+        if version < 5:
+            identidades.crear_tabla(conexion)  # versión 5: la lista de identidades
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
