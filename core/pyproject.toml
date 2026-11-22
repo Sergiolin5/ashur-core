@@ -5,6 +5,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.165.0",
     "pydantic>=2.14.4",
+    "tzdata>=2026.6",
     "uvicorn>=0.54.0",
 ]
 

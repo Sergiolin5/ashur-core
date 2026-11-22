@@ -93,8 +93,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   la API de respaldo de SQLite.
 - **Fechas en la zona de Sergio:** se siguen guardando en UTC. `ASHUR_ZONA` (un nombre IANA) solo cambia el día con
   que el modelo ve cada recuerdo, en el pedido y en `buscar_recuerdos`. Sin ella, o si el equipo no conoce esa zona,
-  queda UTC. Sin verificar: si la imagen `python:3.13-slim` trae la base de zonas; si no, haría falta el paquete
-  `tzdata`, que es una dependencia nueva.
+  queda UTC. La base de zonas viene en el paquete `tzdata`, que Sergio aprobó el 2026-11-22, así que no depende de
+  la imagen ni del sistema operativo.
 
 ## Pendiente
 Están en `docs/DECISIONES-ABIERTAS.md`, puntos 10 y 11:
