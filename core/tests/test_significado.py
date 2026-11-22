@@ -117,6 +117,14 @@ def test_ashur_recuerda_por_significado_lo_que_las_palabras_no_encuentran(client
     con.close()
 
 
+def test_las_palabras_vacias_no_traen_recuerdos(cliente, tmp_path):
+    recordar(cliente, "El perro come croquetas a las siete de la mañana.")
+    con = memoria.abrir(str(tmp_path / "ashur.db"))
+    assert memoria.buscar_alguna(con, "¿Dónde puse las llavecitas?") == []  # «las» y «dónde» no cuentan
+    assert memoria.buscar_alguna(con, "¿Qué come el perro?") == [1]
+    con.close()
+
+
 def test_sin_nodo_de_embeddings_ashur_responde_con_las_palabras(cliente):
     recordar(cliente, "La bicicleta está en el garaje.")
     recordar(cliente, "El perro come a las siete.")

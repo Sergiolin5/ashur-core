@@ -25,8 +25,9 @@ existía (`docs/adr/0004-memoria.md`).
 - **Sin frenar la respuesta:** si nadie toma el primer paso en 15 s, o si falla tres veces, Ashur responde solo con lo
   que encuentra por palabras.
 - **Búsqueda híbrida:**
-  - **Palabras:** FTS5 con cualquiera de las palabras del mensaje que tengan tres letras o más.
-  - **Significado:** coseno contra todos los vectores, con un parecido mínimo de 0,45.
+  - **Palabras:** FTS5 con cualquiera de las palabras del mensaje que tengan tres letras o más, salvo las palabras
+    vacías («las», «dónde», «para»…), que aparecen en casi cualquier recuerdo.
+  - **Significado:** coseno contra todos los vectores, con un parecido mínimo de 0,5.
   - **Combinación:** las dos listas, de hasta 20 cada una, se unen por rangos recíprocos ($\sum 1/(60 + \text{rango})$).
   - Entran al pedido los 5 mejores, sin los que ya están en el historial que ve el modelo, como una lista con fecha al final de la personalidad.
 - **Prioridad:** un nodo toma primero los trabajos de una conversación y después los de fondo, para que el reparto de
@@ -42,20 +43,37 @@ existía (`docs/adr/0004-memoria.md`).
 - **El texto del mensaje queda dos veces en la cola:** como entrada del vector y dentro del pedido al modelo.
 
 ## Verificado (2026-11-22)
-- `uv run pytest` (82 pruebas). Las de este ADR, con un nodo falso que calcula vectores de juguete:
+- `uv run pytest` (83 pruebas del core). Las de este ADR, con un nodo falso que calcula vectores de juguete:
   - Un recuerdo llega por significado aunque no comparta palabras con el mensaje («llavecitas» trae «llaves»), y lo que no se parece no entra.
   - Sin nodo de embeddings, se responde con las palabras.
   - Una búsqueda que nadie toma a tiempo, o que falla, no frena la respuesta.
   - Se rechazan los vectores mal formados.
   - Editar o borrar un recuerdo olvida su vector.
   - Un recuerdo que siempre falla no deja sin vector a los demás.
+  - Las palabras vacías no traen recuerdos.
   - Se migra desde la versión 9.
+- **De punta a punta con los modelos reales**, en el equipo Windows en `full` por sí mismo (enchufado y sin uso), con
+  cuatro recuerdos inventados:
+  - `bge-m3` calculó los cuatro vectores en 4 s.
+  - **Parecido con «¿Dónde puse las llavecitas?»:**
+
+    | Recuerdo | Parecido |
+    | --- | --- |
+    | Las llaves en el cajón azul | 0,614 |
+    | La bicicleta | 0,455 |
+    | El dentista | 0,403 |
+    | El perro | 0,355 |
+
+    Con eso se fijó el mínimo en 0,5.
+  - **Antes de los arreglos entraban los cuatro recuerdos:** «las» coincidía en la búsqueda por palabras, y la
+    bicicleta superaba el mínimo anterior de 0,45.
+  - **Después, solo entra el de las llaves.** El mensaje se respondió en 5,9 s: el vector con `bge-m3` y la respuesta
+    con `qwen2.5:7b`.
 
 ## Sin verificar
-- **El parecido mínimo de 0,45 es una suposición.** Falta calibrarlo con `bge-m3` sobre recuerdos reales. Esa prueba
-  se corre solo cuando el equipo Windows informe `full` por sí mismo.
-- **El tiempo real** del primer paso con `bge-m3`, y si cambiar entre `bge-m3` y `qwen2.5` en una tarjeta de 4 GB
-  agrega segundos.
+- **El mínimo de 0,5 salió de cuatro recuerdos.** Hay que revisarlo con la memoria real de Sergio.
+- **Que el modelo use lo que se le pasa:** con el recuerdo correcto en el pedido, `qwen2.5:7b` contestó que no sabía
+  a qué se refería con «llavecitas». Depende de cómo se presentan los recuerdos y de la personalidad (fase 6).
 
 ## Pendiente
 - La privacidad por persona (fase 5): cada persona solo con sus recuerdos.

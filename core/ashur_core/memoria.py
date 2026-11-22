@@ -220,10 +220,19 @@ def buscar(conexion: sqlite3.Connection, texto: str) -> list[Recuerdo]:
     return [_desde_fila(f) for f in filas]
 
 
+# Palabras tan comunes que aparecen en casi cualquier recuerdo: no sirven para encontrar uno.
+PALABRAS_VACIAS = frozenset(
+    "las los del con por para que una uno unos unas como esta este esto estos estas eso esa ese pero sus mis tus "
+    "donde dónde cuando cuándo porque qué cual cuál quien quién muy más mas también tiene tengo hay fue era son "
+    "estoy está están ser sin sobre entre desde hasta todo toda todos todas nos les ella ello ellos ellas yo".split()
+)
+
+
 def buscar_alguna(conexion: sqlite3.Connection, texto: str, limite: int = 20) -> list[int]:
-    """Para el chat: recuerdos con alguna de las palabras de [texto] (de tres letras o más), los más relevantes primero.
-    A diferencia de [buscar], no exige todas: una frase entera casi nunca aparece completa en un recuerdo."""
-    palabras = [p for p in re.findall(r"\w+", texto) if len(p) >= 3]
+    """Para el chat: recuerdos con alguna de las palabras de [texto] (de tres letras o más y que no sean palabras
+    vacías), los más relevantes primero. A diferencia de [buscar], no exige todas: una frase entera casi nunca aparece
+    completa en un recuerdo."""
+    palabras = [p for p in re.findall(r"\w+", texto) if len(p) >= 3 and p.lower() not in PALABRAS_VACIAS]
     if not palabras:
         return []
     consulta = " OR ".join(f'"{p}"*' for p in palabras)

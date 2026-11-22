@@ -15,9 +15,9 @@ LOTE = 32
 # Combinación por rangos recíprocos (RRF): cada lista suma 1 / (K + rango).
 K_RRF = 60
 CANDIDATOS = 20
-# Por debajo de este coseno, un recuerdo no se parece a la pregunta y no entra, aunque sea el más cercano.
-# Provisional: falta medirlo con bge-m3 sobre recuerdos reales.
-PARECIDO_MINIMO = 0.45
+# Por debajo de este coseno, un recuerdo no se parece a la pregunta y no entra, aunque sea el más cercano. Medido con
+# bge-m3 (docs/adr/0018-busqueda-hibrida.md): el recuerdo que venía al caso dio 0,61 y los otros entre 0,36 y 0,46.
+PARECIDO_MINIMO = 0.5
 
 
 def es_el_modelo(nombre: str) -> bool:
