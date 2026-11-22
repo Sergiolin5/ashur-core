@@ -14,6 +14,7 @@ import 'conexion/fuente.dart';
 import 'conexion/pantalla_estado.dart';
 import 'galaxia/modelo.dart';
 import 'galaxia/vista.dart';
+import 'inventario/pantalla_inventario.dart';
 import 'pantallas.dart';
 
 void main() {
@@ -61,43 +62,74 @@ class Inicio extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: colorFondo,
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
-            // Con el teléfono abierto, la galaxia queda en la mitad derecha, como se ve con el teléfono cerrado.
-            child: Padding(
-              padding: EdgeInsets.only(left: margenPorPliegue(MediaQuery.displayFeaturesOf(context))),
-              child: ListenableBuilder(
-                listenable: fuente,
-                builder: (context, _) {
-                  final galaxia = fuente.galaxia;
-                  // Sin datos todavía (o con un core configurado que nunca respondió), no se muestra el ejemplo.
-                  if (galaxia == null) return const Center(child: Text('Esperando al core'));
-                  return VistaGalaxia(
-                    estado: galaxia,
-                    alTocarNucleo: (punto, tamano) => Navigator.of(context)
-                        .push(rutaZoom(const PantallaVacia(titulo: 'Chats'), punto, tamano)),
-                  );
-                },
+          Column(
+            children: [
+              Expanded(
+                // Con el teléfono abierto, la galaxia queda en la mitad derecha, como se ve con el teléfono cerrado.
+                child: Padding(
+                  padding: EdgeInsets.only(left: margenPorPliegue(MediaQuery.displayFeaturesOf(context))),
+                  child: ListenableBuilder(
+                    listenable: fuente,
+                    builder: (context, _) {
+                      final galaxia = fuente.galaxia;
+                      // Sin datos todavía (o con un core configurado que nunca respondió), no se muestra el ejemplo.
+                      if (galaxia == null) return const Center(child: Text('Esperando al core'));
+                      return VistaGalaxia(
+                        estado: galaxia,
+                        alTocarNucleo: (punto, tamano) => Navigator.of(context)
+                            .push(rutaZoom(const PantallaVacia(titulo: 'Chats'), punto, tamano)),
+                        alTocarCuerpo: (cuerpo, punto, tamano) {
+                          if (cuerpo == 'objetos') {
+                            Navigator.of(context).push(
+                              rutaZoom(PantallaInventario(fuente: fuente), punto, tamano),
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    children: [
+                      for (final nombre in pestanas)
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => Navigator.of(context).push(rutaSimple(
+                                nombre == 'Estado' ? PantallaEstado(fuente: fuente) : PantallaVacia(titulo: nombre))),
+                            child: Center(child: Text(nombre)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Row(
-                children: [
-                  for (final nombre in pestanas)
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => Navigator.of(context).push(rutaSimple(
-                            nombre == 'Estado' ? PantallaEstado(fuente: fuente) : PantallaVacia(titulo: nombre))),
-                        child: Center(child: Text(nombre)),
-                      ),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).push(rutaSimple(PantallaInventario(fuente: fuente))),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0x33FFFFFF),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                ],
+                    child: const Text('☰', style: TextStyle(color: colorTexto, fontSize: 18)),
+                  ),
+                ),
               ),
             ),
           ),

@@ -1,4 +1,4 @@
-// De dónde sale la galaxia que se dibuja (docs/adr/0011-app-conectada-al-core.md).
+// De dónde sale la galaxia que se dibuja (docs/adr/0011-app-conectada-al-core.md, docs/adr/0015-inventario-en-la-app.md).
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -9,6 +9,7 @@ import 'cliente.dart';
 
 const claveDireccion = 'ashur.direccion';
 const claveClave = 'ashur.clave';
+const claveClaveAdmin = 'ashur.clave_admin';
 const claveCache = 'ashur.cache.galaxia';
 
 /// Cómo está la conexión con el core, para la pestaña Estado.
@@ -44,16 +45,33 @@ class FuenteGalaxia extends ChangeNotifier {
   bool esEjemplo = false;
   String detalle = '';
 
-  Future<(String?, String?)> ajustes() async => (await almacen.leer(claveDireccion), await almacen.leer(claveClave));
+  Future<(String?, String?, String?)> ajustes() async => (
+        await almacen.leer(claveDireccion),
+        await almacen.leer(claveClave),
+        await almacen.leer(claveClaveAdmin),
+      );
 
-  Future<void> guardarAjustes(String direccion, String clave) async {
+  Future<void> guardarAjustes(String direccion, String clave, [String? claveAdmin]) async {
     await almacen.escribir(claveDireccion, direccion.trim().replaceAll(RegExp(r'/+$'), ''));
     await almacen.escribir(claveClave, clave.trim());
+    if (claveAdmin != null) {
+      await almacen.escribir(claveClaveAdmin, claveAdmin.trim());
+    }
     await actualizar();
   }
 
+  Future<ClienteCore?> cliente() async {
+    final (direccion, clave, claveAdmin) = await ajustes();
+    if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) return null;
+    return ClienteCore(
+      direccion: Uri.parse(direccion),
+      clave: clave,
+      claveAdmin: claveAdmin,
+    );
+  }
+
   Future<void> actualizar() async {
-    final (direccion, clave) = await ajustes();
+    final (direccion, clave, _) = await ajustes();
     if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) {
       galaxia = await cargarEjemplo();
       esEjemplo = true;
@@ -75,7 +93,7 @@ class FuenteGalaxia extends ChangeNotifier {
         FalloCore.inalcanzable => EstadoConexion.sinConexion,
         FalloCore.claveInvalida => EstadoConexion.claveInvalida,
         FalloCore.coreSinClave => EstadoConexion.coreSinClave,
-        FalloCore.otro => EstadoConexion.error,
+        _ => EstadoConexion.error,
       };
       detalle = e.detalle;
       final guardada = await cache.leer();

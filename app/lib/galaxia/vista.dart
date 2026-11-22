@@ -11,9 +11,12 @@ import 'pintor.dart';
 
 /// La galaxia en vivo. Tocar el núcleo llama a [alTocarNucleo] con el punto tocado.
 class VistaGalaxia extends StatefulWidget {
-  const VistaGalaxia({super.key, required this.alTocarNucleo, this.camara, this.estado});
+  const VistaGalaxia({super.key, required this.alTocarNucleo, this.alTocarCuerpo, this.camara, this.estado});
 
   final void Function(Offset punto, Size tamano) alTocarNucleo;
+
+  /// Aviso cuando se toca un cuerpo (planeta, agente, asteroide, luna).
+  final void Function(String cuerpo, Offset punto, Size tamano)? alTocarCuerpo;
 
   /// Para las pruebas: la cámara que usa la vista. Si es null, la vista crea la suya.
   final ValueNotifier<Camara>? camara;
@@ -71,6 +74,11 @@ class _VistaGalaxiaState extends State<VistaGalaxia> with SingleTickerProviderSt
     if (estado == null) return;
     if (tocaNucleo(estado, tamano, _tiempo.value, _camara.value, d.localPosition)) {
       widget.alTocarNucleo(d.localPosition, tamano);
+      return;
+    }
+    final cuerpo = cuerpoEn(estado, tamano, _tiempo.value, _camara.value, d.localPosition);
+    if (cuerpo != null) {
+      widget.alTocarCuerpo?.call(cuerpo, d.localPosition, tamano);
     }
   }
 
