@@ -63,6 +63,9 @@ const _fondo = Color(0xFF05060B);
 const _colorNucleo = Color(0xFFFFE6A8);
 const _colorAgente = Color(0xFF9FD8FF);
 /// Cada planeta toma un color de esta paleta según su id, siempre el mismo.
+/// Desde este radio en pantalla, en píxeles, el planeta muestra su nombre.
+const radioPlanetaConNombre = 14.0;
+
 const _coloresPlaneta = [
   Color(0xFF8C9EFF), // azul lavanda
   Color(0xFF5FC9C1), // turquesa
@@ -304,6 +307,14 @@ class PintorGalaxia extends CustomPainter {
               stops: const [0, 0.55, 1],
             ).createShader(Rect.fromCircle(center: p, radius: r)),
         );
+        // De cerca, el nombre del planeta, para saber cuál es cuál (decisión 18).
+        if (r >= radioPlanetaConNombre) {
+          final texto = TextPainter(
+            text: TextSpan(text: c.nombre, style: TextStyle(color: color.withValues(alpha: 0.9), fontSize: 12)),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          texto.paint(canvas, p + Offset(-texto.width / 2, r * 1.15 + 4));
+        }
       case TipoCuerpo.luna:
         // Tenue de lejos; se ve del todo al acercarse.
         final alfa = 0.35 + 0.65 * opacidadPorTamano(r);

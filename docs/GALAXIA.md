@@ -156,8 +156,9 @@ k_t & \text{en otro caso}
 \end{cases}
 $$
 
-El core calcula el nivel y publica el `tipo`; el cliente solo lo dibuja. Los valores de $\theta_1$, $\theta_2$,
-$\theta_3$ y $\eta$ son parámetros provisionales del core, que todavía no lo implementa.
+El core calcula el nivel y publica el `tipo`; el cliente solo lo dibuja. La masa $m$ es la cantidad de recuerdos
+distintos que mencionan a la identidad, y los parámetros, provisionales, son $\theta = (1, 5, 20)$ y $\eta = 0.2$
+(`core/ashur_core/identidades.py`, `docs/adr/0012-identidades.md`).
 
 ### Zoom y nivel de detalle
 La galaxia tiene escalas como las reales: todo está lejos y se ve más al acercarse. Una cámara con zoom $z$
