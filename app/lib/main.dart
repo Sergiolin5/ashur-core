@@ -136,7 +136,7 @@ class Inicio extends StatelessWidget {
                               child: CupertinoButton(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 6,
-                                  vertical: 15,
+                                  vertical: 10,
                                 ),
                                 onPressed: () => Navigator.of(context).push(
                                   rutaSimple(
@@ -145,13 +145,26 @@ class Inicio extends StatelessWidget {
                                         : PantallaVacia(titulo: nombre),
                                   ),
                                 ),
-                                child: Text(
-                                  nombre,
-                                  style: const TextStyle(
-                                    color: PaletaAshur.plata,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconoPestanaAshur(
+                                      seccion: switch (nombre) {
+                                        'Estado' => SeccionAshur.estado,
+                                        'Casa' => SeccionAshur.casa,
+                                        _ => SeccionAshur.workbench,
+                                      },
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      nombre,
+                                      style: const TextStyle(
+                                        color: PaletaAshur.plata,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

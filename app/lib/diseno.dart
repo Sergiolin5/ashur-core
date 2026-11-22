@@ -215,6 +215,120 @@ class IconoMenuAshur extends StatelessWidget {
   );
 }
 
+enum SeccionAshur { estado, casa, workbench }
+
+/// Iconos geométricos de la navegación: línea en reposo y relleno cuando la sección está activa.
+class IconoPestanaAshur extends StatelessWidget {
+  const IconoPestanaAshur({
+    super.key,
+    required this.seccion,
+    this.activo = false,
+  });
+
+  final SeccionAshur seccion;
+  final bool activo;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox.square(
+      dimension: 20,
+      child: CustomPaint(painter: _PintorPestana(seccion, activo)),
+    ),
+  );
+}
+
+class _PintorPestana extends CustomPainter {
+  const _PintorPestana(this.seccion, this.activo);
+
+  final SeccionAshur seccion;
+  final bool activo;
+
+  Paint _pintura(Color color, PaintingStyle estilo) => Paint()
+    ..color = color
+    ..style = estilo
+    ..strokeWidth = 1.35
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final trazo = _pintura(
+      activo ? PaletaAshur.cian : PaletaAshur.plata,
+      PaintingStyle.stroke,
+    );
+    final relleno = _pintura(
+      PaletaAshur.cian.withValues(alpha: 0.78),
+      PaintingStyle.fill,
+    );
+    switch (seccion) {
+      case SeccionAshur.estado:
+        final circulo = Rect.fromCircle(
+          center: size.center(Offset.zero),
+          radius: 7.2,
+        );
+        if (activo) {
+          canvas.drawCircle(size.center(Offset.zero), 7.2, relleno);
+          canvas.drawCircle(
+            size.center(Offset.zero),
+            3.0,
+            _pintura(PaletaAshur.fondo, PaintingStyle.fill),
+          );
+        } else {
+          canvas.drawArc(
+            circulo,
+            -math.pi * 0.82,
+            math.pi * 1.64,
+            false,
+            trazo,
+          );
+          canvas.drawCircle(
+            size.center(Offset.zero),
+            2.0,
+            _pintura(PaletaAshur.plata, PaintingStyle.fill),
+          );
+        }
+      case SeccionAshur.casa:
+        final casa = Path()
+          ..moveTo(3, 9)
+          ..lineTo(10, 3)
+          ..lineTo(17, 9)
+          ..lineTo(17, 17)
+          ..lineTo(3, 17)
+          ..close();
+        if (activo) {
+          canvas.drawPath(casa, relleno);
+          canvas.drawRect(
+            const Rect.fromLTWH(8, 11, 4, 6),
+            _pintura(PaletaAshur.fondo, PaintingStyle.fill),
+          );
+        } else {
+          canvas.drawPath(casa, trazo);
+          canvas.drawRect(const Rect.fromLTWH(8, 11, 4, 6), trazo);
+        }
+      case SeccionAshur.workbench:
+        for (var i = 0; i < 3; i++) {
+          final x = 3.0 + i * 6.2;
+          final rect = Rect.fromLTWH(x, 4, 4, 12);
+          if (activo) {
+            canvas.drawRRect(
+              RRect.fromRectAndRadius(rect, const Radius.circular(1.2)),
+              relleno,
+            );
+          } else {
+            canvas.drawRRect(
+              RRect.fromRectAndRadius(rect, const Radius.circular(1.2)),
+              trazo,
+            );
+          }
+        }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PintorPestana oldDelegate) =>
+      oldDelegate.seccion != seccion || oldDelegate.activo != activo;
+}
+
 class _PintorMenu extends CustomPainter {
   const _PintorMenu();
 
