@@ -116,6 +116,7 @@ class _PantallaInventarioState extends State<PantallaInventario> {
         FalloCore.claveInvalida =>
           'El core rechazó la clave. Revisa que sea correcta en la pestaña Estado.',
         FalloCore.noExiste => 'El objeto no existe.',
+        FalloCore.conflicto => 'El objeto no está disponible.',
         FalloCore.datosInvalidos => 'Datos inválidos. Revisa el nombre y el lugar.',
         FalloCore.coreSinClave => 'El core no tiene configurada esa clave.',
         FalloCore.otro => 'El core respondió algo inesperado. ${e.detalle}',
