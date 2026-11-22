@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "identidad.schema.json",
+  "title": "Identidad de Ashur",
+  "description": "Una persona o una mascota que Ashur conoce. Ver docs/adr/0012-identidades.md.",
+  "$defs": {
+    "nueva": {
+      "description": "Lo que el cliente envía para crear una identidad.",
+      "type": "object",
+      "required": ["nombre", "clase"],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": { "type": "string", "minLength": 1 },
+        "clase": {
+          "description": "Provisional: puede crecer.",
+          "enum": ["persona", "mascota"]
+        }
+      }
+    },
+    "identidad": {
+      "description": "Una identidad guardada.",
+      "type": "object",
+      "required": ["id", "nombre", "clase", "archivada", "menciones", "nivel"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Lo pone el core y nunca se reusa, por ejemplo ide-1.",
+          "type": "string",
+          "minLength": 1
+        },
+        "nombre": { "$ref": "#/$defs/nueva/properties/nombre" },
+        "clase": { "$ref": "#/$defs/nueva/properties/clase" },
+        "archivada": {
+          "description": "Archivada: no aparece en la galaxia ni en las listas, pero los recuerdos conservan su enlace.",
+          "type": "boolean"
+        },
+        "menciones": {
+          "description": "Cuántos recuerdos distintos la mencionan. Es su masa en la galaxia.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "nivel": {
+          "description": "0 = sin cuerpo, 1 = personaje, 2 = luna, 3 = planeta propio (docs/GALAXIA.md).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/identidad"
+}
