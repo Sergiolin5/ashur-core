@@ -195,6 +195,8 @@ def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
         "TABLE identidades", "TABLE pedidos", "TABLE objetos",
     ):
         con.execute(f"DROP {objeto}")
+    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos"):  # del esquema 9
+        con.execute(f"DROP TABLE {tabla}")
     con.execute("PRAGMA user_version = 2")
     con.commit()
     con.close()
@@ -234,6 +236,8 @@ def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
         "TABLE identidades", "TABLE pedidos", "TABLE objetos",
     ):
         con.execute(f"DROP {objeto}")
+    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos"):  # del esquema 9
+        con.execute(f"DROP TABLE {tabla}")
     con.execute("PRAGMA user_version = 3")
     con.commit()
     con.close()

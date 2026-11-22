@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conversacion.schema.json",
+  "title": "Conversación del chat de Ashur",
+  "description": "Respuesta de GET /conversaciones/{id} y de POST /conversaciones/{id}/mensajes. Ver docs/adr/0016-chat-y-nodos.md.",
+  "type": "object",
+  "required": ["conversacion", "mensajes", "espera"],
+  "additionalProperties": false,
+  "properties": {
+    "conversacion": { "$ref": "#/$defs/conversacion" },
+    "mensajes": { "type": "array", "items": { "$ref": "#/$defs/mensaje" } },
+    "espera": {
+      "description": "null si Ashur ya respondió. Si no, en qué va su respuesta.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/espera" }]
+    }
+  },
+  "$defs": {
+    "conversacion": {
+      "type": "object",
+      "required": ["id", "titulo", "creada", "actualizada", "archivada"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "description": "Lo pone el core, por ejemplo con-1.", "type": "string", "minLength": 1 },
+        "titulo": { "description": "El comienzo del primer mensaje; null mientras no hay ninguno.", "type": ["string", "null"] },
+        "creada": { "type": "string", "format": "date-time" },
+        "actualizada": { "type": "string", "format": "date-time" },
+        "archivada": { "type": "boolean" }
+      }
+    },
+    "mensaje": {
+      "type": "object",
+      "required": ["id", "rol", "texto", "fecha", "recuerdo_id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "rol": { "description": "user es la persona; assistant es Ashur.", "enum": ["user", "assistant"] },
+        "texto": { "type": "string", "minLength": 1 },
+        "fecha": { "type": "string", "format": "date-time" },
+        "recuerdo_id": { "description": "Todo mensaje también es un recuerdo.", "type": "integer", "minimum": 1 }
+      }
+    },
+    "espera": {
+      "type": "object",
+      "required": ["estado", "desde", "nodo", "modelo", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "estado": {
+          "description": "pendiente: esperando un nodo. tomado: un nodo lo está respondiendo. fallido: falló tres veces.",
+          "enum": ["pendiente", "tomado", "fallido"]
+        },
+        "desde": { "type": "string", "format": "date-time" },
+        "nodo": { "type": ["string", "null"] },
+        "modelo": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

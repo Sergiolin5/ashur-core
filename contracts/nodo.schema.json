@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nodo.schema.json",
+  "title": "Protocolo entre el core y un nodo de casa",
+  "description": "Lo único que core y nodos se dicen. El nodo siempre llama al core, con el encabezado X-Ashur-Clave-Nodo. Ver docs/adr/0016-chat-y-nodos.md.",
+  "$defs": {
+    "modelo": {
+      "description": "Un modelo que el nodo ofrece, como lo informa Ollama.",
+      "type": "object",
+      "required": ["nombre", "tamano", "capacidades"],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": { "type": "string", "minLength": 1 },
+        "tamano": { "description": "En bytes.", "type": "integer", "minimum": 0 },
+        "capacidades": {
+          "description": "Por ejemplo completion, tools o embedding.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "latido": {
+      "description": "POST /nodo/latido, cada 15 s. Tres latidos perdidos dejan al nodo fuera de línea.",
+      "type": "object",
+      "required": ["modo", "modelos"],
+      "additionalProperties": false,
+      "properties": {
+        "modo": {
+          "description": "full: cualquier trabajo. light: solo modelos livianos. busy u off: nada. Sergio siempre gana en sus máquinas.",
+          "enum": ["full", "light", "busy", "off"]
+        },
+        "modelos": { "type": "array", "items": { "$ref": "#/$defs/modelo" } }
+      }
+    },
+    "trabajo": {
+      "description": "Respuesta de POST /nodo/trabajos/tomar (204 si no hay ninguno). El core ya eligió el modelo.",
+      "type": "object",
+      "required": ["id", "necesidad", "modelo", "entrada"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "necesidad": { "enum": ["conversar", "embedding"] },
+        "modelo": { "type": "string", "minLength": 1 },
+        "entrada": {
+          "description": "Para conversar: {messages: [{role, content}]}, en el formato de OpenAI.",
+          "type": "object"
+        }
+      }
+    },
+    "resultado": {
+      "description": "POST /nodo/trabajos/{id}, con salida o con error, uno de los dos.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "salida": {
+          "description": "Para conversar: {mensaje: {role: assistant, content}}.",
+          "type": ["object", "null"]
+        },
+        "error": { "type": ["string", "null"], "minLength": 1 }
+      }
+    }
+  }
+}
