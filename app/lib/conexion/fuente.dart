@@ -14,7 +14,7 @@ const claveCache = 'ashur.cache.galaxia';
 /// Cómo está la conexión con el core, para la pestaña Estado.
 enum EstadoConexion { sinConfigurar, conectando, conectado, sinConexion, claveInvalida, coreSinClave, error }
 
-/// Guarda lo último que mandó el core. Hoy vive en memoria; con path_provider pasará a un archivo JSON (ADR 0010).
+/// Guarda lo último que mandó el core. En la app es un archivo JSON (cache_archivo.dart); en las pruebas, memoria.
 abstract class Cache {
   Future<String?> leer();
   Future<void> escribir(String json);

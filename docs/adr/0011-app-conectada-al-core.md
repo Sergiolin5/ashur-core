@@ -15,6 +15,8 @@ La app dibujaba la galaxia de ejemplo de `contracts/`. Sergio pidió que muestre
 - **Dirección y clave:** se pegan en la pestaña Estado y se guardan en el Llavero con `flutter_secure_storage`
   (`docs/adr/0007-clave-en-el-dispositivo.md`), con `usesDataProtectionKeychain: false` en macOS. Nunca entran al repo.
   Cada campo tiene un botón «Pegar», porque la clave tiene 64 caracteres.
+- **Caché:** lo último que mandó el core se guarda en `galaxia.json`, en la carpeta de soporte de la app, con
+  `path_provider` (aprobado por Sergio, `docs/adr/0010-cache-en-el-dispositivo.md`).
 - **Qué se muestra:** lo que acaba de mandar el core; si no responde, lo último guardado; y la galaxia de ejemplo solo
   cuando todavía no hay un core configurado, para que los datos inventados nunca parezcan reales.
 - **macOS:** la app tiene el permiso `com.apple.security.network.client` para poder salir a la red.
@@ -34,6 +36,4 @@ La app dibujaba la galaxia de ejemplo de `contracts/`. Sergio pidió que muestre
 - **Leer y escribir el Llavero en el dispositivo.**
 
 ## Pendiente
-- **Caché en archivo:** hoy lo último recibido se guarda solo en memoria. Pasa a un archivo JSON con `path_provider`
-  (`docs/adr/0010-cache-en-el-dispositivo.md`) cuando Sergio confirme el paquete en el hilo.
 - **Identidades, agentes y módulos reales** en la galaxia, cuando existan en el core.

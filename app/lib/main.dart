@@ -9,6 +9,7 @@ import 'package:flutter/cupertino.dart' show DefaultCupertinoLocalizations;
 import 'package:flutter/services.dart' show rootBundle;
 
 import 'conexion/almacen.dart';
+import 'conexion/cache_archivo.dart';
 import 'conexion/fuente.dart';
 import 'conexion/pantalla_estado.dart';
 import 'galaxia/modelo.dart';
@@ -18,7 +19,7 @@ import 'pantallas.dart';
 void main() {
   final fuente = FuenteGalaxia(
     almacen: AlmacenLlavero(),
-    cache: CacheEnMemoria(),
+    cache: CacheArchivo(),
     cargarEjemplo: () => EstadoGalaxia.cargar(rootBundle),
   );
   runApp(AppAshur(fuente: fuente));
