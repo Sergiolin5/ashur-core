@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "descripcion": "Punto de partida para un módulo nuevo; reemplaza estos valores.",
   "acciones": [
-    { "id": "ejemplo", "descripcion": "Acción de ejemplo que solo lee.", "escribe": false }
+    { "id": "saludar", "descripcion": "Saluda y guarda el saludo como recuerdo. Solo lee.", "escribe": false }
   ]
 }
