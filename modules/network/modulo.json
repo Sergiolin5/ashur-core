@@ -1,0 +1,33 @@
+{
+  "id": "network",
+  "nombre": "Ashur Network",
+  "version": "0.1.0",
+  "descripcion": "Analiza observaciones de redes y dispositivos, consolida servidores, detecta cambios y señala exposiciones que requieren revisión.",
+  "acciones": [
+    {
+      "id": "analizar_observaciones",
+      "descripcion": "Valida y normaliza observaciones de dispositivos, direcciones y servicios recibidas como parámetros.",
+      "escribe": false
+    },
+    {
+      "id": "consolidar_servidores",
+      "descripcion": "Agrupa observaciones que tienen evidencias suficientes de pertenecer al mismo dispositivo, sin fusionar identidades ambiguas.",
+      "escribe": false
+    },
+    {
+      "id": "comparar_observaciones",
+      "descripcion": "Compara dos instantáneas y devuelve altas, bajas y cambios detectables.",
+      "escribe": false
+    },
+    {
+      "id": "analizar_exposicion",
+      "descripcion": "Identifica puertos y servicios que merecen revisión según reglas heurísticas explícitas.",
+      "escribe": false
+    },
+    {
+      "id": "recordar_cambios",
+      "descripcion": "Entrega al core recuerdos concisos sobre cambios relevantes recibidos como parámetros.",
+      "escribe": false
+    }
+  ]
+}
