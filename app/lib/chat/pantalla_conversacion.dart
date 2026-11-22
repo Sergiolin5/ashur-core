@@ -22,11 +22,11 @@ bool esperaAbierta(Map<String, dynamic>? espera) => espera != null && espera['es
 
 /// En qué va la respuesta de Ashur, para la persona.
 String textoEspera(Map<String, dynamic> espera) => switch (espera['estado']) {
-      'pendiente' => 'Esperando a que un equipo tome el mensaje…',
-      'tomado' => 'Ashur está respondiendo${espera['modelo'] == null ? '' : ' con ${espera['modelo']}'}…',
-      'fallido' => 'Ashur no pudo responder: ${espera['error'] ?? 'sin detalle'}. Puedes escribir de nuevo.',
-      _ => 'Esperando…',
-    };
+  'pendiente' => 'Esperando a que un equipo tome el mensaje…',
+  'tomado' => 'Ashur está respondiendo${espera['modelo'] == null ? '' : ' con ${espera['modelo']}'}…',
+  'fallido' => 'Ashur no pudo responder: ${espera['error'] ?? 'sin detalle'}. Puedes escribir de nuevo.',
+  _ => 'Esperando…',
+};
 
 class PantallaConversacion extends StatefulWidget {
   const PantallaConversacion({
@@ -131,70 +131,71 @@ class _PantallaConversacionState extends State<PantallaConversacion> {
     final bloqueado = _enviando || esperaAbierta(_espera);
     return ColoredBox(
       color: colorFondo,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const Padding(
-                      padding: EdgeInsets.only(right: 16),
-                      child: Text('‹', style: TextStyle(fontSize: 28)),
+      // Sin CupertinoPageScaffold, nada sube el contenido con el teclado: se deja abajo el espacio que ocupa.
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 16),
+                        child: Text('‹', style: TextStyle(fontSize: 28)),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      _titulo == null || _titulo!.isEmpty ? 'Conversación nueva' : _titulo!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Text(
+                        _titulo == null || _titulo!.isEmpty ? 'Conversación nueva' : _titulo!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView(
-                  reverse: true, // lo último queda abajo, junto al campo
-                  children: [for (final m in _mensajes.reversed) _burbuja(m)],
+                  ],
                 ),
-              ),
-              if (_espera != null) ...[
-                const SizedBox(height: 6),
-                Text(textoEspera(_espera!), style: _estiloPista),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 6),
-                Text(_error!, style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 14)),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: CupertinoTextField(
-                      controller: _texto,
-                      enabled: !bloqueado,
-                      placeholder: 'Escríbele a Ashur',
-                      minLines: 1,
-                      maxLines: 4,
-                      decoration: _decoracionCampo,
-                      style: _estiloCampo,
-                      placeholderStyle: _estiloPista,
-                    ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    reverse: true, // lo último queda abajo, junto al campo
+                    children: [for (final m in _mensajes.reversed) _burbuja(m)],
                   ),
-                  CupertinoButton(
-                    padding: const EdgeInsets.only(left: 12),
-                    onPressed: bloqueado ? null : _enviar,
-                    child: const Text('Enviar'),
-                  ),
+                ),
+                if (_espera != null) ...[const SizedBox(height: 6), Text(textoEspera(_espera!), style: _estiloPista)],
+                if (_error != null) ...[
+                  const SizedBox(height: 6),
+                  Text(_error!, style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 14)),
                 ],
-              ),
-            ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoTextField(
+                        controller: _texto,
+                        enabled: !bloqueado,
+                        placeholder: 'Escríbele a Ashur',
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: _decoracionCampo,
+                        style: _estiloCampo,
+                        placeholderStyle: _estiloPista,
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: const EdgeInsets.only(left: 12),
+                      onPressed: bloqueado ? null : _enviar,
+                      child: const Text('Enviar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

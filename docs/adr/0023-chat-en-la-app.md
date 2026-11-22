@@ -22,7 +22,8 @@ teléfonos también presten su modelo (como PrivateLM, `docs/REFERENCIA-PRIVATEL
   - deja de preguntar cuando `espera` es `null` o `fallido`. Si falló, muestra el error y se puede escribir de nuevo;
   - mientras la respuesta está abierta, el campo y «Enviar» quedan desactivados. Si aun así el core responde 409, se
     muestra su detalle;
-  - al salir de la pantalla se cancela el reloj.
+  - al salir de la pantalla se cancela el reloj;
+  - con el teclado abierto, el campo y «Enviar» suben por encima de él (la pantalla no usa `CupertinoPageScaffold`).
 - **Cliente:** `listarConversaciones`, `crearConversacion`, `verConversacion` y `enviarMensaje`, con JSON crudo como
   `contracts/conversacion.schema.json`. `_enviar` acepta 202.
 - **Sin core o con las claves bloqueadas** (ADR 0025), Chats lo explica igual que Inventario.

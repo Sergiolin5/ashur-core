@@ -129,4 +129,16 @@ void main() {
     await tester.pump();
     expect(find.text('Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'), findsOneWidget);
   });
+
+  testWidgets('con el teclado abierto, el campo y Enviar quedan por encima del teclado', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+    final cliente = _ClienteGuionado([_completa([], null)]);
+    await tester.pumpWidget(_app(PantallaConversacion(cliente: cliente, id: 'con-1')));
+    await tester.pump();
+    expect(tester.getRect(find.byType(CupertinoTextField)).bottom, lessThanOrEqualTo(500));
+    expect(tester.getRect(find.text('Enviar')).bottom, lessThanOrEqualTo(500));
+  });
 }
