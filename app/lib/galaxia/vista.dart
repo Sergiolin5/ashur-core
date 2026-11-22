@@ -11,12 +11,15 @@ import 'pintor.dart';
 
 /// La galaxia en vivo. Tocar el núcleo llama a [alTocarNucleo] con el punto tocado.
 class VistaGalaxia extends StatefulWidget {
-  const VistaGalaxia({super.key, required this.alTocarNucleo, this.camara});
+  const VistaGalaxia({super.key, required this.alTocarNucleo, this.camara, this.estado});
 
   final void Function(Offset punto, Size tamano) alTocarNucleo;
 
   /// Para las pruebas: la cámara que usa la vista. Si es null, la vista crea la suya.
   final ValueNotifier<Camara>? camara;
+
+  /// La galaxia que se dibuja. Si es null, la vista carga el ejemplo de contracts/ (pruebas y primer arranque).
+  final EstadoGalaxia? estado;
 
   @override
   State<VistaGalaxia> createState() => _VistaGalaxiaState();
@@ -40,9 +43,19 @@ class _VistaGalaxiaState extends State<VistaGalaxia> with SingleTickerProviderSt
       _seguirCuerpo();
     })
       ..start();
-    EstadoGalaxia.cargar(rootBundle).then((e) {
-      if (mounted) setState(() => _estado = e);
-    });
+    if (widget.estado != null) {
+      _estado = widget.estado;
+    } else {
+      EstadoGalaxia.cargar(rootBundle).then((e) {
+        if (mounted) setState(() => _estado = e);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(VistaGalaxia anterior) {
+    super.didUpdateWidget(anterior);
+    if (widget.estado != null && widget.estado != anterior.estado) _estado = widget.estado;
   }
 
   @override

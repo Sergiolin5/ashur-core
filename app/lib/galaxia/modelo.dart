@@ -21,6 +21,8 @@ class Orbita {
         centro: j['centro'] as String,
         fase: (j['fase'] as num).toDouble(),
       );
+
+  Map<String, dynamic> aJson() => {'centro': centro, 'fase': fase};
 }
 
 /// La cosa real del sistema que representa un cuerpo.
@@ -34,6 +36,8 @@ class Ref {
         tipo: TipoRef.values.byName(j['tipo'] as String),
         id: j['id'] as String,
       );
+
+  Map<String, dynamic> aJson() => {'tipo': tipo.name, 'id': id};
 }
 
 /// Lo que hace crecer el polvo: desde cuándo aprende Ashur y cuántos recuerdos tiene.
@@ -47,6 +51,8 @@ class Aprendizaje {
         inicio: DateTime.parse(j['inicio'] as String),
         recuerdos: j['recuerdos'] as int,
       );
+
+  Map<String, dynamic> aJson() => {'inicio': inicio.toIso8601String(), 'recuerdos': recuerdos};
 }
 
 class Cuerpo {
@@ -76,6 +82,15 @@ class Cuerpo {
             : Orbita.fromJson(j['orbita'] as Map<String, dynamic>),
         ref: j['ref'] == null ? null : Ref.fromJson(j['ref'] as Map<String, dynamic>),
       );
+
+  Map<String, dynamic> aJson() => {
+        'tipo': tipo.name,
+        'id': id,
+        'nombre': nombre,
+        'masa': masa,
+        'orbita': orbita?.aJson(),
+        'ref': ref?.aJson(),
+      };
 }
 
 class Evento {
@@ -90,6 +105,8 @@ class Evento {
         origen: j['origen'] as String,
         destino: j['destino'] as String,
       );
+
+  Map<String, dynamic> aJson() => {'tipo': tipo.name, 'origen': origen, 'destino': destino};
 }
 
 class EstadoGalaxia {
@@ -108,6 +125,12 @@ class EstadoGalaxia {
           for (final e in j['eventos'] as List) Evento.fromJson(e as Map<String, dynamic>)
         ],
       );
+
+  Map<String, dynamic> aJson() => {
+        'aprendizaje': aprendizaje.aJson(),
+        'cuerpos': [for (final c in cuerpos) c.aJson()],
+        'eventos': [for (final e in eventos) e.aJson()],
+      };
 
   static Future<EstadoGalaxia> cargar(AssetBundle bundle, [String ruta = rutaEjemplo]) async =>
       EstadoGalaxia.fromJson(jsonDecode(await bundle.loadString(ruta)) as Map<String, dynamic>);
