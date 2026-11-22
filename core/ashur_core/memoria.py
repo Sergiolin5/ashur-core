@@ -72,6 +72,9 @@ def abrir(ruta: str) -> sqlite3.Connection:
     # Una conexión por pedido; FastAPI la usa desde varios hilos.
     conexion = sqlite3.connect(ruta, check_same_thread=False, isolation_level=None)
     try:
+        # WAL: mientras un pedido escribe, los demás siguen leyendo. Queda guardado en la base; fuera de una
+        # transacción, porque dentro SQLite no lo cambia. El respaldo tiene que copiar también -wal y -shm.
+        conexion.execute("PRAGMA journal_mode=WAL")
         conexion.execute("BEGIN IMMEDIATE")  # un solo pedido migra a la vez
         version = conexion.execute("PRAGMA user_version").fetchone()[0]
         if version > VERSION_ESQUEMA:
@@ -286,6 +289,7 @@ def editar(conexion: sqlite3.Connection, id_: int, cambios: CambiosRecuerdo) -> 
     )
     if nuevo.texto != actual.texto:
         significado.olvidar(conexion, id_)  # el vector viejo ya no corresponde; se vuelve a calcular
+        chat.seguir_al_recuerdo(conexion, id_, nuevo.texto)
     conexion.commit()
     return Recuerdo(id=id_, **nuevo.model_dump())
 
@@ -293,6 +297,8 @@ def editar(conexion: sqlite3.Connection, id_: int, cambios: CambiosRecuerdo) -> 
 def borrar(conexion: sqlite3.Connection, id_: int) -> bool:
     cursor = conexion.execute("DELETE FROM recuerdos WHERE id = ?", (id_,))
     significado.olvidar(conexion, id_)
+    if cursor.rowcount > 0:
+        chat.seguir_al_recuerdo(conexion, id_, chat.BORRADO)
     conexion.commit()
     return cursor.rowcount > 0
 

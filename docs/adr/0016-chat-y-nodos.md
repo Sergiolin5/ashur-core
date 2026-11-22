@@ -93,6 +93,10 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Fase 5:** otras personas con su clave y su rol (ADR 0022).
 - **Fase 6:** la personalidad, la madurez y las correcciones (ADR 0024).
 
+## Decisión de Sergio (2026-11-22)
+- **La espera de otra persona va sin detalles:** en la conversación de una persona, `espera` dice el estado y desde
+  cuándo, pero `nodo`, `modelo` y `error` van en `null`. Sergio los sigue viendo en las suyas.
+
 ## Pendiente
 - **App:** la pantalla de chat está hecha (ADR 0023); falta el modelo dentro del iPhone y del iPad, desde la Mac.
 - **Galaxia:** los nodos todavía no son cuerpos.

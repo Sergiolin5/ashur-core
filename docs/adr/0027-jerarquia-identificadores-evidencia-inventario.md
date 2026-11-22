@@ -1,7 +1,8 @@
 # ADR 0027: jerarquía, identificadores y evidencia del inventario
 
-- **Estado:** Propuesto. Está en main para probarlo; las tres decisiones de Sergio del final siguen abiertas.
+- **Estado:** Aceptada. Sergio aprobó las tres decisiones del final tal como se proponen (2026-11-22).
 - **Fecha:** 2026-11-22
+- **Autoría:** Chappie
 
 ## Contexto
 
@@ -58,7 +59,9 @@ Todos los campos de esta propuesta son opcionales: un objeto guardado antes de e
 - [Probable] Campos de especificaciones libres son flexibles, pero dificultan búsquedas uniformes y consistencia entre objetos.
 - [Probable] Los clientes que no usan campos nuevos pueden seguir creando y leyendo objetos antiguos; los modelos de respuesta que rechazan claves nuevas deberán actualizarse antes de que reciban objetos con esas claves.
 
-## Decisiones pendientes de Sergio
+## Decisiones de Sergio
+
+Las tres quedaron aprobadas como se proponen el 2026-11-22, y así ya funciona el core.
 
 1. **Forma y nombres de los datos:** ¿aprobar los nombres propuestos (`padre_id`, `ranura`, `ranuras`, `identificadores`, `especificaciones`, `evidencia`, `estado`) y mantener libres las claves internas de identificadores/especificaciones, o preferir un esquema alternativo? [Probable]
 2. **Semántica de lugar y archivo:** ¿un componente debe tener `lugar: null` y heredar la ubicación de su raíz, como se propone, y se rechaza archivar un padre con hijos activos? [Adivinando]

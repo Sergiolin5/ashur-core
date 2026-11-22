@@ -4,9 +4,11 @@ Cada mensaje, de Sergio o de Ashur, también es un recuerdo (decisión de Sergio
 modelo y lo deja en la cola; un nodo lo responde (ashur_core/nodos.py).
 """
 
+import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -92,6 +94,27 @@ def ahora() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Un recuerdo o un mensaje borrado deja esto en el chat: lo que se olvida no sigue en el historial que ve el modelo.
+BORRADO = "(borrado)"
+
+
+def zona() -> tzinfo:
+    """La zona horaria de Sergio, de ASHUR_ZONA (un nombre IANA, del tipo Region/Ciudad). Las fechas se guardan en
+    UTC; esta zona solo cambia cómo se le dicen al modelo. Sin ASHUR_ZONA, o si el equipo no conoce esa zona, UTC."""
+    nombre = os.environ.get("ASHUR_ZONA")
+    if not nombre:
+        return timezone.utc
+    try:
+        return ZoneInfo(nombre)
+    except (ZoneInfoNotFoundError, ValueError):
+        return timezone.utc
+
+
+def dia(fecha: datetime) -> str:
+    """El día de [fecha] en la zona de Sergio: un mensaje de las 9 de la noche no queda en el día siguiente."""
+    return fecha.astimezone(zona()).date().isoformat()
+
+
 _COLUMNAS = "id, titulo, creada, actualizada, archivada"
 
 
@@ -155,6 +178,24 @@ def agregar(conexion: sqlite3.Connection, id_: str, rol: str, texto: str, fecha:
     return Mensaje(id=cursor.lastrowid, rol=rol, texto=texto, fecha=fecha, recuerdo_id=recuerdo_id)
 
 
+def seguir_al_recuerdo(conexion: sqlite3.Connection, recuerdo_id: int, texto: str) -> None:
+    """El mensaje de un recuerdo editado o borrado cambia igual, y el título de su conversación se vuelve a sacar del
+    primer mensaje: así el texto viejo no queda ni en el historial ni en la lista de chats. No hace commit: va en la
+    misma transacción que el cambio del recuerdo."""
+    conversaciones = [
+        f[0] for f in conexion.execute(
+            "SELECT DISTINCT conversacion_id FROM mensajes WHERE recuerdo_id = ?", (recuerdo_id,)
+        ).fetchall()
+    ]
+    conexion.execute("UPDATE mensajes SET texto = ? WHERE recuerdo_id = ?", (texto, recuerdo_id))
+    for id_ in conversaciones:
+        conexion.execute(
+            "UPDATE conversaciones SET titulo = (SELECT substr(texto, 1, ?) FROM mensajes WHERE conversacion_id = ?"
+            " ORDER BY id LIMIT 1) WHERE id = ?",
+            (LARGO_TITULO, id_, id_),
+        )
+
+
 def trabajo_actual(conexion: sqlite3.Connection, id_: str) -> int | None:
     fila = conexion.execute("SELECT trabajo_id FROM conversaciones WHERE id = ?", (id_,)).fetchone()
     return fila[0] if fila else None
@@ -213,7 +254,7 @@ def pedido_al_modelo(
     autores = autores or {}  # [personalidad] llega ya armada por ashur_core/personalidad.py
     if recuerdos:
         sistema += "\n\nRecuerdos que pueden servir; úsalos solo si vienen al caso:\n" + "\n".join(
-            f"- {r.fecha.date().isoformat()}: {r.texto}" + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")
+            f"- {dia(r.fecha)}: {r.texto}" + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")
             for r in recuerdos
         )
     return {

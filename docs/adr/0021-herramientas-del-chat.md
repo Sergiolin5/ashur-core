@@ -90,6 +90,11 @@ configuración avanzada de la app.
   - «¿A quiénes conoces?» llamó a `listar_identidades` en una corrida e inventó en la otra.
   - Los pedidos pesaron entre 1000 y 1600 caracteres, lejos del contexto de 8192.
 
+## Decisión de Sergio (2026-11-22)
+- **El aviso nombra solo lo que se ofrece:** se arma con las herramientas de esa conversación. A una persona cuyo rol
+  solo tiene `buscar_objetos`, el aviso le habla del inventario y nada más; si prometía la memoria, el modelo podía
+  decir que buscó sin haber buscado. Con todas las herramientas, el texto es el mismo que se probó con `qwen2.5:7b`.
+
 ## Pendiente
 - Qué herramientas puede usar cada rol (fase 5).
 - Que el resultado de un pedido aprobado vuelva a la conversación.

@@ -73,5 +73,10 @@ Es la fase 6 del chat (ADR 0016). El número 0023 está reservado para el chat e
   - «¿En qué trabajo yo?»: respondió con lo que sabe de Sergio, en 14 s.
   - El pedido más grande pesó unos 3400 caracteres (el sistema, unos 2000), lejos del contexto de 8192.
 
+## Decisión de Sergio (2026-11-22)
+- **Las correcciones siguen siendo una sola lista:** una corrección que salió del chat de Sergio también cambia cómo
+  Ashur le habla a otra persona. Se queda así mientras casi solo habla Sergio; se separan por persona cuando otros
+  usen el chat.
+
 ## Pendiente
 - Lo de Ashur (personalidad, correcciones, roles y claves) en la configuración avanzada de la app.

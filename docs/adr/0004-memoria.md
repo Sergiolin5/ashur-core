@@ -82,6 +82,20 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 - **Dos claves fijas:** no distinguen dispositivos ni personas, y cambiar una obliga a cambiarla en todos los
   clientes que la usan.
 
+## Decisiones de Sergio (2026-11-22)
+- **Lo que se olvida se olvida en el chat:** si se borra el recuerdo de un mensaje, el mensaje queda como
+  «(borrado)»; si se edita su texto, el mensaje cambia igual. En los dos casos el título de la conversación se vuelve
+  a sacar del primer mensaje. Va en la misma transacción que el cambio del recuerdo. Costo: el texto viejo sigue en
+  la entrada de los trabajos ya hechos de la cola y en las correcciones que ya se sacaron de esa conversación; no se
+  purgan.
+- **WAL:** la base se abre en modo WAL, para que leer no espere a que termine una escritura. Pide un disco local (no
+  NFS ni SMB) para `/datos` en ZimaOS. Un respaldo tiene que copiar también `ashur.db-wal` y `ashur.db-shm`, o usar
+  la API de respaldo de SQLite.
+- **Fechas en la zona de Sergio:** se siguen guardando en UTC. `ASHUR_ZONA` (un nombre IANA) solo cambia el día con
+  que el modelo ve cada recuerdo, en el pedido y en `buscar_recuerdos`. Sin ella, o si el equipo no conoce esa zona,
+  queda UTC. Sin verificar: si la imagen `python:3.13-slim` trae la base de zonas; si no, haría falta el paquete
+  `tzdata`, que es una dependencia nueva.
+
 ## Pendiente
 Están en `docs/DECISIONES-ABIERTAS.md`, puntos 10 y 11:
 - la búsqueda por significado, con embeddings de los nodos de casa;

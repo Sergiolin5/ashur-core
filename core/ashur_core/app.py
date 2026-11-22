@@ -265,6 +265,10 @@ def _completa(con, conversacion: chat.Conversacion) -> chat.ConversacionCompleta
     trabajo = chat.trabajo_actual(con, conversacion.id)
     estado = nodos.estado_de(con, trabajo) if trabajo is not None else None
     espera = chat.Espera(**estado) if estado and estado["estado"] != "hecho" else None
+    _, duenio = chat.duenio(con, conversacion.id)
+    if espera is not None and duenio is not None:
+        # Otra persona ve si Ashur está pensando o si falló, pero no qué equipo, qué modelo ni el texto del error.
+        espera = espera.model_copy(update={"nodo": None, "modelo": None, "error": None})
     return chat.ConversacionCompleta(conversacion=conversacion, mensajes=chat.mensajes(con, conversacion.id), espera=espera)
 
 
@@ -399,7 +403,7 @@ def _pedido(con, id_conversacion: str, vector: list[float] | None) -> dict:
     ofrecidas = herramientas.herramientas_para(con, duenio, registro_de_modulos())
     if ofrecidas and nodos.hay_quien(con, "conversar", requiere="tools"):
         pedido.update(tools=[h.definicion() for h in ofrecidas], rondas=0)
-        pedido["messages"][0]["content"] += "\n\n" + herramientas.AVISO
+        pedido["messages"][0]["content"] += "\n\n" + herramientas.aviso(ofrecidas)
     return pedido
 
 

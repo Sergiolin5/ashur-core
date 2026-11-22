@@ -11,15 +11,14 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from ashur_core import identidades, inventario, memoria, personas
+from ashur_core import chat, identidades, inventario, memoria, personas
 
-# Va al final de la personalidad cuando el pedido lleva herramientas. Sin esto, qwen2.5:7b decía que no sabía dónde
-# estaba un objeto sin buscarlo en el inventario (docs/adr/0021-herramientas-del-chat.md).
-AVISO = (
-    "Tienes herramientas para consultar el inventario de objetos, las personas y mascotas que conoces, tu memoria y "
-    "los módulos. Si la pregunta es sobre algo de eso, úsalas antes de responder, y nunca digas que no sabes sin "
-    "haber buscado."
-)
+# Lo que cada herramienta del core deja consultar, para el aviso.
+_TEMAS = {
+    "buscar_objetos": "el inventario de objetos",
+    "listar_identidades": "las personas y mascotas que conoces",
+    "buscar_recuerdos": "tu memoria",
+}
 # Rondas de herramientas por mensaje; después, el modelo responde sin herramientas.
 RONDAS = 3
 LARGO_RESULTADO = 2000
@@ -100,6 +99,20 @@ def herramientas_para(con, identidad_id: str | None, registro) -> list[Herramien
     return [h for h in todas if personas.permite(patrones, h.nombre)]
 
 
+def aviso(ofrecidas: list[Herramienta]) -> str:
+    """Va al final de la personalidad cuando el pedido lleva herramientas. Sin esto, qwen2.5:7b decía que no sabía
+    dónde estaba un objeto sin buscarlo en el inventario (docs/adr/0021-herramientas-del-chat.md). Nombra solo lo que
+    se ofrece: si promete una herramienta que el rol no tiene, el modelo puede decir que buscó sin haber buscado."""
+    temas = [tema for nombre, tema in _TEMAS.items() if any(h.nombre == nombre for h in ofrecidas)]
+    if any(h.modulo is not None for h in ofrecidas):
+        temas.append("los módulos")
+    lista = temas[0] if len(temas) == 1 else ", ".join(temas[:-1]) + " y " + temas[-1]
+    return (
+        f"Tienes herramientas para consultar {lista}. Si la pregunta es sobre algo de eso, úsalas antes de responder, "
+        "y nunca digas que no sabes sin haber buscado."
+    )
+
+
 def _recortar(texto: str) -> str:
     return texto if len(texto) <= LARGO_RESULTADO else texto[:LARGO_RESULTADO] + " […]"
 
@@ -146,7 +159,7 @@ def correr(
         autores = personas.autores(con, [r.id for r in recuerdos])
         resultado = _lineas(
             [
-                f"{r.fecha.date().isoformat()}: {r.texto}"
+                f"{chat.dia(r.fecha)}: {r.texto}"
                 + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")
                 for r in recuerdos
             ],

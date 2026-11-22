@@ -22,3 +22,4 @@ Variables de entorno:
 | `ASHUR_CLAVE_ADMIN` | Clave de administrador en el encabezado `X-Ashur-Clave-Admin`, para editar y borrar recuerdos. Sin ella, nadie puede. |
 | `ASHUR_DB` | Ruta de la base SQLite. Por defecto, `/datos/ashur.db`. |
 | `ASHUR_MODULOS` | Carpeta de los módulos. Por defecto, `modules/` al lado de `core/`. |
+| `ASHUR_ZONA` | Zona horaria de Sergio, como nombre IANA, para el día con que el modelo ve cada recuerdo. Las fechas se guardan igual en UTC. Por defecto, UTC (`docs/adr/0004-memoria.md`). |
