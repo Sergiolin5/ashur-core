@@ -26,7 +26,8 @@ class _VistaGalaxiaState extends State<VistaGalaxia> with SingleTickerProviderSt
   final _tiempo = ValueNotifier<double>(0);
   late final ValueNotifier<Camara> _camara = widget.camara ?? ValueNotifier<Camara>(Camara.inicial);
   Camara _alEmpezar = Camara.inicial;
-  bool _yaBuscoQueSeguir = false;
+  int _dedos = 0; // dedos sobre la pantalla, contados por el Listener
+  bool _huboPellizco = false; // desde que se apoyó el primer dedo hasta que se levantó el último
   Offset _focoAnterior = Offset.zero;
   late final Ticker _ticker;
   EstadoGalaxia? _estado;
@@ -84,21 +85,24 @@ class _VistaGalaxiaState extends State<VistaGalaxia> with SingleTickerProviderSt
   }
 
   void _empezarEscala(ScaleStartDetails d, Size tamano) {
+    // Flutter vuelve a empezar el gesto cada vez que cambia la cantidad de dedos.
     _alEmpezar = _camara.value;
     _focoAnterior = d.localFocalPoint;
-    _yaBuscoQueSeguir = false;
+  }
+
+  void _terminarEscala(ScaleEndDetails d) {
+    if (_camara.value.zoom <= 1 && _camara.value.sigue != null) _camara.value = Camara.inicial;
   }
 
   void _escalar(ScaleUpdateDetails d, Size tamano) {
-    if (d.pointerCount >= 2 && !_yaBuscoQueSeguir) {
-      // El primer cuadro con dos dedos decide a quién seguir, con el foco de ese momento.
-      _yaBuscoQueSeguir = true;
-      _camara.value = _seguirLoQueHayEn(_camara.value.soltar(), d.localFocalPoint, tamano);
+    if (d.pointerCount >= 2 && _camara.value.sigue == null) {
+      // Con dos dedos, la cámara se queda con el cuerpo bajo el foco; si todavía no hay ninguno, lo vuelve a buscar.
+      _camara.value = _seguirLoQueHayEn(_camara.value, d.localFocalPoint, tamano);
     }
     final camara = _camara.value;
     if (d.pointerCount < 2) {
-      // Un dedo mueve la vista y suelta el cuerpo seguido.
-      _camara.value = camara.mover(d.localFocalPoint - _focoAnterior, tamano);
+      // El dedo que queda al terminar un pellizco no mueve la vista. Un gesto nuevo de un dedo sí, y suelta el cuerpo.
+      if (!_huboPellizco) _camara.value = camara.mover(d.localFocalPoint - _focoAnterior, tamano);
     } else if (camara.sigue != null) {
       // Siguiendo un cuerpo: el zoom crece alrededor de él, que se queda bajo los dedos.
       _camara.value = Camara(
@@ -113,6 +117,11 @@ class _VistaGalaxiaState extends State<VistaGalaxia> with SingleTickerProviderSt
       _camara.value = movida.acercar(_alEmpezar.zoom * d.scale, d.localFocalPoint, tamano);
     }
     _focoAnterior = d.localFocalPoint;
+  }
+
+  void _soltarDedo() {
+    _dedos = _dedos > 0 ? _dedos - 1 : 0;
+    if (_dedos == 0) _huboPellizco = false;
   }
 
   void _rueda(PointerSignalEvent e, Size tamano) {
@@ -133,10 +142,17 @@ class _VistaGalaxiaState extends State<VistaGalaxia> with SingleTickerProviderSt
         _tamano = tamano;
         return Listener(
           onPointerSignal: (e) => _rueda(e, tamano),
+          onPointerDown: (_) {
+            _dedos++;
+            if (_dedos >= 2) _huboPellizco = true;
+          },
+          onPointerUp: (_) => _soltarDedo(),
+          onPointerCancel: (_) => _soltarDedo(),
           child: GestureDetector(
             onTapUp: (d) => _tocar(d, tamano),
             onScaleStart: (d) => _empezarEscala(d, tamano),
             onScaleUpdate: (d) => _escalar(d, tamano),
+            onScaleEnd: _terminarEscala,
             child: CustomPaint(
               size: tamano,
               painter: PintorGalaxia(estado: estado, tiempo: _tiempo, camara: _camara),

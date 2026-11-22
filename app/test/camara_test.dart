@@ -60,7 +60,7 @@ void main() {
     expect(tocaNucleo(estado, tamano, 0, corrida, centro), isFalse);
   });
 
-  test('al seguir un cuerpo, este se queda en el ancla aunque gire, y moverse lo suelta', () async {
+  test('al seguir un cuerpo, este se queda en el ancla aunque gire; moverse lo suelta', () async {
     final estado = await EstadoGalaxia.cargar(rootBundle);
     const ancla = Offset(200, 400);
     final g0 = Geometria(estado, tamano, 0);
@@ -75,6 +75,6 @@ void main() {
       expect((camara.aPantalla(g.posicion('identidades', t), centro) - ancla).distance, lessThan(1e-6));
     }
     expect(siguiendo.mover(const Offset(5, 0), tamano).sigue, isNull);
-    expect(siguiendo.acercar(1, ancla, tamano).sigue, isNull);
+    expect(siguiendo.acercar(1, ancla, tamano).desplazamiento, Offset.zero); // en z = 1 vuelve al centro
   });
 }

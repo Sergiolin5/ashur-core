@@ -26,23 +26,28 @@ fue solo para este prototipo: la regla del repo es pedir aprobación antes de ag
   `contracts/`.
 
 ## Fórmulas y parámetros
+Tras la prueba en el iPhone (2026-11-21), las órbitas van unas seis veces más lento, los cuerpos son más pequeños
+para que se sienta la distancia, cada planeta tiene su color y un halo, y hay un fondo de estrellas lejanas.
+
 Las fórmulas son las de `docs/GALAXIA.md`. Las distancias y radios son fracciones de la mitad del lado corto de la
 pantalla.
 
-| Parámetro | Valor | Constante en `pintor.dart` |
+| Parámetro | Valor (2026-11-21, tras la prueba en el iPhone) | Constante en `pintor.dart` |
 | --- | --- | --- |
-| Radio del núcleo | 0.09 | `radioNucleo` |
-| $R_{\min}$, $R_{\max}$ (planetas) | 0.025, 0.06 | `radioPlanetaMin`, `radioPlanetaMax` |
+| Radio del núcleo | 0.05 | `radioNucleo` |
+| $R_{\min}$, $R_{\max}$ (planetas) | 0.012, 0.03 | `radioPlanetaMin`, `radioPlanetaMax` |
 | $d_{\min}$, $d_{\max}$ (órbitas de planetas) | 0.34, 0.88 | `distanciaMin`, `distanciaMax` |
-| Órbita y radio de los agentes | 0.17, 0.012 | `distanciaAgente`, `radioAgente` |
-| Órbita y radio de los asteroides | radio del planeta + 0.035, 0.009 | `distanciaAsteroide`, `radioAsteroide` |
-| $T_0$ (periodo de todos los planetas) | 24 s | `periodoBase` |
-| Periodo de agentes y asteroides | 7 s, 5 s | `periodoAgente`, `periodoAsteroide` |
+| Órbita y radio de los agentes | 0.17, 0.006 | `distanciaAgente`, `radioAgente` |
+| Órbita y radio de los asteroides | radio del planeta + 0.02, 0.005 | `distanciaAsteroide`, `radioAsteroide` |
+| $T_0$ (periodo de todos los planetas) | 150 s | `periodoBase` |
+| Periodo de agentes y asteroides | 40 s, 30 s | `periodoAgente`, `periodoAsteroide` |
 | $\tau$ (viaje de una estrella) | 2.4 s | `duracionEstrella` |
 | Ciclo y desfase de las estrellas | 7 s, 2.3 s | `cicloEstrellas`, `desfaseEstrellas` |
 | $N$, $a$, $b$ (brazos de polvo) | 2, 0.06, 0.28 | `brazos`, `espiralA`, `espiralB` |
 | $\omega$ (giro del polvo) | 0.03 rad/s | `omegaPolvo` |
 | $\rho$ (granos de polvo) | Se calcula del contrato; ver `docs/adr/0008-cuerpos-reales-de-la-galaxia.md` | `densidadPolvo()` |
+| Órbita, radio y periodo de las lunas | radio de Identidades + 0.03, 0.004, 60 s | `distanciaLuna`, `radioLuna`, `periodoLuna` |
+| Estrellas de fondo y su paralaje | 260, 0.04 | `estrellasFondo`, `paralajeFondo` |
 
 Las dos reglas que eligió Sergio son un interruptor cada una:
 - `pesadosCerca = true`: los planetas más pesados orbitan más cerca del núcleo.

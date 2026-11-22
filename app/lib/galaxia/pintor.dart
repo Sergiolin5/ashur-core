@@ -16,23 +16,23 @@ const pesadosCerca = true;
 const periodoKepler = false;
 
 // ── Parámetros del cliente, como fracción de la mitad del lado corto de la pantalla ──
-const radioNucleo = 0.09;
-const radioPlanetaMin = 0.025; // R_min
-const radioPlanetaMax = 0.06; // R_max
+const radioNucleo = 0.05;
+const radioPlanetaMin = 0.012; // R_min
+const radioPlanetaMax = 0.03; // R_max
 const distanciaMin = 0.34; // d_min
 const distanciaMax = 0.88; // d_max
 const distanciaAgente = 0.17;
-const radioAgente = 0.012;
-const distanciaAsteroide = 0.035; // por fuera del radio del planeta que bloquea
-const distanciaLuna = 0.06; // por fuera del radio de Identidades
-const radioLuna = 0.008;
-const periodoLuna = 11.0; // s
-const radioAsteroide = 0.009;
+const radioAgente = 0.006;
+const distanciaAsteroide = 0.02; // por fuera del radio del planeta que bloquea
+const distanciaLuna = 0.03; // por fuera del radio de Identidades
+const radioLuna = 0.004;
+const periodoLuna = 60.0; // s
+const radioAsteroide = 0.005;
 
 // ── Parámetros de tiempo, en segundos ──
-const periodoBase = 24.0; // T_0
-const periodoAgente = 7.0;
-const periodoAsteroide = 5.0;
+const periodoBase = 150.0; // T_0
+const periodoAgente = 40.0;
+const periodoAsteroide = 30.0;
 const duracionEstrella = 2.4; // τ
 const cicloEstrellas = 7.0; // cada estrella se repite en bucle; el contrato aún no trae instantes
 const desfaseEstrellas = 2.3;
@@ -62,7 +62,27 @@ int densidadPolvo(Aprendizaje a, DateTime ahora) {
 const _fondo = Color(0xFF05060B);
 const _colorNucleo = Color(0xFFFFE6A8);
 const _colorAgente = Color(0xFF9FD8FF);
-const _colorPlaneta = Color(0xFF8C9EFF);
+/// Cada planeta toma un color de esta paleta según su id, siempre el mismo.
+const _coloresPlaneta = [
+  Color(0xFF8C9EFF), // azul lavanda
+  Color(0xFF5FC9C1), // turquesa
+  Color(0xFFE7B66B), // ámbar
+  Color(0xFFD98AA8), // rosa polvo
+  Color(0xFF9FC48F), // salvia
+  Color(0xFFB59CF0), // violeta
+];
+
+Color colorDePlaneta(String id) {
+  var h = 0;
+  for (final u in id.codeUnits) {
+    h = (h * 31 + u) & 0x7fffffff;
+  }
+  return _coloresPlaneta[h % _coloresPlaneta.length];
+}
+
+// Fondo de estrellas lejanas: casi no se mueven al desplazar ni al acercar (paralaje).
+const estrellasFondo = 260;
+const paralajeFondo = 0.04; // fracción del zoom y del desplazamiento que les llega
 const _colorAsteroide = Color(0xFF9E8F80);
 const _colorLuna = Color(0xFFD8DCE8);
 const _colorPersonaje = Color(0xFFFFD1A8);
@@ -171,6 +191,15 @@ class PintorGalaxia extends CustomPainter {
   // Posición fija de cada grano de polvo a lo largo de su brazo, con una semilla constante.
   final List<(int, double, double)> _granos;
 
+  // Cada estrella de fondo: posición en [0, 1]², tamaño y brillo, con una semilla constante.
+  static final List<(double, double, double, double)> _fondoEstrellas = () {
+    final azar = math.Random(11);
+    return [
+      for (var i = 0; i < estrellasFondo; i++)
+        (azar.nextDouble(), azar.nextDouble(), 0.3 + azar.nextDouble() * 0.9, 0.08 + azar.nextDouble() * 0.35),
+    ];
+  }();
+
   static List<(int, double, double)> _sembrarPolvo(int cantidad) {
     final azar = math.Random(7);
     return [
@@ -184,6 +213,7 @@ class PintorGalaxia extends CustomPainter {
     final g = Geometria(estado, size, t);
     final v = _Vista(camara.value, g.centro, size);
     canvas.drawRect(Offset.zero & size, Paint()..color = _fondo);
+    _estrellasDeFondo(canvas, v, size);
     _polvo(canvas, g, v, t);
     _orbitas(canvas, g, v);
     for (final c in estado.cuerpos) {
@@ -192,6 +222,21 @@ class PintorGalaxia extends CustomPainter {
     }
     _personajes(canvas, g, v, t);
     _estrellas(canvas, g, v, t);
+  }
+
+  /// Estrellas muy lejanas: s = c + (u − c)(1 + p(z − 1)) + p d, con p = paralajeFondo y u su lugar en la pantalla.
+  void _estrellasDeFondo(Canvas canvas, _Vista v, Size size) {
+    final pintura = Paint();
+    final escala = 1 + paralajeFondo * (v.camara.zoom - 1);
+    final corrimiento = v.camara.desplazamiento * paralajeFondo;
+    for (final (x, y, radio, brillo) in _fondoEstrellas) {
+      final u = Offset(x * size.width, y * size.height);
+      var p = v.centro + (u - v.centro) * escala + corrimiento;
+      // Las que salen por un borde vuelven por el otro, para que el cielo nunca se vacíe.
+      p = Offset(p.dx % size.width, p.dy % size.height);
+      pintura.color = _colorEstrella.withValues(alpha: brillo);
+      canvas.drawCircle(p, radio, pintura);
+    }
   }
 
   /// r_k(θ) = a e^{bθ}, con θ ↦ θ + 2πk/N + ωt.
@@ -241,7 +286,24 @@ class PintorGalaxia extends CustomPainter {
       case TipoCuerpo.agente:
         canvas.drawCircle(p, r, Paint()..color = _colorAgente);
       case TipoCuerpo.planeta:
-        canvas.drawCircle(p, r, Paint()..color = _colorPlaneta);
+        final color = colorDePlaneta(c.id);
+        canvas.drawCircle(
+          p,
+          r * 2.6,
+          Paint()
+            ..shader = RadialGradient(colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)])
+                .createShader(Rect.fromCircle(center: p, radius: r * 2.6)),
+        );
+        canvas.drawCircle(
+          p,
+          r,
+          Paint()
+            ..shader = RadialGradient(
+              center: const Alignment(-0.35, -0.35),
+              colors: [Color.lerp(color, const Color(0xFFFFFFFF), 0.25)!, color, Color.lerp(color, _fondo, 0.45)!],
+              stops: const [0, 0.55, 1],
+            ).createShader(Rect.fromCircle(center: p, radius: r)),
+        );
       case TipoCuerpo.luna:
         // Tenue de lejos; se ve del todo al acercarse.
         final alfa = 0.35 + 0.65 * opacidadPorTamano(r);
@@ -299,8 +361,18 @@ class PintorGalaxia extends CustomPainter {
       final angulo = 2 * math.pi * c.orbita!.fase;
       final p = centroPlaneta + Offset(math.cos(angulo), math.sin(angulo)) * radioPlaneta * 0.55;
       if (!v.seVe(p, 40)) continue;
-      final radio = math.max(2.5, radioPlaneta * 0.05);
-      canvas.drawCircle(p, radio, Paint()..color = _colorPersonaje.withValues(alpha: alfa));
+      // Una figura sencilla: cabeza y hombros, para que se lea como alguien y no como un punto.
+      final cabeza = math.max(2.0, radioPlaneta * 0.045);
+      final pintura = Paint()..color = _colorPersonaje.withValues(alpha: alfa);
+      canvas.drawCircle(p - Offset(0, cabeza * 1.1), cabeza, pintura);
+      canvas.drawArc(
+        Rect.fromCenter(center: p + Offset(0, cabeza * 1.4), width: cabeza * 3.2, height: cabeza * 3.2),
+        math.pi,
+        math.pi,
+        true,
+        pintura,
+      );
+      final radio = cabeza * 1.6;
       if (radioPlaneta >= radioPlanetaConPersonajes * 2) {
         final texto = TextPainter(
           text: TextSpan(

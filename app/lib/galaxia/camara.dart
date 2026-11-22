@@ -4,14 +4,14 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 /// Zoom máximo. Con 1 se ve la galaxia entera.
-const zoomMaximo = 40.0;
+const zoomMaximo = 200.0;
 
 /// Radio en pantalla, en píxeles, desde el que algo empieza a verse y desde el que se ve del todo.
 const radioVisibleMin = 1.5; // r_min
 const radioVisibleTotal = 6.0; // r_full
 
 /// Un planeta muestra a sus personajes cuando mide al menos esto en pantalla, en píxeles.
-const radioPlanetaConPersonajes = 40.0;
+const radioPlanetaConPersonajes = 24.0;
 
 /// Al acercar, la cámara sigue al cuerpo que esté a menos de esto del foco, en píxeles. Es más que el toque del
 /// núcleo porque el foco queda entre los dos dedos y el cuerpo se mueve.
@@ -22,6 +22,9 @@ const radioMinimoDibujo = 0.3;
 
 /// Cuánto puede alejarse el centro de la galaxia del centro de la pantalla, en mitades del lado corto.
 const desplazamientoMaximo = 1.2;
+
+/// z_v: por debajo de este acercamiento extra (z − 1), el límite del desplazamiento se achica hacia el centro.
+const zoomVuelta = 1.0;
 
 @immutable
 class Camara {
@@ -74,10 +77,13 @@ class Camara {
   Camara mover(Offset delta, Size tamano) =>
       Camara(zoom: zoom, desplazamiento: desplazamiento + delta).limitada(tamano);
 
-  /// En z = 1 la galaxia vuelve al centro; si no, su centro no se aleja más de lo permitido.
+  /// El centro de la galaxia no se aleja más de lo permitido, y ese límite se achica al alejar, para que la galaxia
+  /// vuelva al centro de a poco: |d| ≤ k · (mitad del lado corto) · z · min(1, (z − 1) / z_v). En z = 1, d = 0.
+  /// Mantiene el cuerpo seguido: soltarlo es decisión del gesto, no del límite.
   Camara limitada(Size tamano) {
-    if (zoom <= 1) return inicial;
-    final limite = desplazamientoMaximo * math.min(tamano.width, tamano.height) / 2 * zoom;
+    if (zoom <= 1) return Camara(sigue: sigue, ancla: ancla);
+    final acercamiento = math.min(1.0, (zoom - 1) / zoomVuelta);
+    final limite = desplazamientoMaximo * math.min(tamano.width, tamano.height) / 2 * zoom * acercamiento;
     final d = desplazamiento.distance;
     return d <= limite
         ? this

@@ -179,7 +179,17 @@ $$
 
 - Las posiciones y los radios de los cuerpos se multiplican por $z$; el polvo, las líneas de las órbitas y las
   estrellas fugaces mantienen su tamaño en píxeles, así que el polvo se ve más disperso de cerca.
-- En $z = 1$ la galaxia vuelve al centro ($\mathbf{d} = 0$), y $|\mathbf{d}|$ no pasa de un límite para no perderla.
+- $|\mathbf{d}|$ no pasa de un límite que se achica al alejar, para que la galaxia vuelva al centro de a poco y no
+  de golpe al final. Con $h$ la mitad del lado corto de la pantalla:
+
+$$
+|\mathbf{d}| \le k\,h\,z\,\min\!\left(1,\ \frac{z - 1}{z_v}\right)
+$$
+
+  y en $z = 1$, $\mathbf{d} = 0$.
+- **Estrellas de fondo:** están tan lejos que casi no se mueven. Con $p$ pequeño y $\mathbf{u}$ su lugar en la
+  pantalla, se dibujan en $\mathbf{s} = \mathbf{c} + (1 + p(z-1))(\mathbf{u} - \mathbf{c}) + p\,\mathbf{d}$, lo que
+  da la sensación de profundidad.
 - **Seguir un cuerpo:** al acercar con dos dedos (o con la rueda), la cámara se queda con el cuerpo más cercano al
   foco, si está a menos de $\max(zR, 48\,\text{px})$. Mientras la galaxia gira, ese cuerpo se mantiene en el punto
   $\mathbf{a}$ de la pantalla donde se acercó, con $\mathbf{d} = \mathbf{a} - \mathbf{c} - z\left(\mathbf{w}(t) -
