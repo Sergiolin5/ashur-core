@@ -40,7 +40,7 @@ k^{*} = \min\{\, k \in \{1, 2, 3\} : D_k \,\}
 $$
 
 El core ya tiene el chat y la cola de trabajos para los nodos de casa (`docs/adr/0016-chat-y-nodos.md`); el
-programa de los nodos y el modelo en el dispositivo todavía no están.
+programa de los nodos está en `nodo/` (`docs/adr/0017-programa-del-nodo.md`); el modelo en el dispositivo todavía no.
 
 ## Filosofía anti e-waste
 Ashur aprovecha el hardware que Sergio ya tiene en lugar de pedirle hardware nuevo. Un equipo viejo sigue siendo

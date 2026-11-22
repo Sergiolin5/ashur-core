@@ -8,6 +8,7 @@ Este monorepo contiene su core, su app y sus módulos.
 | `core/` | Servidor REST: memoria, chat, inventario de objetos físicos e identidades. |
 | `app/` | Cliente Flutter para iOS, macOS, Windows y Android. |
 | `modules/` | Módulos independientes que se integran al core. |
+| `nodo/` | Programa de los nodos de casa: presta el modelo de cada equipo a Ashur. |
 | `contracts/` | Contratos de datos entre el core y la app. |
 | `docs/` | Documentación y decisiones de arquitectura. |
 
