@@ -29,7 +29,8 @@ esqueleto, y dejó abierta la puerta a módulos como servicios aparte más adela
   | `POST /pedidos/{id}/aprobar` | administrador | Corre la acción. Toma el pedido de forma atómica, así que nunca corre dos veces. |
   | `POST /pedidos/{id}/rechazar` | administrador | Lo descarta. |
 
-  Si la acción lanza una excepción, el core responde 502 con su mensaje, y un pedido aprobado queda como `fallido`.
+  Un pedido pasa por `pendiente`, `corriendo` y `hecho`, o termina `rechazado` o `fallido`. Si la acción lanza una
+  excepción, el core responde 502 con su mensaje, y el pedido queda `fallido`.
 - **Base:** esquema 6, con la tabla `pedidos`.
 - **Galaxia:** cada módulo registrado es un planeta con `ref: {"tipo": "modulo"}`, id `modulo-<id>` y fase fija; su
   masa es 1 más la cantidad de recuerdos con su origen.
@@ -43,6 +44,8 @@ esqueleto, y dejó abierta la puerta a módulos como servicios aparte más adela
 - **Paquetes:** un módulo que necesita un paquete tiene que cambiar `core/pyproject.toml`, lo que pide la aprobación de
   Sergio y, por `CLAUDE.md`, es una tarea aparte del módulo.
 - **Sin límite de tiempo:** una acción que se cuelga ocupa un hilo del servidor.
+- **Pedidos colgados:** si el core se cae mientras corre un pedido aprobado, ese pedido queda en `corriendo` para
+  siempre.
 - **Un solo lenguaje:** los módulos en otros lenguajes tendrían que llegar como servicios aparte (pendiente).
 
 ## Pendiente

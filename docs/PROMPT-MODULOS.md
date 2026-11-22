@@ -67,6 +67,8 @@ esencial:
   objetos=None, opinion=None), que guarda un recuerdo con origen igual al id del módulo. El módulo no importa nada del
   core ni de otro módulo, y no abre la base.
 - Una acción que escribe no corre al pedirla: queda como pedido pendiente hasta que un administrador lo aprueba.
+- Un módulo no puede consultar la lista de identidades. Usa identidad_id: null en los recuerdos que guarda: un id que
+  no existe hace fallar la acción.
 - Python 3.13, sin paquetes que no estén en core/pyproject.toml (fastapi, uvicorn, pydantic).
 </contexto>
 
@@ -122,7 +124,8 @@ Tabla: id, qué hace, si escribe, qué necesita para ejecutarse, qué recuerdos 
 Uno o dos ejemplos inventados que cumplen contracts/recuerdo.schema.json, con su origen igual al id del módulo.
 
 ## En la galaxia
-Qué bloqueos publicaría como asteroide y qué eventos como estrella fugaz.
+Qué bloqueos publicaría como asteroide y qué eventos como estrella fugaz. Solo descríbelo: todavía no hay cómo
+publicarlos (ADR 0013, Pendiente).
 
 ## Archivos propuestos
 Cada archivo con su ruta relativa a la raíz del repo, todos dentro de modules/<id>/, y su contenido completo:

@@ -11,6 +11,7 @@ import importlib.util
 import json
 import os
 import sqlite3
+import sys
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -87,11 +88,14 @@ def cargar_uno(carpeta: Path) -> ModuloCargado:
     archivo = carpeta / "modulo.py"
     if not archivo.exists():
         raise ValueError("Falta modulo.py.")
-    especificacion = importlib.util.spec_from_file_location(f"ashur_modulos.{manifiesto.id}", archivo)
+    nombre = f"ashur_modulos.{manifiesto.id}"  # un nombre propio por módulo, para que no se pisen
+    especificacion = importlib.util.spec_from_file_location(nombre, archivo)
     codigo = importlib.util.module_from_spec(especificacion)
+    sys.modules[nombre] = codigo  # dataclasses y anotaciones diferidas buscan el módulo aquí
     try:
         especificacion.loader.exec_module(codigo)
     except Exception as e:  # el error del módulo, no del core
+        del sys.modules[nombre]
         raise ValueError(f"modulo.py falló al cargar: {type(e).__name__}: {e}") from None
     funciones = {}
     for accion in manifiesto.acciones:
@@ -172,7 +176,7 @@ class Pedido(BaseModel):
     modulo: str
     accion: str
     parametros: dict
-    estado: str  # pendiente, hecho, rechazado o fallido
+    estado: str  # pendiente, corriendo, hecho, rechazado o fallido
     creado: str
     resultado: dict | None
     error: str | None

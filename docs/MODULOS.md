@@ -37,8 +37,9 @@ Ver `docs/adr/0013-modulos-en-el-core.md`.
 - Cada módulo registrado es un **planeta** con `ref: {"tipo": "modulo", "id": <id del módulo>}` y `nombre` igual al
   del manifiesto. El `id` del planeta es propio de la galaxia (`docs/adr/0008-cuerpos-reales-de-la-galaxia.md`).
 - La **masa** la calcula el core según la importancia que aprendió; el módulo no la declara.
-- Si el módulo está bloqueado (le falta un permiso, no responde, espera una respuesta), el core publica un
-  **asteroide** que orbita su planeta.
-- Lo que el módulo entrega al core aparece como una **estrella fugaz** con destino a su planeta.
+- La masa es 1 más la cantidad de recuerdos con su `origen`.
+- **Pendiente** (`docs/adr/0013-modulos-en-el-core.md`): si el módulo está bloqueado (le falta un permiso, no
+  responde, espera una respuesta), el core publicará un **asteroide** que orbita su planeta, y lo que entrega
+  aparecerá como una **estrella fugaz** con destino a su planeta.
 
 Formato exacto: `contracts/galaxy-state.schema.json`.

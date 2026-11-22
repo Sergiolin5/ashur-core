@@ -97,3 +97,14 @@ def test_un_manifiesto_con_id_distinto_a_la_carpeta_no_se_registra(tmp_path):
     )
     registro = modulos.descubrir(tmp_path)
     assert "uno" in registro.errores and "nombre de la carpeta" in registro.errores["uno"]
+
+
+def test_carga_un_modulo_con_dataclass_y_anotaciones_diferidas(tmp_path):
+    escribir_modulo(
+        tmp_path, "dc", [{"id": "a", "descripcion": "x", "escribe": False}],
+        "from __future__ import annotations\nfrom dataclasses import dataclass\n\n@dataclass\nclass P:\n    x: int\n\n"
+        "def a(contexto):\n    return {'x': P(1).x}\n",
+    )
+    registro = modulos.descubrir(tmp_path)
+    assert registro.errores == {}
+    assert modulos.ejecutar(registro.modulos["dc"], "a", {}, modulos.Contexto("dc", lambda r: r)) == {"x": 1}
