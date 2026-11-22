@@ -17,7 +17,7 @@ enum FalloCore {
   /// El core respondió 404: el recurso no existe.
   noExiste,
 
-  /// El core respondió 409: la identidad está archivada.
+  /// El core respondió 409: la identidad está archivada, o Ashur todavía está respondiendo en el chat.
   conflicto,
 
   /// El core respondió 422: los datos son inválidos.
@@ -218,6 +218,25 @@ class ClienteCore {
     ) as Map<String, dynamic>;
   }
 
+  // Chat (docs/adr/0016-chat-y-nodos.md, docs/adr/0023-chat-en-la-app.md). Las conversaciones y los mensajes van
+  // como JSON crudo, igual que contracts/conversacion.schema.json.
+
+  Future<List<Map<String, dynamic>>> listarConversaciones() async =>
+      ((await _enviar('GET', '/conversaciones')) as List).cast<Map<String, dynamic>>();
+
+  Future<Map<String, dynamic>> crearConversacion() async =>
+      await _enviar('POST', '/conversaciones') as Map<String, dynamic>;
+
+  /// La conversación completa: {conversacion, mensajes, espera}.
+  Future<Map<String, dynamic>> verConversacion(String id) => _pedir('/conversaciones/${Uri.encodeComponent(id)}');
+
+  /// Guarda el mensaje y deja la respuesta en la cola (202). Con un trabajo abierto, el core responde 409.
+  Future<Map<String, dynamic>> enviarMensaje(String id, String texto) async => await _enviar(
+        'POST',
+        '/conversaciones/${Uri.encodeComponent(id)}/mensajes',
+        cuerpo: {'texto': texto},
+      ) as Map<String, dynamic>;
+
   Future<Map<String, dynamic>> _pedir(String ruta) async {
     final respuesta = await _enviar('GET', ruta);
     return respuesta as Map<String, dynamic>;
@@ -255,6 +274,7 @@ class ClienteCore {
       switch (respuesta.statusCode) {
         case 200:
         case 201:
+        case 202:
           if (texto.isEmpty) return null;
           return jsonDecode(texto);
         case 401:

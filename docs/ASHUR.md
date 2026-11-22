@@ -17,7 +17,7 @@ siguiendo el contrato de `docs/MODULOS.md`. El core vive en `core/` como servido
 Flutter de `app/` (ver `docs/adr/0001-cliente-flutter.md`).
 
 ## La app
-- **Inicio:** la galaxia, descrita en `docs/GALAXIA.md`. Tocar el núcleo abre el chat. Tocar el planeta Objetos o pulsar el botón ☰ translúcido en la esquina superior izquierda abre el inventario (`docs/adr/0015-inventario-en-la-app.md`).
+- **Inicio:** la galaxia, descrita en `docs/GALAXIA.md`. Tocar el núcleo abre el chat (`docs/adr/0023-chat-en-la-app.md`). Tocar el planeta Objetos o pulsar el botón ☰ translúcido en la esquina superior izquierda abre el inventario (`docs/adr/0015-inventario-en-la-app.md`).
 - **Pestañas:**
   - **Estado:** cómo están Ashur, sus agentes y sus módulos; incluye «Configuración avanzada» para consultar y cambiar
     los ajustes de cada nodo y módulo (`docs/adr/0020-configuracion-avanzada-en-la-app.md`).

@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/cupertino.dart' show DefaultCupertinoLocalizations;
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'chat/pantalla_chats.dart';
 import 'conexion/almacen.dart';
 import 'conexion/cache_archivo.dart';
 import 'conexion/fuente.dart';
@@ -79,7 +80,7 @@ class Inicio extends StatelessWidget {
                       return VistaGalaxia(
                         estado: galaxia,
                         alTocarNucleo: (punto, tamano) => Navigator.of(context)
-                            .push(rutaZoom(const PantallaVacia(titulo: 'Chats'), punto, tamano)),
+                            .push(rutaZoom(PantallaChats(fuente: fuente), punto, tamano)),
                         alTocarCuerpo: (cuerpo, punto, tamano) {
                           if (cuerpo == 'objetos') {
                             Navigator.of(context).push(

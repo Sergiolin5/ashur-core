@@ -94,5 +94,5 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Fase 6:** la personalidad, la madurez y las correcciones (ADR 0024).
 
 ## Pendiente
-- **App:** la pantalla de chat (ADR 0023, reservado) y el modelo dentro del iPhone y del iPad, desde la Mac.
+- **App:** la pantalla de chat está hecha (ADR 0023); falta el modelo dentro del iPhone y del iPad, desde la Mac.
 - **Galaxia:** los nodos todavía no son cuerpos.
