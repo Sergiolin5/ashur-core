@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "modulo.schema.json",
+  "title": "Manifiesto de un módulo de Ashur",
+  "description": "El archivo modulo.json de modules/<id>/. Ver docs/MODULOS.md y docs/adr/0013-modulos-en-el-core.md.",
+  "type": "object",
+  "required": ["id", "nombre", "version", "descripcion", "acciones"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Igual al nombre de la carpeta: minúsculas, números y guion bajo, empezando por una letra.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "nombre": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "descripcion": { "type": "string", "minLength": 1 },
+    "acciones": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/accion" }
+    }
+  },
+  "$defs": {
+    "accion": {
+      "type": "object",
+      "required": ["id", "descripcion", "escribe"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Nombre de la función en modulo.py que la ejecuta.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "descripcion": { "type": "string", "minLength": 1 },
+        "escribe": {
+          "description": "true si cambia algo fuera de Ashur: entonces espera la aprobación de un administrador.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
