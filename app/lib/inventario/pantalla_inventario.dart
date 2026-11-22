@@ -111,15 +111,17 @@ class _PantallaInventarioState extends State<PantallaInventario> {
   }
 
   String _mensajeError(ErrorCore e) => switch (e.fallo) {
-        FalloCore.inalcanzable =>
-          'No se pudo llegar al core. Revisa la dirección y que Tailscale esté encendido. ${e.detalle}',
-        FalloCore.claveInvalida =>
-          'El core rechazó la clave. Revisa que sea correcta en la pestaña Estado.',
-        FalloCore.noExiste => 'El objeto no existe.',
-        FalloCore.datosInvalidos => 'Datos inválidos. Revisa el nombre y el lugar.',
-        FalloCore.coreSinClave => 'El core no tiene configurada esa clave.',
-        FalloCore.otro => 'El core respondió algo inesperado. ${e.detalle}',
-      };
+    FalloCore.inalcanzable =>
+      'No se pudo llegar al core. Revisa la dirección y que Tailscale esté encendido. ${e.detalle}',
+    FalloCore.claveInvalida =>
+      'El core rechazó la clave. Revisa que sea correcta en la pestaña Estado.',
+    FalloCore.noExiste => 'El objeto no existe.',
+    FalloCore.conflicto =>
+      e.detalle.isEmpty ? 'El core rechazó el cambio.' : e.detalle,
+    FalloCore.datosInvalidos => 'Datos inválidos. Revisa el nombre y el lugar.',
+    FalloCore.coreSinClave => 'El core no tiene configurada esa clave.',
+    FalloCore.otro => 'El core respondió algo inesperado. ${e.detalle}',
+  };
 
   Future<void> _crearObjeto() async {
     final nombre = _nombreController.text.trim();
@@ -226,7 +228,11 @@ class _PantallaInventarioState extends State<PantallaInventario> {
         children: [
           Text(
             objeto.nombre,
-            style: const TextStyle(color: colorTexto, fontSize: 16, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: colorTexto,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -235,7 +241,10 @@ class _PantallaInventarioState extends State<PantallaInventario> {
           ),
           if (objeto.archivado) ...[
             const SizedBox(height: 2),
-            const Text('(Archivado)', style: TextStyle(color: Color(0x80E8E8F0), fontSize: 12)),
+            const Text(
+              '(Archivado)',
+              style: TextStyle(color: Color(0x80E8E8F0), fontSize: 12),
+            ),
           ],
           if (_tieneAdmin) ...[
             const SizedBox(height: 8),
@@ -258,7 +267,9 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                   ),
                   CupertinoButton.filled(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    onPressed: _guardando ? null : () => _guardarRenombrar(objeto),
+                    onPressed: _guardando
+                        ? null
+                        : () => _guardarRenombrar(objeto),
                     child: const Text('Guardar'),
                   ),
                 ],
@@ -315,7 +326,9 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                   const Spacer(),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
-                    onPressed: _guardando ? null : () => _cambiarArchivado(objeto, !objeto.archivado),
+                    onPressed: _guardando
+                        ? null
+                        : () => _cambiarArchivado(objeto, !objeto.archivado),
                     child: Text(objeto.archivado ? 'Restaurar' : 'Archivar'),
                   ),
                 ],
@@ -347,24 +360,37 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                       child: Text('‹', style: TextStyle(fontSize: 28)),
                     ),
                   ),
-                  const Text('Inventario', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Inventario',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                  ),
                 ],
               ),
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 children: [
                   if (_error != null) ...[
-                    Text(_error!, style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 14)),
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: Color(0xFFFF8A8A),
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                   ],
                   if (_sinConfigurar) ...[
                     Text(
-                        widget.fuente.estado == EstadoConexion.bloqueada
-                            ? 'Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'
-                            : 'Todavía no hay un core configurado.',
-                        style: TextStyle(color: Color(0x80E8E8F0), fontSize: 14)),
+                      widget.fuente.estado == EstadoConexion.bloqueada
+                          ? 'Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'
+                          : 'Todavía no hay un core configurado.',
+                      style: const TextStyle(color: Color(0x80E8E8F0), fontSize: 14),
+                    ),
                     const SizedBox(height: 12),
                   ],
                   if (!_tieneAdmin && !_sinConfigurar) ...[
@@ -376,7 +402,10 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                   ],
                   Row(
                     children: [
-                      const Text('Ver archivados', style: TextStyle(color: colorTexto, fontSize: 15)),
+                      const Text(
+                        'Ver archivados',
+                        style: TextStyle(color: colorTexto, fontSize: 15),
+                      ),
                       const Spacer(),
                       CupertinoSwitch(
                         value: _verArchivados,
@@ -388,7 +417,10 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Text('Nuevo objeto', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Nuevo objeto',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   CupertinoTextField(
                     controller: _nombreController,
@@ -411,12 +443,23 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                     child: const Text('Crear objeto'),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Objetos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Objetos',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 12),
                   if (_cargando)
-                    const Center(child: Padding(padding: EdgeInsets.all(16), child: Text('Cargando…')))
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('Cargando…'),
+                      ),
+                    )
                   else if (_objetos.isEmpty)
-                    const Text('No hay objetos.', style: TextStyle(color: Color(0x80E8E8F0)))
+                    const Text(
+                      'No hay objetos.',
+                      style: TextStyle(color: Color(0x80E8E8F0)),
+                    )
                   else
                     for (final objeto in _objetos) ...[
                       _tarjetaObjeto(objeto),
