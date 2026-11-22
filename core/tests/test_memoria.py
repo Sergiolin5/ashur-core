@@ -190,7 +190,7 @@ def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
     con.execute("DROP TABLE meta")
     for objeto in (
         "TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda",
-        "TABLE identidades", "TABLE pedidos",
+        "TABLE identidades", "TABLE pedidos", "TABLE mensajes",
     ):
         con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 2")
@@ -229,7 +229,7 @@ def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
     memoria.crear(con, memoria.RecuerdoNuevo.model_validate(nuevo_ejemplo()))
     for objeto in (
         "TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda",
-        "TABLE identidades", "TABLE pedidos",
+        "TABLE identidades", "TABLE pedidos", "TABLE mensajes",
     ):
         con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 3")

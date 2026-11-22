@@ -7,7 +7,7 @@ from fastapi.security import APIKeyHeader
 
 from functools import lru_cache
 
-from ashur_core import galaxia, identidades, memoria, modulos
+from ashur_core import chat, galaxia, identidades, memoria, modulos
 
 app = FastAPI(title="Ashur Core")
 
@@ -216,3 +216,25 @@ def rechazar_pedido(id_: int, con=Depends(conexion)) -> modulos.Pedido:
     if not modulos.tomar_pendiente(con, id_, "rechazado"):
         raise HTTPException(status_code=409, detail="Ese pedido ya no está pendiente.")
     return modulos.obtener_pedido(con, id_)
+
+
+# ── Chat (docs/adr/0014-chat.md) ──
+
+
+@app.get("/chat", response_model=list[chat.Mensaje], dependencies=[Depends(exigir_clave)])
+def ver_chat(con=Depends(conexion)) -> list[chat.Mensaje]:
+    return chat.historial(con)
+
+
+@app.post("/chat", response_model=list[chat.Mensaje], dependencies=[Depends(exigir_clave)])
+def hablar(nuevo: chat.MensajeNuevo, con=Depends(conexion)) -> list[chat.Mensaje]:
+    """Guarda el mensaje de Sergio y la respuesta de Ashur. Sin modelo, el mensaje se guarda igual y responde 503."""
+    proveedor = chat.proveedor_configurado()
+    mio = chat.guardar(con, "sergio", nuevo.texto)
+    if proveedor is None:
+        raise HTTPException(status_code=503, detail="No hay un modelo configurado (ASHUR_OLLAMA_URL y ASHUR_OLLAMA_MODELO).")
+    try:
+        texto = proveedor.responder(chat.para_el_modelo(chat.historial(con)))
+    except chat.SinModelo as e:
+        raise HTTPException(status_code=503, detail=str(e)) from None
+    return [mio, chat.guardar(con, "ashur", texto)]

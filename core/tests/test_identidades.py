@@ -104,6 +104,7 @@ def test_una_base_de_la_version_4_recibe_la_tabla_de_identidades(tmp_path):
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE identidades")
     con.execute("DROP TABLE pedidos")
+    con.execute("DROP TABLE mensajes")
     con.execute("PRAGMA user_version = 4")
     con.commit()
     con.close()
