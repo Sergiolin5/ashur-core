@@ -49,8 +49,8 @@ se ven de cerca (`docs/adr/0008-cuerpos-reales-de-la-galaxia.md`).
   pliegue no cambia nada, así que el iPad y la Mac no se ven afectados.
 - **Revisado para el Duo:** `ios/Runner/Info.plist` declara pantalla de inicio y las cuatro orientaciones en iPad, no
   usa `UIRequiresFullScreen`, y la app ya usa escenas (`SceneDelegate.swift`).
-- **Sin verificar:** que iOS le pase el pliegue del Duo a Flutter. No hay simulador del Duo en la Mac; se prueba en el
-  teléfono de Sergio.
+- **Probado en el teléfono de Sergio (2026-11-21): no se corre.** Lo más probable es que iOS no le informe el pliegue
+  a Flutter, así que `displayFeatures` llega vacío. Sergio lo dejó así por ahora (decisión 17).
 
 ## Pendiente
 - **Trackpad y rueda en macOS:** sin probar en la Mac.
