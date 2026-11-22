@@ -114,3 +114,29 @@ def test_una_base_de_la_version_4_recibe_la_tabla_de_identidades(tmp_path):
     assert identidades.listar(con) == []
     con.close()
     assert sqlite3.connect(ruta).execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
+
+
+def test_un_enlace_viejo_a_una_identidad_no_lo_hereda_una_identidad_nueva(tmp_path):
+    ruta = str(tmp_path / "ashur.db")
+    con = memoria.abrir(ruta)
+    identidades.crear(con, identidades.IdentidadNueva(nombre="Ana", clase="persona"))
+    # Antes de la versión 5 se aceptaba cualquier identidad_id, así que una base de la 7 puede traer ide-9.
+    memoria.crear(con, memoria.RecuerdoNuevo.model_validate(recuerdo_con("ide-9", "ide-1", None)))
+    con.execute("PRAGMA user_version = 7")
+    con.commit()
+    con.close()
+    con = memoria.abrir(ruta)
+    nueva = identidades.crear(con, identidades.IdentidadNueva(nombre="Nube", clase="mascota"))
+    assert (nueva.id, nueva.menciones) == ("ide-10", 0)
+    assert identidades.obtener(con, "ide-1").menciones == 1  # la que ya existía conserva su enlace
+    con.close()
+
+
+def test_reservar_no_retrocede_la_numeracion(tmp_path):
+    con = memoria.abrir(str(tmp_path / "ashur.db"))
+    for nombre in ("Ana", "Bruno", "Carla"):
+        identidades.crear(con, identidades.IdentidadNueva(nombre=nombre, clase="persona"))
+    memoria.crear(con, memoria.RecuerdoNuevo.model_validate(recuerdo_con("ide-2")))
+    identidades.reservar_ids_enlazados(con)
+    assert identidades.crear(con, identidades.IdentidadNueva(nombre="Dani", clase="persona")).id == "ide-4"
+    con.close()

@@ -41,7 +41,7 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 ### Almacenamiento
 - **Base de datos:** una tabla `recuerdos` en SQLite. `identidades` y `objetos` se guardan como JSON en sus columnas.
 - **Versión del esquema:** se lleva con `PRAGMA user_version` (la versión actual es `VERSION_ESQUEMA` en
-  `core/ashur_core/memoria.py`; las versiones 5 a 7 están en los ADR 0012, 0013 y 0014). Una base vacía se crea en la
+  `core/ashur_core/memoria.py`; las versiones 5 a 8 están en los ADR 0012, 0013 y 0014). Una base vacía se crea en la
   versión actual.
   Una de la versión 1 (con `personas` y `contacto_id`) se migra sola a `identidades` e `identidad_id`, y la versión 3
   agrega la tabla `meta` con la fecha en que Ashur empezó a aprender. La versión 4 agrega el índice de búsqueda. La

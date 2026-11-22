@@ -57,6 +57,23 @@ def crear_tabla(conexion: sqlite3.Connection) -> None:
     )
 
 
+def reservar_ids_enlazados(conexion: sqlite3.Connection) -> None:
+    """Antes de la versión 5 se aceptaba cualquier identidad_id. Para que un recuerdo viejo con "ide-9" no quede
+    enlazado a una identidad nueva que no tiene que ver, la numeración sigue después del mayor ide-N ya usado.
+    Nunca la hace retroceder."""
+    mayor = conexion.execute(
+        "SELECT MAX(CAST(substr(json_extract(j.value, '$.identidad_id'), 5) AS INTEGER))"
+        " FROM recuerdos r, json_each(r.identidades) j WHERE json_extract(j.value, '$.identidad_id') GLOB 'ide-[0-9]*'"
+    ).fetchone()[0]
+    if not mayor:
+        return
+    actual = conexion.execute("SELECT seq FROM sqlite_sequence WHERE name = 'identidades'").fetchone()
+    if actual is None:
+        conexion.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('identidades', ?)", (mayor,))
+    elif actual[0] < mayor:
+        conexion.execute("UPDATE sqlite_sequence SET seq = ? WHERE name = 'identidades'", (mayor,))
+
+
 def nivel_siguiente(nivel: int, masa: int) -> int:
     """Sube al nivel j cuando m ≥ θ_j y solo baja de él cuando m < (1 − η) θ_j, para no parpadear."""
     while nivel < 3 and masa >= UMBRALES[nivel]:

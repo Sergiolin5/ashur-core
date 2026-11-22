@@ -108,7 +108,7 @@ def test_una_base_de_la_version_6_recibe_la_tabla_de_objetos(tmp_path):
     con.commit()
     con.close()
     con = memoria.abrir(ruta)
-    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA == 7
+    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
     assert inventario.listar(con) == []
     con.close()
 

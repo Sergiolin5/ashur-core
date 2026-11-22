@@ -55,6 +55,5 @@ hacerlo igual que la lista de identidades (`docs/adr/0012-identidades.md`), sin 
 ## Pendiente
 - Cómo se ven los objetos en la galaxia (decisión 12).
 - Qué más guarda un objeto y si los lugares pasan a ser una lista.
-- El mismo problema de enlaces viejos existe con `ide-N` desde la migración a la versión 5; no se arregló aquí.
 - La misma validación laxa que usan las identidades: un `lugar` de solo espacios se acepta, y las menciones se cuentan
   recorriendo todos los recuerdos.

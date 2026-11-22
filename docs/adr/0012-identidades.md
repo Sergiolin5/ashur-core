@@ -22,6 +22,11 @@ con `identidad_id`, pero la lista no existía, así que la galaxia no tenía per
   No hay `DELETE`: una identidad se archiva (decisión 8). Archivada, sale de la galaxia y de la lista, y los recuerdos
   conservan su enlace.
 - **Enlaces:** un recuerdo no puede enlazar una identidad que no existe; el core responde 422.
+- **Enlaces anteriores a la lista** (2026-11-22, esquema 8): antes de la versión 5 se aceptaba cualquier
+  `identidad_id`. La migración a la versión 8 hace que la numeración siga después del mayor `ide-N` que ya usan los
+  recuerdos, para que una identidad nueva no herede un enlace viejo que hablaba de otra persona. Nunca retrocede la
+  numeración ni toca los recuerdos. Una identidad creada antes de la versión 8 que ya heredó un enlace así lo conserva:
+  solo un administrador puede corregir ese recuerdo.
 - **Masa:** la cantidad de recuerdos distintos que mencionan a la identidad. Es provisional: hoy es la única señal real
   de importancia.
 - **Nivel:** con los umbrales y el margen de `docs/GALAXIA.md` («Evolución de una identidad»), $\theta = (1, 5, 20)$ y
