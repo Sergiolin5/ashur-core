@@ -62,6 +62,8 @@ class _PantallaEstadoState extends State<PantallaEstado> {
     _claveAdmin.text = ajustes.$3 ?? '';
   }
 
+  bool get _conectado => widget.fuente.estado == EstadoConexion.conectado;
+
   /// Botón para pegar en un campo lo que hay en el portapapeles: la clave tiene 64 caracteres.
   Widget _pegarEn(TextEditingController campo) => CupertinoButton(
     padding: const EdgeInsets.only(left: 12),
@@ -199,9 +201,10 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
-                  AjustesAvanzados(fuente: widget.fuente),
+                  // La llave cambia al conectarse o desconectarse: los paneles se crean de nuevo y vuelven a cargar.
+                  AjustesAvanzados(key: ValueKey(('avanzados', _conectado)), fuente: widget.fuente),
                   const SizedBox(height: 20),
-                  LoDeAshur(fuente: widget.fuente),
+                  LoDeAshur(key: ValueKey(('lo_de_ashur', _conectado)), fuente: widget.fuente),
                 ],
               ),
             ),
