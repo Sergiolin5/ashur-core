@@ -14,10 +14,14 @@ _especificacion.loader.exec_module(modulo)
 
 
 class ContextoFalso:
-    """Imita al contexto del core: guarda los recuerdos en una lista."""
+    """Imita al contexto del core: guarda los recuerdos en una lista y da los ajustes que se le pasen."""
 
-    def __init__(self):
+    def __init__(self, ajustes=None):
         self.recuerdos = []
+        self.ajustes = {"saludo": "Hola", **(ajustes or {})}  # por_defecto de modulo.json
+
+    def ajuste(self, id_):
+        return self.ajustes.get(id_)
 
     def recordar(self, texto, **datos):
         self.recuerdos.append({"texto": texto, **datos})
@@ -28,3 +32,7 @@ def test_saludar():
     contexto = ContextoFalso()
     assert modulo.saludar(contexto, nombre="Ana") == {"saludo": "Hola, Ana."}
     assert contexto.recuerdos == [{"texto": "La plantilla saludó a Ana."}]
+
+
+def test_saludar_con_el_ajuste_de_sergio():
+    assert modulo.saludar(ContextoFalso({"saludo": "Buenas"}), nombre="Ana") == {"saludo": "Buenas, Ana."}
