@@ -171,7 +171,7 @@ def reservar(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> bool:
     vez nunca dejan dos respuestas."""
     cursor = conexion.execute(
         "UPDATE conversaciones SET trabajo_id = ? WHERE id = ? AND (trabajo_id IS NULL OR trabajo_id IN"
-        " (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido')))",
+        " (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido', 'descartado')))",
         (trabajo_id, id_),
     )
     conexion.commit()
@@ -190,7 +190,8 @@ def para_corregir(conexion: sqlite3.Connection, antes_de: str) -> list[str]:
     filas = conexion.execute(
         "SELECT c.id FROM conversaciones c WHERE c.corregida = 0 AND c.actualizada < ?"
         " AND EXISTS (SELECT 1 FROM mensajes m WHERE m.conversacion_id = c.id AND m.rol = 'assistant')"
-        " AND (c.trabajo_id IS NULL OR c.trabajo_id IN (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido')))"
+        " AND (c.trabajo_id IS NULL OR c.trabajo_id IN"
+        " (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido', 'descartado')))"
         " ORDER BY c.actualizada",
         (antes_de,),
     ).fetchall()

@@ -351,7 +351,7 @@ def entregar(conexion: sqlite3.Connection, id_nodo: str, id_: int, resultado: Re
     fila = conexion.execute(
         "SELECT estado, nodo_id, intentos, necesidad, conversacion_id, entrada, modelo FROM trabajos WHERE id = ?", (id_,)
     ).fetchone()
-    if fila is None or fila[0] != "tomado" or fila[1] != id_nodo:
+    if fila is None or fila[0] != "entregando" or fila[1] != id_nodo:  # lo reclamó antes con [reclamar]
         raise TrabajoAjeno()
     _, _, intentos, necesidad, conversacion_id, entrada, modelo = fila
     if resultado.salida is not None:
@@ -372,16 +372,48 @@ def entregar(conexion: sqlite3.Connection, id_nodo: str, id_: int, resultado: Re
     }
 
 
-def tomado_por(conexion: sqlite3.Connection, id_: int, id_nodo: str) -> dict | None:
-    """La necesidad y la entrada de un trabajo que este nodo tiene tomado, para validar su salida antes de cerrarlo."""
-    fila = conexion.execute(
-        "SELECT necesidad, entrada, conversacion_id, intentos FROM trabajos"
-        " WHERE id = ? AND estado = 'tomado' AND nodo_id = ?",
-        (id_, id_nodo),
-    ).fetchone()
-    if fila is None:
+def reclamar(conexion: sqlite3.Connection, id_: int, id_nodo: str, ahora: datetime | None = None) -> dict | None:
+    """Reclama, de forma atómica, un trabajo que este nodo tiene tomado para entregarlo: pasa a «entregando» antes de
+    que el core aplique sus efectos. Dos entregas del mismo trabajo, o una tardía mientras otro nodo lo retoma, nunca
+    aplican dos veces lo mismo. Devuelve su necesidad y su entrada, o None si no es suyo."""
+    ahora = ahora or _ahora()
+    cursor = conexion.execute(
+        "UPDATE trabajos SET estado = 'entregando', vence = ? WHERE id = ? AND estado = 'tomado' AND nodo_id = ?",
+        ((ahora + timedelta(seconds=PLAZO_S)).isoformat(), id_, id_nodo),
+    )
+    conexion.commit()
+    if cursor.rowcount != 1:
         return None
+    fila = conexion.execute(
+        "SELECT necesidad, entrada, conversacion_id, intentos FROM trabajos WHERE id = ?", (id_,)
+    ).fetchone()
     return {"necesidad": fila[0], "entrada": json.loads(fila[1]), "conversacion_id": fila[2], "intentos": fila[3]}
+
+
+def vencer(conexion: sqlite3.Connection, ahora: datetime | None = None) -> list[dict]:
+    """Un trabajo cuyo plazo venció cuenta como un intento: vuelve a la cola o, al último, falla. Sin esto, un nodo
+    que se cae o una salida que el core rechaza dejaban el trabajo dando vueltas para siempre. Devuelve los que
+    fallaron, para que el core siga con lo que corresponda."""
+    ahora = (ahora or _ahora()).isoformat()
+    filas = conexion.execute(
+        "SELECT id, intentos, necesidad, conversacion_id, entrada FROM trabajos"
+        " WHERE estado IN ('tomado', 'entregando') AND vence < ?",
+        (ahora,),
+    ).fetchall()
+    fallidos = []
+    for id_, intentos, necesidad, conversacion_id, entrada in filas:
+        estado = "pendiente" if intentos + 1 < INTENTOS else "fallido"
+        cursor = conexion.execute(
+            "UPDATE trabajos SET estado = ?, intentos = ?, error = ?, nodo_id = NULL, vence = NULL"
+            " WHERE id = ? AND estado IN ('tomado', 'entregando') AND vence < ?",
+            (estado, intentos + 1, "El nodo no respondió a tiempo.", id_, ahora),
+        )
+        conexion.commit()
+        if cursor.rowcount == 1 and estado == "fallido":
+            fallidos.append(
+                {"id": id_, "necesidad": necesidad, "conversacion_id": conversacion_id, "entrada": json.loads(entrada)}
+            )
+    return fallidos
 
 
 def hay_quien(conexion: sqlite3.Connection, necesidad: str, requiere: str | None = None) -> bool:
@@ -399,11 +431,30 @@ def pendientes(conexion: sqlite3.Connection, necesidad: str, con_conversacion: b
     ).fetchall()
 
 
-def abandonar(conexion: sqlite3.Connection, id_: int) -> bool:
-    """Saca de la cola un trabajo que nadie tomó, de forma atómica."""
-    cursor = conexion.execute("UPDATE trabajos SET estado = 'descartado' WHERE id = ? AND estado = 'pendiente'", (id_,))
+def abandonar(conexion: sqlite3.Connection, id_: int, nodo_id: str | None = None) -> bool:
+    """Saca de la cola, de forma atómica, un trabajo que nadie tomó o, con [nodo_id], uno que tomó ese nodo."""
+    if nodo_id is None:
+        cursor = conexion.execute(
+            "UPDATE trabajos SET estado = 'descartado' WHERE id = ? AND estado = 'pendiente'", (id_,)
+        )
+    else:
+        cursor = conexion.execute(
+            "UPDATE trabajos SET estado = 'descartado' WHERE id = ? AND estado = 'tomado' AND nodo_id = ?",
+            (id_, nodo_id),
+        )
     conexion.commit()
     return cursor.rowcount == 1
+
+
+def de_nodos_caidos(conexion: sqlite3.Connection, necesidad: str) -> list[tuple[int, str, str]]:
+    """Trabajos de una conversación tomados por un nodo que ya no está en línea: (id, nodo_id, conversacion_id)."""
+    en_linea = {n.id for n in listar(conexion) if n.en_linea}
+    filas = conexion.execute(
+        "SELECT id, nodo_id, conversacion_id FROM trabajos"
+        " WHERE estado = 'tomado' AND necesidad = ? AND conversacion_id IS NOT NULL",
+        (necesidad,),
+    ).fetchall()
+    return [f for f in filas if f[1] not in en_linea]
 
 
 def estado_de(conexion: sqlite3.Connection, id_: int) -> dict | None:
@@ -413,6 +464,6 @@ def estado_de(conexion: sqlite3.Connection, id_: int) -> dict | None:
     if fila is None:
         return None
     estado, creado, nodo_id, modelo, error = fila
-    if estado == "preparando":
-        estado = "pendiente"
+    # El contrato de la conversación solo conoce pendiente, tomado, hecho y fallido.
+    estado = {"preparando": "pendiente", "entregando": "tomado", "descartado": "fallido"}.get(estado, estado)
     return {"estado": estado, "desde": creado, "nodo": nodo_id, "modelo": modelo, "error": error}

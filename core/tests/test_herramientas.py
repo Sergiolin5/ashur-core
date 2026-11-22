@@ -216,11 +216,16 @@ def test_una_respuesta_vacia_sin_llamadas_se_rechaza(cliente):
     nodo = nuevo_nodo(cliente)
     cliente.post("/conversaciones")
     cliente.post("/conversaciones/con-1/mensajes", json={"texto": "Hola"})
-    trabajo = tomar(cliente, nodo)
-    assert entregar(cliente, nodo, trabajo, "  ").status_code == 422
-    assert entregar(cliente, nodo, trabajo, "", llamadas=[]).status_code == 422
     malas = {"salida": {"mensaje": {"role": "assistant", "content": "", "tool_calls": [{"function": {}}]}}}
-    assert cliente.post(f"/nodo/trabajos/{trabajo['id']}", json=malas, headers=nodo).status_code == 422
+    entregas = [
+        lambda t: entregar(cliente, nodo, t, "  "),
+        lambda t: entregar(cliente, nodo, t, "", llamadas=[]),
+        lambda t: cliente.post(f"/nodo/trabajos/{t['id']}", json=malas, headers=nodo),
+    ]
+    for entrega in entregas:  # cada una cuenta como un intento; la tercera agota los intentos
+        assert entrega(tomar(cliente, nodo)).status_code == 422
+    assert tomar(cliente, nodo) is None
+    assert cliente.get("/conversaciones/con-1").json()["espera"]["estado"] == "fallido"
 
 
 def test_entre_un_paso_y_el_siguiente_no_se_cuela_otro_mensaje(cliente):

@@ -22,8 +22,8 @@ existía (`docs/adr/0004-memoria.md`).
   2. Con ese vector, el core busca y deja en la cola el pedido al modelo.
 
   Sin ese nodo, se responde directamente con la búsqueda por palabras.
-- **Sin frenar la respuesta:** si nadie toma el primer paso en 15 s, o si falla tres veces, Ashur responde solo con lo
-  que encuentra por palabras.
+- **Sin frenar la respuesta:** si nadie toma el primer paso en 15 s, si falla tres veces o si lo tomó un nodo que se
+  cayó (revisión del 2026-11-22), Ashur responde solo con lo que encuentra por palabras.
 - **Búsqueda híbrida:**
   - **Palabras:** FTS5 con cualquiera de las palabras del mensaje que tengan tres letras o más, salvo las palabras
     vacías («las», «dónde», «para»…), que aparecen en casi cualquier recuerdo.

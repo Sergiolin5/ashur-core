@@ -7,7 +7,7 @@ from bases import quitar_desde
 from fastapi.testclient import TestClient
 
 from ashur_core import memoria, nodos, significado
-from ashur_core.app import app
+from ashur_core.app import _vectores_de, app
 
 EJEMPLO = Path(__file__).resolve().parents[2] / "contracts" / "recuerdo.ejemplo.json"
 ADMIN = {"X-Ashur-Clave-Admin": "a"}
@@ -172,9 +172,13 @@ def test_un_vector_mal_formado_se_rechaza(cliente):
     recordar(cliente, "Uno.")
     recordar(cliente, "Dos.")
     nodo = nuevo_nodo(cliente)
+    for salida in ({"vectores": [[1.0], ["x"]]}, {"mensaje": {}}):
+        assert _vectores_de(salida, 2) is None
     t = cliente.post("/nodo/trabajos/tomar", headers=nodo).json()
-    for salida in ({"vectores": [[1.0]]}, {"vectores": [[1.0], [1.0, 2.0]]}, {"vectores": [[1.0], ["x"]]}, {"mensaje": {}}):
+    for salida in ({"vectores": [[1.0]]}, {"vectores": [[1.0], [1.0, 2.0]]}):
         assert cliente.post(f"/nodo/trabajos/{t['id']}", json={"salida": salida}, headers=nodo).status_code == 422
+        # Cuenta como un intento y vuelve a la cola: antes vencía y se volvía a tomar para siempre.
+        assert cliente.post("/nodo/trabajos/tomar", headers=nodo).json()["id"] == t["id"]
     assert cliente.post(f"/nodo/trabajos/{t['id']}", json={"salida": {"vectores": [[1.0], [0.5]]}}, headers=nodo).status_code == 204
 
 

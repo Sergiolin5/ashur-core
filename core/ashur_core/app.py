@@ -318,11 +318,16 @@ def enviar_mensaje(
     if not chat.reservar(con, id_, trabajo):
         nodos.descartar(con, trabajo)
         raise HTTPException(status_code=409, detail="Ashur todavía está respondiendo el mensaje anterior.")
-    _decir(con, id_, "user", chat.ORIGEN_SERGIO, nuevo.texto)
-    if buscar_primero:
-        nodos.preparar(con, trabajo, {"input": [nuevo.texto]})
-    else:
-        nodos.preparar(con, trabajo, _pedido(con, id_, None))
+    try:
+        _decir(con, id_, "user", chat.ORIGEN_SERGIO, nuevo.texto)
+        if buscar_primero:
+            nodos.preparar(con, trabajo, {"input": [nuevo.texto]})
+        else:
+            nodos.preparar(con, trabajo, _pedido(con, id_, None))
+    except Exception:
+        # Sin esto, el trabajo quedaba en «preparando» y la conversación respondía 409 para siempre.
+        nodos.descartar(con, trabajo)
+        raise
     return _completa(con, chat.obtener(con, id_))
 
 
@@ -416,6 +421,27 @@ def _rescatar_busquedas(con) -> None:
     for id_, creado, conversacion in nodos.pendientes(con, "embedding", con_conversacion=True):
         if datetime.fromisoformat(creado) < limite and nodos.abandonar(con, id_):
             _responder(con, conversacion, None)
+    # Tampoco la frena un nodo que la tomó y se cayó: sin esto, la conversación esperaba hasta que el nodo volviera.
+    for id_, nodo_id, conversacion in nodos.de_nodos_caidos(con, "embedding"):
+        if nodos.abandonar(con, id_, nodo_id):
+            _responder(con, conversacion, None)
+
+
+def _vencer(con) -> None:
+    """Los trabajos cuyo plazo venció cuentan como un intento; los que fallan del todo siguen como al entregarlos."""
+    for fila in nodos.vencer(con):
+        _fallo_final(con, fila["id"], fila["necesidad"], fila["conversacion_id"], fila["entrada"])
+
+
+def _fallo_final(con, id_: int, necesidad: str, conversacion: str | None, entrada: dict) -> None:
+    """Lo que sigue cuando un trabajo falla del todo, al entregarlo o al vencer. Una búsqueda por significado que falla
+    no frena la respuesta, y un lote de vectores que falla se reparte de a uno."""
+    if necesidad != "embedding":
+        return
+    if conversacion:
+        _responder(con, conversacion, None)
+    else:
+        _lote_fallido(con, id_, entrada)
 
 
 def _repartir_embeddings(con) -> None:
@@ -459,6 +485,7 @@ def latir(latido: nodos.Latido, id_nodo: str = Depends(nodo_autenticado), con=De
 @app.post("/nodo/trabajos/tomar", response_model=nodos.Trabajo | None)
 def tomar_trabajo(response: Response, id_nodo: str = Depends(nodo_autenticado), con=Depends(conexion)):
     """Un trabajo para este nodo, o 204 si no hay ninguno que pueda o le toque atender."""
+    _vencer(con)
     _rescatar_busquedas(con)
     _corregir_las_inactivas(con)
     trabajo = nodos.tomar(con, id_nodo)
@@ -473,15 +500,17 @@ def entregar_trabajo(
 ) -> Response:
     if (resultado.salida is None) == (resultado.error is None):
         raise HTTPException(status_code=422, detail="Manda salida o error, uno de los dos.")
-    tomado = nodos.tomado_por(con, id_, id_nodo)
+    # Reclamado de forma atómica antes de cualquier efecto: una entrega doble o tardía responde 409.
+    tomado = nodos.reclamar(con, id_, id_nodo)
     if tomado is None:
         raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.")
+    invalida = None
     if resultado.salida is not None:
         if tomado["necesidad"] == "conversar":
             respuesta = _respuesta_de(resultado.salida)
             if respuesta is None:
-                raise HTTPException(status_code=422, detail="La salida no trae mensaje.content ni tool_calls válidas.")
-            if respuesta[2] and not tomado["entrada"].get("tools"):
+                invalida = "La salida no trae mensaje.content ni tool_calls válidas."
+            elif respuesta[2] and not tomado["entrada"].get("tools"):
                 # Llamadas sin herramientas ofrecidas (pasado el límite de rondas): no abren otra ronda. Con texto, es la
                 # respuesta; sin texto, es un error que se reintenta, así que la conversación siempre termina.
                 if respuesta[0]:
@@ -491,16 +520,21 @@ def entregar_trabajo(
         else:
             vectores = _vectores_de(resultado.salida, len(tomado["entrada"]["input"]))
             if vectores is None:
-                raise HTTPException(status_code=422, detail="La salida no trae un vector por cada texto.")
+                invalida = "La salida no trae un vector por cada texto."
+    if invalida:
+        # Cuenta como un intento fallido y se responde 422: antes el trabajo vencía y se volvía a tomar para siempre.
+        resultado = nodos.Resultado(error=invalida)
 
     # Lo que sigue en la conversación se deja listo antes de cerrar este trabajo (ver _seguir).
     conversacion = tomado["conversacion_id"]
     falla = resultado.error is not None
     ultimo_intento = falla and tomado["intentos"] + 1 >= nodos.INTENTOS
-    if conversacion and (not falla or ultimo_intento):
+    if conversacion and ultimo_intento:
+        _fallo_final(con, id_, tomado["necesidad"], conversacion, tomado["entrada"])
+    elif conversacion and not falla:
         if tomado["necesidad"] == "embedding":  # la búsqueda por significado del mensaje
-            _responder(con, conversacion, None if falla else vectores[0])
-        elif not falla:
+            _responder(con, conversacion, vectores[0])
+        else:
             texto, mensaje, llamadas = respuesta
             if llamadas:
                 _ronda_de_herramientas(con, conversacion, tomado["entrada"], mensaje, llamadas)
@@ -512,13 +546,14 @@ def entregar_trabajo(
         raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.") from None
     # Lo de una conversación ya siguió antes de cerrar este trabajo; lo que sigue es lo de fondo.
     de_fondo = not conversacion
-    if de_fondo and tomado["necesidad"] == "embedding":  # un lote de recuerdos
-        if estado == "hecho":
-            significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"])
-        elif estado == "fallido":
-            _lote_fallido(con, id_, fila["entrada"])
+    if de_fondo and estado == "fallido":
+        _fallo_final(con, id_, tomado["necesidad"], None, fila["entrada"])
+    elif de_fondo and tomado["necesidad"] == "embedding" and estado == "hecho":  # un lote de recuerdos
+        significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"], id_)
     elif de_fondo and tomado["entrada"].get("proposito") == "correcciones" and estado == "hecho":
         _guardar_correcciones(con, tomado["entrada"]["conversacion"], respuesta[0])
+    if invalida:
+        raise HTTPException(status_code=422, detail=invalida)
     return Response(status_code=204)
 
 

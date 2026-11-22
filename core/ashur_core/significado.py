@@ -47,9 +47,11 @@ def faltantes(conexion: sqlite3.Connection, limite: int = LOTE) -> list[tuple[in
 
 
 def apartar(conexion: sqlite3.Connection, ids: list[int], trabajo_id: int) -> None:
+    # Solo los recuerdos que todavía existen: uno borrado mientras su lote fallaba no deja un vector huérfano.
     conexion.executemany(
-        "INSERT OR REPLACE INTO embeddings (recuerdo_id, modelo, vector, trabajo_id) VALUES (?, ?, NULL, ?)",
-        [(i, MODELO, trabajo_id) for i in ids],
+        "INSERT OR REPLACE INTO embeddings (recuerdo_id, modelo, vector, trabajo_id)"
+        " SELECT id, ?, NULL, ? FROM recuerdos WHERE id = ?",
+        [(MODELO, trabajo_id, i) for i in ids],
     )
     conexion.commit()
 
@@ -65,10 +67,17 @@ def _normalizado(vector: list[float]) -> array:
     return array("f", (x / norma for x in vector))
 
 
-def guardar(conexion: sqlite3.Connection, ids: list[int], vectores: list[list[float]], modelo: str) -> None:
+def guardar(
+    conexion: sqlite3.Connection, ids: list[int], vectores: list[list[float]], modelo: str, trabajo_id: int
+) -> None:
+    """Solo si el recuerdo sigue apartado para este trabajo: un lote viejo, de antes de que cambiara el texto, no pisa
+    el vector nuevo."""
     conexion.executemany(
-        "UPDATE embeddings SET vector = ?, modelo = ?, trabajo_id = NULL WHERE recuerdo_id = ?",
-        [(_normalizado(v).tobytes(), MODELO if es_el_modelo(modelo) else modelo, i) for i, v in zip(ids, vectores)],
+        "UPDATE embeddings SET vector = ?, modelo = ?, trabajo_id = NULL WHERE recuerdo_id = ? AND trabajo_id = ?",
+        [
+            (_normalizado(v).tobytes(), MODELO if es_el_modelo(modelo) else modelo, i, trabajo_id)
+            for i, v in zip(ids, vectores)
+        ],
     )
     conexion.commit()
 
@@ -82,9 +91,11 @@ def cercanos(conexion: sqlite3.Connection, vector: list[float], permitidos: set[
     """Los recuerdos más parecidos al vector, por coseno, entre los que tienen un vector del mismo modelo."""
     consulta = _normalizado(vector)
     puntajes = []
+    # fetchall antes del coseno: con el cursor abierto, la lectura retenía la base y otros pedidos daban
+    # «database is locked».
     for recuerdo_id, blob in conexion.execute(
         "SELECT recuerdo_id, vector FROM embeddings WHERE vector IS NOT NULL AND modelo = ?", (MODELO,)
-    ):
+    ).fetchall():
         if permitidos is not None and recuerdo_id not in permitidos:
             continue
         otro = array("f")

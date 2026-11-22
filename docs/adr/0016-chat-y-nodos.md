@@ -28,6 +28,10 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
   - Cada mensaje deja un trabajo `conversar`.
   - Un nodo lo toma de forma atómica y tiene 300 s para devolverlo; si no, el trabajo vuelve a la cola.
   - Si el nodo devuelve un error, se reintenta hasta tres veces y después queda `fallido`.
+  - Desde la revisión del 2026-11-22, también gastan un intento un plazo vencido y una salida que el core rechaza
+    (422). Antes un nodo caído o un modelo que respondía mal dejaban la conversación trabada para siempre.
+  - Al entregar, el nodo reclama el trabajo de forma atómica (estado interno `entregando`, que la API muestra como
+    `tomado`) antes de que el core aplique sus efectos: una entrega doble o tardía responde 409 y no duplica nada.
   - Mientras hay un trabajo abierto, la conversación no acepta otro mensaje (409). La reserva es atómica: dos
     mensajes enviados a la vez nunca dejan dos respuestas.
 - **Nodos:**
