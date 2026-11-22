@@ -53,6 +53,18 @@ class NodoNuevo(BaseModel):
     nivel: Nivel = 1
     clave: str | None = Field(default=None, description="Bearer, si el nodo la pide. Nunca se devuelve.")
     activo: bool = True
+    potencia: int = Field(default=1, ge=1, description="Qué tan capaz es su modelo, relativo a los otros nodos.")
+
+
+class EstadoNodo(BaseModel):
+    """Lo que un dispositivo informa de sí mismo. La Zima no informa nada: siempre está enchufada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cargando: bool
+    en_bateria: bool
+    bloqueado: bool
+    app_abierta: bool
 
 
 class Nodo(BaseModel):
@@ -63,6 +75,9 @@ class Nodo(BaseModel):
     nivel: Nivel
     activo: bool
     tiene_clave: bool
+    potencia: int
+    estado: EstadoNodo | None
+    visto: str | None
 
 
 class CambiosNodo(BaseModel):
@@ -74,6 +89,7 @@ class CambiosNodo(BaseModel):
     nivel: Nivel | None = None
     clave: str | None = None
     activo: bool | None = None
+    potencia: int | None = Field(default=None, ge=1)
 
 
 def crear_tabla_nodos(conexion: sqlite3.Connection) -> None:
@@ -85,23 +101,29 @@ def crear_tabla_nodos(conexion: sqlite3.Connection) -> None:
             modelo TEXT NOT NULL,
             nivel INTEGER NOT NULL,
             clave TEXT,
-            activo INTEGER NOT NULL DEFAULT 1
+            activo INTEGER NOT NULL DEFAULT 1,
+            potencia INTEGER NOT NULL DEFAULT 1,
+            estado TEXT
         )"""
     )
 
 
-_COLUMNAS_NODO = "id, nombre, url, modelo, nivel, activo, clave"
+_COLUMNAS_NODO = "id, nombre, url, modelo, nivel, activo, clave, potencia, estado"
 
 
 def _nodo(fila: tuple) -> Nodo:
-    id_, nombre, url, modelo, nivel, activo, clave = fila
-    return Nodo(id=id_, nombre=nombre, url=url, modelo=modelo, nivel=nivel, activo=bool(activo), tiene_clave=bool(clave))
+    id_, nombre, url, modelo, nivel, activo, clave, potencia, estado = fila
+    datos = json.loads(estado) if estado else None
+    return Nodo(
+        id=id_, nombre=nombre, url=url, modelo=modelo, nivel=nivel, activo=bool(activo), tiene_clave=bool(clave),
+        potencia=potencia, estado=EstadoNodo(**datos["estado"]) if datos else None, visto=datos["visto"] if datos else None,
+    )
 
 
 def crear_nodo(conexion: sqlite3.Connection, nuevo: NodoNuevo) -> Nodo:
     cursor = conexion.execute(
-        "INSERT INTO nodos (nombre, url, modelo, nivel, clave, activo) VALUES (?, ?, ?, ?, ?, ?)",
-        (nuevo.nombre, nuevo.url.rstrip("/"), nuevo.modelo, nuevo.nivel, nuevo.clave, int(nuevo.activo)),
+        "INSERT INTO nodos (nombre, url, modelo, nivel, clave, activo, potencia) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (nuevo.nombre, nuevo.url.rstrip("/"), nuevo.modelo, nuevo.nivel, nuevo.clave, int(nuevo.activo), nuevo.potencia),
     )
     conexion.commit()
     return obtener_nodo(conexion, cursor.lastrowid)
@@ -132,6 +154,43 @@ def editar_nodo(conexion: sqlite3.Connection, id_: int, cambios: CambiosNodo) ->
     return obtener_nodo(conexion, id_)
 
 
+def informar_estado(conexion: sqlite3.Connection, id_: int, estado: EstadoNodo) -> Nodo | None:
+    if obtener_nodo(conexion, id_) is None:
+        return None
+    datos = {"estado": estado.model_dump(), "visto": datetime.now(timezone.utc).isoformat()}
+    conexion.execute("UPDATE nodos SET estado = ? WHERE id = ?", (json.dumps(datos), id_))
+    conexion.commit()
+    return obtener_nodo(conexion, id_)
+
+
+VIGENCIA_ESTADO_S = 300  # un dispositivo que no informa hace más de 5 minutos no está disponible
+
+
+def disponible(nodo: Nodo, ahora: datetime) -> bool:
+    """Un nodo que nunca informa estado (la Zima, un servidor) siempre está; uno que informa, solo si lo hizo hace poco."""
+    if not nodo.activo:
+        return False
+    if nodo.visto is None:
+        return True
+    return (ahora - datetime.fromisoformat(nodo.visto)).total_seconds() <= VIGENCIA_ESTADO_S
+
+
+def holgado(nodo: Nodo) -> bool:
+    """Puede aportar sin gastarse: siempre enchufado, cargando, o con la app abierta y desbloqueado."""
+    e = nodo.estado
+    return e is None or not e.en_bateria or e.cargando or (e.app_abierta and not e.bloqueado)
+
+
+def ordenar(nodos: list[Nodo], ahora: datetime) -> list[Nodo]:
+    """Orden en que Ashur prueba los nodos (decisión de Sergio, docs/adr/0014-chat.md):
+    1. los holgados, por nivel y del modelo más capaz al menos capaz;
+    2. al final, los que están en batería, del más liviano al más pesado, para no gastarlos."""
+    vivos = [n for n in nodos if disponible(n, ahora)]
+    holgados = sorted((n for n in vivos if holgado(n)), key=lambda n: (n.nivel, -n.potencia, n.id))
+    en_bateria = sorted((n for n in vivos if not holgado(n)), key=lambda n: (n.potencia, n.nivel, n.id))
+    return holgados + en_bateria
+
+
 class ProveedorOpenAI:
     """Un nodo que habla la API compatible con OpenAI. Sin paquetes: urllib de la librería estándar."""
 
@@ -154,11 +213,10 @@ class ProveedorOpenAI:
 
 
 def proveedores(conexion: sqlite3.Connection) -> list[ProveedorOpenAI]:
-    """Los nodos activos, en el orden de docs/ASHUR.md: primero el nivel más bajo disponible."""
-    filas = conexion.execute(
-        "SELECT nombre, url, modelo, clave FROM nodos WHERE activo = 1 ORDER BY nivel, id"
-    ).fetchall()
-    return [ProveedorOpenAI(url, modelo, clave, nombre) for nombre, url, modelo, clave in filas]
+    """Los nodos disponibles, en el orden de ordenar()."""
+    claves = dict(conexion.execute("SELECT id, clave FROM nodos").fetchall())
+    orden = ordenar(listar_nodos(conexion), datetime.now(timezone.utc))
+    return [ProveedorOpenAI(n.url, n.modelo, claves[n.id], n.nombre) for n in orden]
 
 
 INSTRUCCION_RECUERDOS = (

@@ -88,3 +88,41 @@ def test_los_nodos_se_configuran_con_la_clave_de_administrador(cliente):
     assert cliente.post("/nodos", json=datos | {"nivel": 4}, headers=ADMIN).status_code == 422
     assert cliente.patch("/nodos/9", json={"activo": False}, headers=ADMIN).status_code == 404
     assert TestClient(app).get("/chat").status_code == 401
+
+
+def _nodo(id_, nivel=1, potencia=1, estado=None, visto=None):
+    from ashur_core.chat import EstadoNodo, Nodo
+
+    return Nodo(
+        id=id_, nombre=f"n{id_}", url="http://x", modelo="m", nivel=nivel, activo=True, tiene_clave=False,
+        potencia=potencia, estado=EstadoNodo(**estado) if estado else None, visto=visto,
+    )
+
+
+def test_el_orden_prefiere_los_holgados_y_el_modelo_mas_capaz_y_deja_al_final_los_de_bateria():
+    from datetime import datetime, timezone
+
+    from ashur_core.chat import ordenar
+
+    ahora = datetime(2026, 11, 22, tzinfo=timezone.utc)
+    reciente = ahora.isoformat()
+    bateria = {"cargando": False, "en_bateria": True, "bloqueado": True, "app_abierta": False}
+    cargando = {"cargando": True, "en_bateria": True, "bloqueado": True, "app_abierta": False}
+    abierta = {"cargando": False, "en_bateria": True, "bloqueado": False, "app_abierta": True}
+    nodos = [
+        _nodo(1, potencia=2),  # la Zima: nunca informa, siempre está
+        _nodo(2, nivel=2, potencia=5, estado=bateria, visto=reciente),
+        _nodo(3, nivel=2, potencia=1, estado=bateria, visto=reciente),
+        _nodo(4, potencia=8, estado=cargando, visto=reciente),
+        _nodo(5, potencia=3, estado=abierta, visto=reciente),
+        _nodo(6, potencia=9, estado=cargando, visto="2026-11-21T00:00:00+00:00"),  # hace un día: no está
+    ]
+    assert [n.id for n in ordenar(nodos, ahora)] == [4, 5, 1, 3, 2]
+
+
+def test_un_dispositivo_informa_su_estado(cliente):
+    cliente.post("/nodos", json={"nombre": "iPhone", "url": "http://x", "modelo": "m", "nivel": 2}, headers=ADMIN)
+    estado = {"cargando": True, "en_bateria": True, "bloqueado": False, "app_abierta": True}
+    r = cliente.put("/nodos/1/estado", json=estado)
+    assert r.status_code == 200 and r.json()["estado"] == estado and r.json()["visto"]
+    assert cliente.put("/nodos/9/estado", json=estado).status_code == 404

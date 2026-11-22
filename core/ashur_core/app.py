@@ -266,3 +266,12 @@ def editar_nodo(id_: int, cambios: chat.CambiosNodo, con=Depends(conexion)) -> c
     if editado is None:
         raise HTTPException(status_code=404, detail="No existe ese nodo.")
     return editado
+
+
+@app.put("/nodos/{id_}/estado", response_model=chat.Nodo, dependencies=[Depends(exigir_clave)])
+def informar_estado(id_: int, estado: chat.EstadoNodo, con=Depends(conexion)) -> chat.Nodo:
+    """Un dispositivo informa si carga, si está en batería, bloqueado o con la app abierta. Vale 5 minutos."""
+    nodo = chat.informar_estado(con, id_, estado)
+    if nodo is None:
+        raise HTTPException(status_code=404, detail="No existe ese nodo.")
+    return nodo
