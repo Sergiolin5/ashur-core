@@ -8,8 +8,9 @@ calcule el modelo de los nodos de casa: qué modelo, dónde se guardan y cuándo
 nuevo necesita aprobación.
 
 ## 11. Reglas por sensibilidad y consentimiento
-Hoy `sensibilidad` es solo un dato. Falta decidir, antes de usar Ashur en serio, qué nivel de inferencia puede
-usar cada nivel de sensibilidad y qué consentimiento hace falta.
+Por ahora `sensibilidad` es solo un dato y no cambia nada (decisión de Sergio, 2026-11-21, mientras Ashur es una
+prueba). Las reglas de qué puede usar cada nivel y qué consentimiento hace falta se deciden antes de que alguien más
+que Sergio use Ashur.
 
 ## 12. Cómo se ven los objetos del inventario
 Los objetos no son cuerpos de la galaxia todavía. Sergio quiere decidir su forma según el objeto, cuidando que el
