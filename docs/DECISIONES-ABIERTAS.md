@@ -25,3 +25,9 @@ Con el iPhone Duo abierto, la galaxia debería correrse a la mitad derecha, como
 código lo hace si Flutter informa un pliegue vertical, pero en el teléfono de Sergio no se corre: lo más probable es
 que iOS no le pase el pliegue a Flutter. Sergio lo dejó así mientras la app es un boceto. Falta averiguar cómo se
 entera la app del pliegue en iOS (por ejemplo, con un canal de plataforma en Swift).
+
+## 18. Personajes que no se ven en el iPhone
+En la segunda prueba en el iPhone (2026-11-21), Sergio no vio las figuras ni los nombres de los personajes. Causa
+probable: no hay nada que diga cuál planeta es Identidades (los planetas no tienen nombre y varios comparten color),
+así que es fácil acercarse a otro. También puede que el umbral de tamaño en pantalla no se alcance. Sergio lo aceptó
+como esqueleto por ahora.
