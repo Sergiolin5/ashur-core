@@ -84,7 +84,7 @@
           "minLength": 1
         },
         "entrada": {
-          "description": "Para conversar: {messages: [{role, content}]}, en el formato de OpenAI.",
+          "description": "Para conversar: {messages, tools?} en el formato de OpenAI. messages puede traer, además de system, user y assistant, mensajes {role: tool, tool_name, content} con los resultados de las herramientas y mensajes assistant con tool_calls. tools, si viene, se le pasa al modelo tal cual: el core corre las herramientas (ADR 0021). Para embedding: {input: [textos]}. Lo demás que traiga la entrada es del core y el nodo lo ignora.",
           "type": "object"
         }
       }
@@ -95,7 +95,7 @@
       "additionalProperties": false,
       "properties": {
         "salida": {
-          "description": "Para conversar: {mensaje: {role: assistant, content}}.",
+          "description": "Para conversar: {mensaje: {role: assistant, content, tool_calls?}}. content puede venir vacío solo si trae tool_calls: [{function: {name, arguments}}], con arguments como objeto o como texto JSON. Para embedding: {vectores: [[...]]}, uno por texto.",
           "type": [
             "object",
             "null"

@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -8,7 +9,7 @@ from fastapi.security import APIKeyHeader
 
 from functools import lru_cache
 
-from ashur_core import chat, galaxia, identidades, inventario, memoria, modulos, nodos, significado
+from ashur_core import chat, galaxia, herramientas, identidades, inventario, memoria, modulos, nodos, significado
 
 app = FastAPI(title="Ashur Core")
 
@@ -237,7 +238,7 @@ def enviar_mensaje(id_: str, nuevo: chat.MensajeNuevo, con=Depends(conexion)) ->
     if buscar_primero:
         nodos.preparar(con, trabajo, {"input": [nuevo.texto]})
     else:
-        nodos.preparar(con, trabajo, chat.pedido_al_modelo(con, id_, _recordar(con, id_, None)))
+        nodos.preparar(con, trabajo, _pedido(con, id_, None))
     return _completa(con, chat.obtener(con, id_))
 
 
@@ -259,10 +260,27 @@ def _recordar(con, id_conversacion: str, vector: list[float] | None) -> list[mem
     return [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
 
 
-def _responder(con, id_conversacion: str, vector: list[float] | None) -> None:
-    """Segundo paso: con lo que encontró, deja en la cola el pedido al modelo."""
+def _pedido(con, id_conversacion: str, vector: list[float] | None) -> dict:
+    """El pedido al modelo, con lo que encontró la búsqueda y, si hay un nodo que sepa usarlas, las herramientas que
+    se ofrecen en esta conversación (docs/adr/0021-herramientas-del-chat.md)."""
     pedido = chat.pedido_al_modelo(con, id_conversacion, _recordar(con, id_conversacion, vector))
-    chat.poner_trabajo(con, id_conversacion, nodos.encolar(con, "conversar", pedido, id_conversacion))
+    if nodos.hay_quien(con, "conversar", requiere="tools"):
+        ofrecidas = herramientas.herramientas_para(id_conversacion, registro_de_modulos())
+        pedido.update(tools=[h.definicion() for h in ofrecidas], rondas=0)
+        pedido["messages"][0]["content"] += "\n\n" + herramientas.AVISO
+    return pedido
+
+
+def _seguir(con, id_conversacion: str, pedido: dict) -> int:
+    """Deja el paso siguiente en la cola y la conversación apuntando a él, antes de cerrar el anterior: entre los dos
+    nunca queda un hueco en el que se cuele otro mensaje."""
+    siguiente = nodos.encolar(con, "conversar", pedido, id_conversacion)
+    chat.poner_trabajo(con, id_conversacion, siguiente)
+    return siguiente
+
+
+def _responder(con, id_conversacion: str, vector: list[float] | None) -> None:
+    _seguir(con, id_conversacion, _pedido(con, id_conversacion, vector))
 
 
 def _rescatar_busquedas(con) -> None:
@@ -332,30 +350,43 @@ def entregar_trabajo(
         raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.")
     if resultado.salida is not None:
         if tomado["necesidad"] == "conversar":
-            texto = _texto_de(resultado.salida)
-            if texto is None:
-                raise HTTPException(status_code=422, detail="La salida no trae mensaje.content.")
+            respuesta = _respuesta_de(resultado.salida)
+            if respuesta is None:
+                raise HTTPException(status_code=422, detail="La salida no trae mensaje.content ni tool_calls válidas.")
+            if respuesta[2] and not tomado["entrada"].get("tools"):
+                # Llamadas sin herramientas ofrecidas (pasado el límite de rondas): no abren otra ronda. Con texto, es la
+                # respuesta; sin texto, es un error que se reintenta, así que la conversación siempre termina.
+                if respuesta[0]:
+                    respuesta = (respuesta[0], respuesta[1], [])
+                else:
+                    resultado = nodos.Resultado(error="El modelo pidió herramientas sin que se le ofrecieran.")
         else:
             vectores = _vectores_de(resultado.salida, len(tomado["entrada"]["input"]))
             if vectores is None:
                 raise HTTPException(status_code=422, detail="La salida no trae un vector por cada texto.")
+
+    # Lo que sigue en la conversación se deja listo antes de cerrar este trabajo (ver _seguir).
+    conversacion = tomado["conversacion_id"]
+    falla = resultado.error is not None
+    ultimo_intento = falla and tomado["intentos"] + 1 >= nodos.INTENTOS
+    if conversacion and (not falla or ultimo_intento):
+        if tomado["necesidad"] == "embedding":  # la búsqueda por significado del mensaje
+            _responder(con, conversacion, None if falla else vectores[0])
+        elif not falla:
+            texto, mensaje, llamadas = respuesta
+            if llamadas:
+                _ronda_de_herramientas(con, conversacion, tomado["entrada"], mensaje, llamadas)
+            else:
+                _decir(con, conversacion, "assistant", chat.ORIGEN_ASHUR, texto)
     try:
         estado, fila = nodos.entregar(con, id_nodo, id_, resultado)
     except nodos.TrabajoAjeno:
         raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.") from None
-    conversacion = fila["conversacion_id"]
-    if fila["necesidad"] == "conversar":
-        if estado == "hecho" and conversacion:
-            _decir(con, conversacion, "assistant", chat.ORIGEN_ASHUR, texto)
-    elif conversacion:  # la búsqueda por significado del mensaje
+    if not conversacion:  # un lote de recuerdos
         if estado == "hecho":
-            _responder(con, conversacion, vectores[0])
+            significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"])
         elif estado == "fallido":
-            _responder(con, conversacion, None)
-    elif estado == "hecho":  # un lote de recuerdos
-        significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"])
-    elif estado == "fallido":
-        _lote_fallido(con, id_, fila["entrada"])
+            _lote_fallido(con, id_, fila["entrada"])
     return Response(status_code=204)
 
 
@@ -384,11 +415,54 @@ def _vectores_de(salida: dict, cuantos: int) -> list[list[float]] | None:
     return vectores
 
 
-def _texto_de(salida: dict) -> str | None:
-    """La respuesta del modelo, en el formato de OpenAI: {"mensaje": {"role": "assistant", "content": "..."}}."""
+def _respuesta_de(salida: dict) -> tuple[str, dict, list] | None:
+    """La respuesta del modelo, en el formato de OpenAI: {"mensaje": {"role": "assistant", "content": "...",
+    "tool_calls": [...]}}. Vale con texto, con llamadas a herramientas, o con las dos; vacía no vale."""
     mensaje = salida.get("mensaje")
-    contenido = mensaje.get("content") if isinstance(mensaje, dict) else None
-    return contenido.strip() if isinstance(contenido, str) and contenido.strip() else None
+    if not isinstance(mensaje, dict):
+        return None
+    contenido = mensaje.get("content") or ""
+    llamadas = herramientas.llamadas_de(mensaje)
+    if not isinstance(contenido, str) or llamadas is None or (not contenido.strip() and not llamadas):
+        return None
+    return contenido.strip(), mensaje, llamadas
+
+
+def _ronda_de_herramientas(con, id_conversacion: str, entrada: dict, mensaje: dict, llamadas: list) -> None:
+    """Corre lo que pidió el modelo, solo entre lo que se le ofreció en este trabajo, y deja la ronda siguiente. Tras
+    herramientas.RONDAS rondas, el modelo responde sin herramientas: la conversación siempre termina en texto."""
+    ofrecidas = herramientas.herramientas_para(id_conversacion, registro_de_modulos())
+    nombres = {t["function"]["name"] for t in entrada.get("tools", [])}
+    ofrecidas = [h for h in ofrecidas if h.nombre in nombres]
+    resultados = []
+    for nombre, argumentos in llamadas:
+        try:
+            texto = herramientas.correr(
+                con, nombre, argumentos, ofrecidas, lambda m, a, p: _modulo_desde_el_chat(con, m, a, p)
+            )
+        except Exception as e:  # todo error es texto para el modelo; si la ronda fallara, se repetiría entera
+            texto = f"La herramienta {nombre} falló: {type(e).__name__}: {e}"
+        resultados.append((nombre, texto))
+    rondas = entrada.get("rondas", 0) + 1
+    siguientes = entrada.get("tools") if rondas < herramientas.RONDAS else None
+    mensaje = {**mensaje, "tool_calls": herramientas.normalizar(mensaje.get("tool_calls") or [])}
+    _seguir(con, id_conversacion, chat.otra_ronda(entrada, mensaje, resultados, siguientes))
+
+
+def _modulo_desde_el_chat(con, id_modulo: str, accion: str, parametros: dict) -> str:
+    """Una acción que solo lee corre ya; una que escribe queda como pedido, igual que desde POST /modulos/... ."""
+    modulo = registro_de_modulos().modulos.get(id_modulo)
+    definicion = modulo.accion(accion) if modulo else None
+    if definicion is None:
+        return f"El módulo {id_modulo} ya no tiene la acción {accion}."
+    if definicion.escribe:
+        pedido = modulos.pedir(con, id_modulo, accion, parametros)
+        return f"Quedó pendiente de la aprobación de Sergio (pedido {pedido.id}). Todavía no se hizo."
+    try:
+        resultado = modulos.ejecutar(modulo, accion, parametros, _contexto(con, id_modulo))
+    except modulos.ErrorDeModulo as e:
+        return f"El módulo {id_modulo} falló: {e.mensaje}"
+    return json.dumps(resultado, ensure_ascii=False, default=str)  # fechas o conjuntos no tumban la ronda
 
 
 # ── Módulos (docs/adr/0013-modulos-en-el-core.md) ──

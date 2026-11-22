@@ -186,3 +186,15 @@ def pedido_al_modelo(
         "messages": [{"role": "system", "content": sistema}]
         + [{"role": m.rol, "content": m.texto} for m in historial(conexion, id_)]
     }
+
+
+def otra_ronda(entrada: dict, mensaje: dict, resultados: list[tuple[str, str]], con_herramientas: list | None) -> dict:
+    """El pedido siguiente tras una ronda de herramientas: lo que pidió el modelo y lo que devolvió cada una. Sin
+    [con_herramientas], el modelo tiene que responder con texto."""
+    mensajes = entrada["messages"] + [mensaje] + [
+        {"role": "tool", "tool_name": nombre, "content": texto} for nombre, texto in resultados
+    ]
+    siguiente = {"messages": mensajes, "rondas": entrada.get("rondas", 0) + 1}
+    if con_herramientas:
+        siguiente["tools"] = con_herramientas
+    return siguiente

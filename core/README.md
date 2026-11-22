@@ -12,7 +12,7 @@ uv run pytest
 uv run uvicorn ashur_core.app:app --port 8720
 ```
 
-Rutas: memoria (`docs/adr/0004-memoria.md`), galaxia (0011), identidades (0012), módulos (0013), inventario (0014), chat y nodos (0016), búsqueda híbrida (0018) y ajustes de módulos y nodos (0019).
+Rutas: memoria (`docs/adr/0004-memoria.md`), galaxia (0011), identidades (0012), módulos (0013), inventario (0014), chat y nodos (0016), búsqueda híbrida (0018), ajustes de módulos y nodos (0019) y herramientas del chat (0021).
 
 Variables de entorno:
 

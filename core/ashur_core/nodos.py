@@ -142,22 +142,25 @@ def puede_correr(modo: str, modelo: Modelo) -> bool:
     return False
 
 
-def mejor_modelo(necesidad: str, modo: str, modelos: list[Modelo]) -> Modelo | None:
+def mejor_modelo(necesidad: str, modo: str, modelos: list[Modelo], requiere: str | None = None) -> Modelo | None:
     """El modelo más grande que el nodo ofrece para esa necesidad y que su modo le deja correr. Para embeddings, solo el
     de significado.MODELO: vectores de modelos distintos no se pueden comparar."""
     candidatos = [
         m for m in modelos
         if _CAPACIDAD[necesidad] in m.capacidades and puede_correr(modo, m)
         and (necesidad != "embedding" or significado.es_el_modelo(m.nombre))
+        and (requiere is None or requiere in m.capacidades)
     ]
     return max(candidatos, key=lambda m: m.tamano, default=None)
 
 
-def le_toca(necesidad: str, propio: Modelo, otros: list[tuple[str, list[Modelo]]], edad_s: float) -> bool:
+def le_toca(
+    necesidad: str, propio: Modelo, otros: list[tuple[str, list[Modelo]]], edad_s: float, requiere: str | None = None
+) -> bool:
     """Un trabajo reciente solo lo toma el nodo con el mejor modelo en línea; pasado ESPERA_MEJOR_S, cualquiera."""
     if edad_s >= ESPERA_MEJOR_S:
         return True
-    mejores = [mejor_modelo(necesidad, modo, modelos) for modo, modelos in otros]
+    mejores = [mejor_modelo(necesidad, modo, modelos, requiere) for modo, modelos in otros]
     return all(m is None or m.tamano <= propio.tamano for m in mejores)
 
 
@@ -309,17 +312,18 @@ def tomar(conexion: sqlite3.Connection, id_nodo: str, ahora: datetime | None = N
         return None
     otros = [(n.modo, n.prestados()) for n in listar(conexion, ahora) if n.en_linea and n.id != id_nodo]
     disponibles = conexion.execute(
-        "SELECT id, necesidad, creado FROM trabajos"
+        "SELECT id, necesidad, creado, json_extract(entrada, '$.tools') IS NOT NULL FROM trabajos"
         " WHERE estado = 'pendiente' OR (estado = 'tomado' AND vence < ?)"
         " ORDER BY conversacion_id IS NULL, id",  # primero lo que alguien está esperando en el chat
         (ahora.isoformat(),),
     ).fetchall()
-    for id_, necesidad, creado in disponibles:
-        modelo = mejor_modelo(necesidad, nodo.modo, nodo.prestados())
+    for id_, necesidad, creado, con_herramientas in disponibles:
+        requiere = "tools" if con_herramientas else None  # un pedido con herramientas necesita un modelo que las use
+        modelo = mejor_modelo(necesidad, nodo.modo, nodo.prestados(), requiere)
         if modelo is None:
             continue
         edad = (ahora - datetime.fromisoformat(creado)).total_seconds()
-        if not le_toca(necesidad, modelo, otros, edad):
+        if not le_toca(necesidad, modelo, otros, edad, requiere):
             continue
         cursor = conexion.execute(
             "UPDATE trabajos SET estado = 'tomado', nodo_id = ?, modelo = ?, vence = ?"
@@ -367,14 +371,18 @@ def entregar(conexion: sqlite3.Connection, id_nodo: str, id_: int, resultado: Re
 def tomado_por(conexion: sqlite3.Connection, id_: int, id_nodo: str) -> dict | None:
     """La necesidad y la entrada de un trabajo que este nodo tiene tomado, para validar su salida antes de cerrarlo."""
     fila = conexion.execute(
-        "SELECT necesidad, entrada FROM trabajos WHERE id = ? AND estado = 'tomado' AND nodo_id = ?", (id_, id_nodo)
+        "SELECT necesidad, entrada, conversacion_id, intentos FROM trabajos"
+        " WHERE id = ? AND estado = 'tomado' AND nodo_id = ?",
+        (id_, id_nodo),
     ).fetchone()
-    return {"necesidad": fila[0], "entrada": json.loads(fila[1])} if fila else None
+    if fila is None:
+        return None
+    return {"necesidad": fila[0], "entrada": json.loads(fila[1]), "conversacion_id": fila[2], "intentos": fila[3]}
 
 
-def hay_quien(conexion: sqlite3.Connection, necesidad: str, ahora: datetime | None = None) -> bool:
+def hay_quien(conexion: sqlite3.Connection, necesidad: str, requiere: str | None = None) -> bool:
     """Si algún nodo en línea puede atender esa necesidad en este momento."""
-    return any(n.en_linea and mejor_modelo(necesidad, n.modo, n.prestados()) for n in listar(conexion, ahora))
+    return any(n.en_linea and mejor_modelo(necesidad, n.modo, n.prestados(), requiere) for n in listar(conexion))
 
 
 def pendientes(conexion: sqlite3.Connection, necesidad: str, con_conversacion: bool) -> list[tuple[int, str, str | None]]:
