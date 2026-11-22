@@ -102,7 +102,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
         if version < 6:
             modulos.crear_tabla_pedidos(conexion)  # versión 6: pedidos de acciones que escriben
         if version < 7:
-            chat.crear_tabla(conexion)  # versión 7: el historial del chat
+            chat.crear_tabla(conexion)  # versión 7: el historial del chat y los nodos
+            chat.crear_tabla_nodos(conexion)
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:

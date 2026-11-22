@@ -228,13 +228,30 @@ def ver_chat(con=Depends(conexion)) -> list[chat.Mensaje]:
 
 @app.post("/chat", response_model=list[chat.Mensaje], dependencies=[Depends(exigir_clave)])
 def hablar(nuevo: chat.MensajeNuevo, con=Depends(conexion)) -> list[chat.Mensaje]:
-    """Guarda el mensaje de Sergio y la respuesta de Ashur. Sin modelo, el mensaje se guarda igual y responde 503."""
-    proveedor = chat.proveedor_configurado()
+    """Guarda el mensaje de Sergio y la respuesta de Ashur. Si ningún nodo responde, el mensaje se guarda igual y el core
+    responde 503."""
     mio = chat.guardar(con, "sergio", nuevo.texto)
-    if proveedor is None:
-        raise HTTPException(status_code=503, detail="No hay un modelo configurado (ASHUR_OLLAMA_URL y ASHUR_OLLAMA_MODELO).")
     try:
-        texto = proveedor.responder(chat.para_el_modelo(chat.historial(con)))
+        texto, _nodo = chat.responder(con, chat.para_el_modelo(chat.historial(con)))
     except chat.SinModelo as e:
         raise HTTPException(status_code=503, detail=str(e)) from None
     return [mio, chat.guardar(con, "ashur", texto)]
+
+
+@app.get("/nodos", response_model=list[chat.Nodo], dependencies=[Depends(exigir_clave)])
+def listar_nodos(con=Depends(conexion)) -> list[chat.Nodo]:
+    """Dónde corren los modelos. Las claves de los nodos nunca se devuelven."""
+    return chat.listar_nodos(con)
+
+
+@app.post("/nodos", status_code=201, response_model=chat.Nodo, dependencies=[Depends(exigir_clave_admin)])
+def crear_nodo(nuevo: chat.NodoNuevo, con=Depends(conexion)) -> chat.Nodo:
+    return chat.crear_nodo(con, nuevo)
+
+
+@app.patch("/nodos/{id_}", response_model=chat.Nodo, dependencies=[Depends(exigir_clave_admin)])
+def editar_nodo(id_: int, cambios: chat.CambiosNodo, con=Depends(conexion)) -> chat.Nodo:
+    editado = chat.editar_nodo(con, id_, cambios)
+    if editado is None:
+        raise HTTPException(status_code=404, detail="No existe ese nodo.")
+    return editado
