@@ -192,7 +192,10 @@ def cambiar_rol(id_: str, cambios: personas.CambiosRol, con=Depends(conexion)) -
 
 @app.post("/objetos", status_code=201, response_model=inventario.Objeto, dependencies=[Depends(exigir_clave)])
 def crear_objeto(nuevo: inventario.ObjetoNuevo, con=Depends(conexion)) -> inventario.Objeto:
-    return inventario.crear(con, nuevo)
+    try:
+        return inventario.crear(con, nuevo)
+    except inventario.ErrorInventario as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.get("/objetos", response_model=list[inventario.Objeto], dependencies=[Depends(exigir_clave)])
@@ -204,7 +207,10 @@ def listar_objetos(archivados: bool = False, con=Depends(conexion)) -> list[inve
 @app.patch("/objetos/{id_}", response_model=inventario.Objeto, dependencies=[Depends(exigir_clave_admin)])
 def editar_objeto(id_: str, cambios: inventario.CambiosObjeto, con=Depends(conexion)) -> inventario.Objeto:
     """Editar, mover, archivar o restaurar. No hay DELETE: se archiva (decisión 8)."""
-    editado = inventario.editar(con, id_, cambios)
+    try:
+        editado = inventario.editar(con, id_, cambios)
+    except inventario.ErrorInventario as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     if editado is None:
         raise HTTPException(status_code=404, detail="No existe ese objeto.")
     return editado

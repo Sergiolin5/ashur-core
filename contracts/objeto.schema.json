@@ -15,7 +15,14 @@
           "description": "Dónde está, en texto libre; null si no se sabe.",
           "type": ["string", "null"],
           "minLength": 1
-        }
+        },
+        "padre_id": { "type": ["string", "null"], "minLength": 1 },
+        "ranura": { "type": ["string", "null"], "minLength": 1 },
+        "ranuras": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "identificadores": { "type": ["object", "null"], "additionalProperties": true },
+        "especificaciones": { "type": ["object", "null"], "additionalProperties": true },
+        "evidencia": { "type": ["object", "null"], "additionalProperties": true },
+        "estado": { "type": ["string", "null"], "minLength": 1 }
       }
     },
     "objeto": {
@@ -39,7 +46,14 @@
           "description": "Cuántos recuerdos distintos lo enlazan.",
           "type": "integer",
           "minimum": 0
-        }
+        },
+        "padre_id": { "$ref": "#/$defs/nuevo/properties/padre_id" },
+        "ranura": { "$ref": "#/$defs/nuevo/properties/ranura" },
+        "ranuras": { "$ref": "#/$defs/nuevo/properties/ranuras" },
+        "identificadores": { "$ref": "#/$defs/nuevo/properties/identificadores" },
+        "especificaciones": { "$ref": "#/$defs/nuevo/properties/especificaciones" },
+        "evidencia": { "$ref": "#/$defs/nuevo/properties/evidencia" },
+        "estado": { "$ref": "#/$defs/nuevo/properties/estado" }
       }
     }
   },
