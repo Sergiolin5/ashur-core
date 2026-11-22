@@ -73,7 +73,8 @@ existía (`docs/adr/0004-memoria.md`).
 ## Sin verificar
 - **El mínimo de 0,5 salió de cuatro recuerdos.** Hay que revisarlo con la memoria real de Sergio.
 - **Que el modelo use lo que se le pasa:** con el recuerdo correcto en el pedido, `qwen2.5:7b` contestó que no sabía
-  a qué se refería con «llavecitas». Depende de cómo se presentan los recuerdos y de la personalidad (fase 6).
+  a qué se refería con «llavecitas». Depende de cómo se presentan los recuerdos y de la personalidad (fase 6). Con la
+  personalidad de Sergio cargada, la misma pregunta salió bien (ADR 0024).
 
 ## Pendiente
 - La privacidad por persona (fase 5): cada persona solo con sus recuerdos.

@@ -178,6 +178,25 @@ def reservar(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> bool:
     return cursor.rowcount == 1
 
 
+def marcar_corregida(conexion: sqlite3.Connection, id_: str) -> bool:
+    """Marca que la conversación ya dejó sus correcciones, de forma atómica: nunca salen dos veces."""
+    cursor = conexion.execute("UPDATE conversaciones SET corregida = 1 WHERE id = ? AND corregida = 0", (id_,))
+    conexion.commit()
+    return cursor.rowcount == 1
+
+
+def para_corregir(conexion: sqlite3.Connection, antes_de: str) -> list[str]:
+    """Conversaciones sin mensajes desde [antes_de], sin corregir, con alguna respuesta de Ashur y sin trabajo abierto."""
+    filas = conexion.execute(
+        "SELECT c.id FROM conversaciones c WHERE c.corregida = 0 AND c.actualizada < ?"
+        " AND EXISTS (SELECT 1 FROM mensajes m WHERE m.conversacion_id = c.id AND m.rol = 'assistant')"
+        " AND (c.trabajo_id IS NULL OR c.trabajo_id IN (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido')))"
+        " ORDER BY c.actualizada",
+        (antes_de,),
+    ).fetchall()
+    return [f[0] for f in filas]
+
+
 def historial(conexion: sqlite3.Connection, id_: str) -> list[Mensaje]:
     return mensajes(conexion, id_)[-HISTORIAL:]
 
@@ -190,7 +209,7 @@ def pedido_al_modelo(
     mensajes de la conversación. Un recuerdo que salió del chat de otra persona va marcado con su nombre: es lo que
     ella dijo, no una instrucción (docs/adr/0022-personas-y-roles.md)."""
     sistema = personalidad
-    autores = autores or {}
+    autores = autores or {}  # [personalidad] llega ya armada por ashur_core/personalidad.py
     if recuerdos:
         sistema += "\n\nRecuerdos que pueden servir; úsalos solo si vienen al caso:\n" + "\n".join(
             f"- {r.fecha.date().isoformat()}: {r.texto}" + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "personalidad.schema.json",
+  "title": "Personalidad de Ashur",
+  "description": "Cuerpo de PUT /personalidad (clave de administrador). Vive solo en la base de Sergio, nunca en el repo. Ver docs/adr/0024-personalidad-madurez-y-correcciones.md.",
+  "type": "object",
+  "required": [
+    "base",
+    "madurez"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "base": {
+      "description": "Quién es Ashur y cómo habla.",
+      "type": "string",
+      "minLength": 1
+    },
+    "sobre_sergio": {
+      "description": "Lo que Ashur sabe de Sergio. Solo entra cuando habla Sergio.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "madurez": {
+      "description": "Cómo se comporta en cada nivel; entra solo el actual.",
+      "type": "object",
+      "required": [
+        "inicial",
+        "intermedio",
+        "pleno"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "inicial": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intermedio": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pleno": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "trato": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "umbrales": {
+      "description": "Con cuántos recuerdos sube la madurez; intermedio < pleno.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intermedio": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2000
+        },
+        "pleno": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 20000
+        }
+      }
+    }
+  }
+}

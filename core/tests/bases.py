@@ -4,6 +4,7 @@ import sqlite3
 
 # Lo que agregó cada versión desde la 9, de la más nueva a la más vieja.
 _AGREGADO = {
+    13: ["COLUMN conversaciones.corregida"],
     12: ["TABLE roles", "COLUMN identidades.clave_hash", "COLUMN identidades.rol",
          "COLUMN conversaciones.identidad_id", "COLUMN pedidos.pedido_por"],
     11: ["TABLE ajustes_modulos", "COLUMN nodos.ajustes"],

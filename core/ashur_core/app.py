@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from functools import lru_cache
 
 from ashur_core import (
-    chat, galaxia, herramientas, identidades, inventario, memoria, modulos, nodos, personas, significado,
+    chat, galaxia, herramientas, identidades, inventario, memoria, modulos, nodos, personalidad, personas, significado,
 )
 
 app = FastAPI(title="Ashur Core")
@@ -273,7 +273,9 @@ def _decir(con, id_conversacion: str, rol: str, origen: str, texto: str) -> chat
     return chat.agregar(con, id_conversacion, rol, texto, fecha, recuerdo.id)
 
 
-RUTAS_DE_PERSONAS = {"/conversaciones", "/conversaciones/{id_}", "/conversaciones/{id_}/mensajes"}
+RUTAS_DE_PERSONAS = {
+    "/conversaciones", "/conversaciones/{id_}", "/conversaciones/{id_}/mensajes", "/conversaciones/{id_}/cerrar",
+}
 
 
 @app.post("/conversaciones", status_code=201, response_model=chat.Conversacion)
@@ -332,6 +334,36 @@ def _recordar(con, id_conversacion: str, vector: list[float] | None) -> list[mem
     return [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
 
 
+@app.post("/conversaciones/{id_}/cerrar", status_code=202, response_model=chat.ConversacionCompleta)
+def cerrar_conversacion(
+    id_: str, quien: Quien = Depends(quien_habla), con=Depends(conexion)
+) -> chat.ConversacionCompleta:
+    """Termina la conversación antes de los 30 minutos: Ashur saca sus correcciones ya (docs/adr/0024). Se puede
+    seguir escribiendo, pero las correcciones salen una sola vez por conversación."""
+    conversacion = _suya(con, id_, quien)
+    trabajo = chat.trabajo_actual(con, id_)
+    estado = nodos.estado_de(con, trabajo) if trabajo is not None else None
+    if estado and estado["estado"] in ("pendiente", "tomado"):
+        raise HTTPException(status_code=409, detail="Ashur todavía está respondiendo.")
+    _corregir(con, id_)
+    return _completa(con, conversacion)
+
+
+def _corregir(con, id_conversacion: str) -> None:
+    """Deja en la cola, una sola vez, el trabajo de fondo que saca las correcciones de la conversación."""
+    mensajes = chat.mensajes(con, id_conversacion)
+    if not any(m.rol == "assistant" for m in mensajes) or not chat.marcar_corregida(con, id_conversacion):
+        return
+    nodos.encolar(con, "conversar", personalidad.pedido_de_correcciones(mensajes[-chat.HISTORIAL:], id_conversacion))
+
+
+def _corregir_las_inactivas(con) -> None:
+    """Una por cada pedido de trabajo de un nodo: una conversación sin mensajes hace 30 minutos terminó."""
+    limite = (datetime.now(timezone.utc) - timedelta(seconds=personalidad.INACTIVA_S)).isoformat()
+    for id_ in chat.para_corregir(con, limite)[:1]:
+        _corregir(con, id_)
+
+
 def _permitidos(con, id_conversacion: str) -> set[int] | None:
     """Con Sergio, toda la memoria (None). Con otra persona, solo lo que salió de sus mensajes (docs/adr/0022)."""
     _, duenio = chat.duenio(con, id_conversacion)
@@ -342,10 +374,12 @@ def _pedido(con, id_conversacion: str, vector: list[float] | None) -> dict:
     """El pedido al modelo, con lo que encontró la búsqueda y, si hay un nodo que sepa usarlas, las herramientas que
     se ofrecen en esta conversación (docs/adr/0021-herramientas-del-chat.md)."""
     recuerdos = _recordar(con, id_conversacion, vector)
-    pedido = chat.pedido_al_modelo(
-        con, id_conversacion, recuerdos, autores=personas.autores(con, [r.id for r in recuerdos])
-    )
     _, duenio = chat.duenio(con, id_conversacion)
+    con_quien = identidades.obtener(con, duenio).nombre if duenio else None
+    pedido = chat.pedido_al_modelo(
+        con, id_conversacion, recuerdos, personalidad.sistema(con, con_quien, chat.PERSONALIDAD_POR_DEFECTO),
+        autores=personas.autores(con, [r.id for r in recuerdos]),
+    )
     ofrecidas = herramientas.herramientas_para(con, duenio, registro_de_modulos())
     if ofrecidas and nodos.hay_quien(con, "conversar", requiere="tools"):
         pedido.update(tools=[h.definicion() for h in ofrecidas], rondas=0)
@@ -415,6 +449,7 @@ def latir(latido: nodos.Latido, id_nodo: str = Depends(nodo_autenticado), con=De
 def tomar_trabajo(response: Response, id_nodo: str = Depends(nodo_autenticado), con=Depends(conexion)):
     """Un trabajo para este nodo, o 204 si no hay ninguno que pueda o le toque atender."""
     _rescatar_busquedas(con)
+    _corregir_las_inactivas(con)
     trabajo = nodos.tomar(con, id_nodo)
     if trabajo is None:
         return Response(status_code=204)
@@ -464,12 +499,50 @@ def entregar_trabajo(
         estado, fila = nodos.entregar(con, id_nodo, id_, resultado)
     except nodos.TrabajoAjeno:
         raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.") from None
-    if not conversacion:  # un lote de recuerdos
+    # Lo de una conversación ya siguió antes de cerrar este trabajo; lo que sigue es lo de fondo.
+    de_fondo = not conversacion
+    if de_fondo and tomado["necesidad"] == "embedding":  # un lote de recuerdos
         if estado == "hecho":
             significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"])
         elif estado == "fallido":
             _lote_fallido(con, id_, fila["entrada"])
+    elif de_fondo and tomado["entrada"].get("proposito") == "correcciones" and estado == "hecho":
+        _guardar_correcciones(con, tomado["entrada"]["conversacion"], respuesta[0])
     return Response(status_code=204)
+
+
+def _guardar_correcciones(con, id_conversacion: str, texto: str) -> None:
+    """La fuente es para Sergio: al pedido solo llega el texto de cada corrección."""
+    _, duenio = chat.duenio(con, id_conversacion)
+    persona = identidades.obtener(con, duenio) if duenio else None
+    fuente = f"{persona.nombre if persona else 'Sergio'}, {id_conversacion}"
+    textos = personalidad.leer_correcciones(texto)
+    if textos:
+        personalidad.agregar_correcciones(con, textos, fuente)
+
+
+@app.get("/personalidad", response_model=personalidad.VistaPersonalidad, dependencies=[Depends(exigir_clave)])
+def ver_personalidad(con=Depends(conexion)) -> personalidad.VistaPersonalidad:
+    """La personalidad, las correcciones con su fuente y la madurez de hoy. Solo para Sergio."""
+    return personalidad.vista(con)
+
+
+@app.put("/personalidad", response_model=personalidad.VistaPersonalidad, dependencies=[Depends(exigir_clave_admin)])
+def guardar_personalidad(nueva: personalidad.Personalidad, con=Depends(conexion)) -> personalidad.VistaPersonalidad:
+    personalidad.guardar(con, nueva)
+    return personalidad.vista(con)
+
+
+@app.put(
+    "/personalidad/correcciones", response_model=personalidad.VistaPersonalidad,
+    dependencies=[Depends(exigir_clave_admin)],
+)
+def reemplazar_correcciones(
+    lista: list[personalidad.Correccion], con=Depends(conexion)
+) -> personalidad.VistaPersonalidad:
+    """Para borrar o corregir una corrección: el modelo las escribe y entran al pedido de todos."""
+    personalidad.reemplazar_correcciones(con, lista)
+    return personalidad.vista(con)
 
 
 def _lote_fallido(con, trabajo: int, entrada: dict) -> None:

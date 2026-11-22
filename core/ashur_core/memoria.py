@@ -8,10 +8,10 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from ashur_core import chat, identidades, inventario, modulos, nodos, personas, significado
+from ashur_core import chat, identidades, inventario, modulos, nodos, personalidad, personas, significado
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 12
+VERSION_ESQUEMA = 13
 
 
 class Identidad(BaseModel):
@@ -115,6 +115,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
             nodos.agregar_ajustes(conexion)  # y de los nodos
         if version < 12:
             personas.migrar(conexion)  # versión 12: otras personas en el chat, con su clave y su rol
+        if version < 13:
+            personalidad.migrar(conexion)  # versión 13: correcciones al terminar cada conversación
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:

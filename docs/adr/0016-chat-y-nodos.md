@@ -80,14 +80,14 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
   - dos mensajes a la vez dejan un solo trabajo;
   - migración desde la versión 8.
 
-## Pendiente (las fases siguientes del mismo diseño)
-- **Fase 2:** el programa `nodo/`, con Ollama, y el chat de punta a punta en el equipo Windows.
-- **Fase 3:** búsqueda híbrida, por palabras y por significado, con `bge-m3` (decisión 10).
-- **Fase 4:** herramientas para Sergio: inventario, identidades y módulos. Las acciones que escriben siguen siendo pedidos.
-- **Fase 5:** claves por persona, roles con reglas de acceso a herramientas, y privacidad: cada persona solo con sus recuerdos (decisión 11).
-- **Fase 6:**
-  - la personalidad de Sergio en la base;
-  - la madurez global (inicial hasta 2000 recuerdos, intermedio hasta 20 000, pleno después);
-  - las correcciones al terminar una conversación.
-- **App:** la pantalla de chat y el modelo dentro del iPhone y del iPad, desde la Mac.
+## Hecho después, en el mismo diseño
+- **Fase 2:** el programa `nodo/` (ADR 0017).
+- **Fase 3:** la búsqueda híbrida con `bge-m3` (ADR 0018).
+- **Ajustes de módulos y nodos** (ADR 0019).
+- **Fase 4:** las herramientas del chat (ADR 0021).
+- **Fase 5:** otras personas con su clave y su rol (ADR 0022).
+- **Fase 6:** la personalidad, la madurez y las correcciones (ADR 0024).
+
+## Pendiente
+- **App:** la pantalla de chat (ADR 0023, reservado) y el modelo dentro del iPhone y del iPad, desde la Mac.
 - **Galaxia:** los nodos todavía no son cuerpos.
