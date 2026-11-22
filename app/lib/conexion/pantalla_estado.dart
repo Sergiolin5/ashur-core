@@ -40,7 +40,7 @@ class _PantallaEstadoState extends State<PantallaEstado> {
       _direccion.text = ajustes.$1 ?? '';
       _clave.text = ajustes.$2 ?? '';
       _claveAdmin.text = ajustes.$3 ?? '';
-    });
+    }, onError: (Object _) {}); // Face ID falló: los campos quedan vacíos para volver a pegar las claves.
   }
 
   @override
@@ -49,6 +49,15 @@ class _PantallaEstadoState extends State<PantallaEstado> {
     _clave.dispose();
     _claveAdmin.dispose();
     super.dispose();
+  }
+
+  Future<void> _desbloquear() async {
+    await widget.fuente.actualizar();
+    if (!mounted || widget.fuente.estado == EstadoConexion.bloqueada) return;
+    final ajustes = await widget.fuente.ajustes();
+    if (!mounted) return;
+    _clave.text = ajustes.$2 ?? '';
+    _claveAdmin.text = ajustes.$3 ?? '';
   }
 
   /// Botón para pegar en un campo lo que hay en el portapapeles: la clave tiene 64 caracteres.
@@ -65,6 +74,8 @@ class _PantallaEstadoState extends State<PantallaEstado> {
   String _texto(FuenteGalaxia f) => switch (f.estado) {
     EstadoConexion.sinConfigurar =>
       'Todavía no hay un core configurado. La galaxia es de ejemplo.',
+    EstadoConexion.bloqueada =>
+      'Las claves están protegidas con Face ID y no se desbloquearon. Desbloquéalas o vuelve a pegarlas.',
     EstadoConexion.conectando => 'Conectando con el core…',
     EstadoConexion.conectado =>
       'Conectado. La galaxia es la del core: ${f.galaxia?.aprendizaje.recuerdos ?? 0} recuerdos.',
@@ -109,6 +120,12 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                 ),
                 const SizedBox(height: 20),
                 Text(_texto(widget.fuente)),
+                if (widget.fuente.estado == EstadoConexion.bloqueada)
+                  CupertinoButton(
+                    padding: const EdgeInsets.only(top: 12),
+                    onPressed: _desbloquear,
+                    child: const Text('Desbloquear con Face ID'),
+                  ),
                 const SizedBox(height: 24),
                 const Text('Dirección del core'),
                 const SizedBox(height: 6),

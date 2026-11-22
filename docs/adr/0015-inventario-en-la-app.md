@@ -42,7 +42,8 @@ directamente desde su teléfono.
 - **Clave de administrador en el teléfono:** Sergio decidió guardar la clave de administrador en el teléfono para
   poder editar y archivar objetos desde la app. El costo es que esa clave tiene privilegios totales en el core: también
   puede editar y borrar recuerdos, editar identidades y aprobar pedidos de módulos. Si el teléfono se extravía o se ve
-  comprometido, quien tenga acceso al Llavero obtiene control administrativo sobre esos recursos del core.
+  comprometido, quien tenga acceso al Llavero obtiene control administrativo sobre esos recursos del core. Desde el
+  ADR 0025 las dos claves se desbloquean con Face ID.
 
 ## Verificado (2026-11-22)
 - `flutter test` (28 pruebas): cliente HTTP contra core simulado en localhost (listar activos y archivados, crear con y

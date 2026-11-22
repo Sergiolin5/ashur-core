@@ -278,4 +278,68 @@ void main() {
       throwsA(isA<ErrorCore>().having((e) => e.fallo, 'fallo', FalloCore.coreSinClave)),
     );
   });
+
+  test('Face ID: las claves viejas sin protección se mueven a la entrada protegida y se borran', () async {
+    final almacen = AlmacenEnMemoria();
+    await almacen.escribir(claveDireccion, 'http://127.0.0.1:1');
+    await almacen.escribir(claveClave, 'buena');
+    await almacen.escribir(claveClaveAdmin, 'admin-buena');
+    final fuente = FuenteGalaxia(almacen: almacen, cache: CacheEnMemoria(), cargarEjemplo: () async => throw 'no');
+
+    expect(await fuente.ajustes(), ('http://127.0.0.1:1', 'buena', 'admin-buena'));
+    expect(await almacen.leer(claveClave), isNull);
+    expect(await almacen.leer(claveClaveAdmin), isNull);
+    final protegida = jsonDecode((await almacen.leer(claveClaves, protegido: true))!) as Map<String, dynamic>;
+    expect(protegida, {'clave': 'buena', 'admin': 'admin-buena'});
+  });
+
+  test('Face ID: se pide una vez por sesión', () async {
+    final s = await coreFalso();
+    final almacen = AlmacenEnMemoria();
+    await FuenteGalaxia(almacen: almacen, cache: CacheEnMemoria(), cargarEjemplo: () async => throw 'no')
+        .guardarAjustes(direccionDe(s).toString(), 'buena', 'admin-buena');
+    almacen.pedidosFaceId = 0;
+
+    // Una sesión nueva de la app: lee del Llavero.
+    final fuente = FuenteGalaxia(almacen: almacen, cache: CacheEnMemoria(), cargarEjemplo: () async => throw 'no');
+    await Future.wait([fuente.actualizar(), fuente.actualizar()]);
+    final cliente = await fuente.cliente();
+    expect(cliente?.claveAdmin, 'admin-buena');
+    expect(fuente.estado, EstadoConexion.conectado);
+    expect(almacen.pedidosFaceId, 1);
+    await s.close(force: true);
+  });
+
+  test('Face ID cancelado: queda bloqueada con lo guardado, sin ejemplo, y se puede volver a intentar', () async {
+    final s = await coreFalso();
+    final almacen = AlmacenEnMemoria();
+    final cache = CacheEnMemoria();
+    await FuenteGalaxia(almacen: almacen, cache: cache, cargarEjemplo: () async => throw 'no')
+        .guardarAjustes(direccionDe(s).toString(), 'buena');
+
+    final fuente = FuenteGalaxia(almacen: almacen, cache: cache, cargarEjemplo: () async => throw 'no');
+    almacen.bloqueado = true;
+    await fuente.actualizar();
+    expect(fuente.estado, EstadoConexion.bloqueada);
+    expect(fuente.esEjemplo, isFalse);
+    expect(fuente.galaxia, isNotNull, reason: 'muestra lo último guardado');
+    expect(await fuente.cliente(), isNull);
+
+    almacen.bloqueado = false;
+    await fuente.actualizar();
+    expect(fuente.estado, EstadoConexion.conectado);
+    await s.close(force: true);
+  });
+
+  test('Face ID cancelado sin nada guardado: sin galaxia y sin ejemplo', () async {
+    final almacen = AlmacenEnMemoria();
+    await almacen.escribir(claveDireccion, 'http://127.0.0.1:1');
+    await almacen.escribir(claveClaves, '{"clave":"buena","admin":null}', protegido: true);
+    almacen.bloqueado = true;
+    final fuente = FuenteGalaxia(almacen: almacen, cache: CacheEnMemoria(), cargarEjemplo: () async => throw 'no');
+    await fuente.actualizar();
+    expect(fuente.estado, EstadoConexion.bloqueada);
+    expect(fuente.galaxia, isNull);
+    expect(fuente.esEjemplo, isFalse);
+  });
 }

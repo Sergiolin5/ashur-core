@@ -1,4 +1,5 @@
-// De dónde sale la galaxia que se dibuja (docs/adr/0011-app-conectada-al-core.md, docs/adr/0015-inventario-en-la-app.md).
+// De dónde sale la galaxia que se dibuja (docs/adr/0011-app-conectada-al-core.md, docs/adr/0015-inventario-en-la-app.md,
+// docs/adr/0025-claves-con-face-id.md).
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -8,12 +9,17 @@ import 'almacen.dart';
 import 'cliente.dart';
 
 const claveDireccion = 'ashur.direccion';
+
+/// Las dos claves juntas, en una sola entrada protegida con Face ID: {"clave": ..., "admin": ...}.
+const claveClaves = 'ashur.claves';
+
+/// Dónde estaban las claves, sin protección, antes del ADR 0025. Se leen una vez para moverlas y se borran.
 const claveClave = 'ashur.clave';
 const claveClaveAdmin = 'ashur.clave_admin';
 const claveCache = 'ashur.cache.galaxia';
 
 /// Cómo está la conexión con el core, para la pestaña Estado.
-enum EstadoConexion { sinConfigurar, conectando, conectado, sinConexion, claveInvalida, coreSinClave, error }
+enum EstadoConexion { sinConfigurar, bloqueada, conectando, conectado, sinConexion, claveInvalida, coreSinClave, error }
 
 /// Guarda lo último que mandó el core. En la app es un archivo JSON (cache_archivo.dart); en las pruebas, memoria.
 abstract class Cache {
@@ -45,23 +51,67 @@ class FuenteGalaxia extends ChangeNotifier {
   bool esEjemplo = false;
   String detalle = '';
 
-  Future<(String?, String?, String?)> ajustes() async => (
-        await almacen.leer(claveDireccion),
-        await almacen.leer(claveClave),
-        await almacen.leer(claveClaveAdmin),
-      );
+  /// Las claves ya desbloqueadas. Face ID se pide una vez y quedan en memoria hasta cerrar la app.
+  Future<(String?, String?)>? _claves;
 
+  /// La clave y la de administrador. Lanza [SecretoBloqueado] si Face ID falla; se puede volver a intentar.
+  Future<(String?, String?)> _leerClaves() async {
+    final lectura = _claves ??= _leerDelLlavero();
+    try {
+      return await lectura;
+    } on SecretoBloqueado {
+      if (identical(_claves, lectura)) _claves = null;
+      rethrow;
+    }
+  }
+
+  Future<(String?, String?)> _leerDelLlavero() async {
+    final json = await almacen.leer(claveClaves, protegido: true);
+    if (json != null) {
+      final m = jsonDecode(json) as Map<String, dynamic>;
+      return (m['clave'] as String?, m['admin'] as String?);
+    }
+    // Claves guardadas sin protección antes del ADR 0025: se mueven a la entrada protegida.
+    final clave = await almacen.leer(claveClave);
+    final admin = await almacen.leer(claveClaveAdmin);
+    if (clave != null || admin != null) {
+      await _escribirClaves(clave, admin);
+      await almacen.borrar(claveClave);
+      await almacen.borrar(claveClaveAdmin);
+    }
+    return (clave, admin);
+  }
+
+  Future<void> _escribirClaves(String? clave, String? admin) =>
+      almacen.escribir(claveClaves, jsonEncode({'clave': clave, 'admin': admin}), protegido: true);
+
+  /// Dirección, clave y clave de administrador. Lanza [SecretoBloqueado] si Face ID falla.
+  Future<(String?, String?, String?)> ajustes() async {
+    final direccion = await almacen.leer(claveDireccion);
+    final (clave, admin) = await _leerClaves();
+    return (direccion, clave, admin);
+  }
+
+  /// Sin [claveAdmin], se conserva la que ya estaba guardada.
   Future<void> guardarAjustes(String direccion, String clave, [String? claveAdmin]) async {
     await almacen.escribir(claveDireccion, direccion.trim().replaceAll(RegExp(r'/+$'), ''));
-    await almacen.escribir(claveClave, clave.trim());
-    if (claveAdmin != null) {
-      await almacen.escribir(claveClaveAdmin, claveAdmin.trim());
-    }
+    final admin = claveAdmin?.trim() ?? (await _leerClaves()).$2;
+    await _escribirClaves(clave.trim(), admin);
+    _claves = Future.value((clave.trim(), admin));
     await actualizar();
   }
 
+  /// Un cliente con lo guardado, o null si falta algo o Face ID falla (entonces [estado] queda en bloqueada).
   Future<ClienteCore?> cliente() async {
-    final (direccion, clave, claveAdmin) = await ajustes();
+    final String? direccion, clave, claveAdmin;
+    try {
+      (direccion, clave, claveAdmin) = await ajustes();
+    } on SecretoBloqueado catch (e) {
+      estado = EstadoConexion.bloqueada;
+      detalle = e.motivo;
+      notifyListeners();
+      return null;
+    }
     if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) return null;
     return ClienteCore(
       direccion: Uri.parse(direccion),
@@ -71,7 +121,23 @@ class FuenteGalaxia extends ChangeNotifier {
   }
 
   Future<void> actualizar() async {
-    final (direccion, clave, _) = await ajustes();
+    final String? direccion, clave;
+    try {
+      (direccion, clave, _) = await ajustes();
+    } on SecretoBloqueado catch (e) {
+      // Face ID falló: se muestra lo último guardado, y la pestaña Estado ofrece desbloquear o volver a pegar la clave.
+      estado = EstadoConexion.bloqueada;
+      detalle = e.motivo;
+      final guardada = await cache.leer();
+      if (guardada != null) {
+        galaxia = EstadoGalaxia.fromJson(jsonDecode(guardada) as Map<String, dynamic>);
+      } else {
+        galaxia = null;
+      }
+      esEjemplo = false;
+      notifyListeners();
+      return;
+    }
     if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) {
       galaxia = await cargarEjemplo();
       esEjemplo = true;

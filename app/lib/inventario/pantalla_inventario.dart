@@ -360,7 +360,10 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                     const SizedBox(height: 12),
                   ],
                   if (_sinConfigurar) ...[
-                    const Text('Todavía no hay un core configurado.',
+                    Text(
+                        widget.fuente.estado == EstadoConexion.bloqueada
+                            ? 'Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'
+                            : 'Todavía no hay un core configurado.',
                         style: TextStyle(color: Color(0x80E8E8F0), fontSize: 14)),
                     const SizedBox(height: 12),
                   ],

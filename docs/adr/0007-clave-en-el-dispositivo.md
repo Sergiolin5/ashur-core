@@ -16,6 +16,8 @@ la decisión 4 (almacenamiento en Flutter).
 - **macOS:** se va a llamar con `MacOsOptions(usesDataProtectionKeychain: false)`. Así no hace falta la capacidad
   Keychain Sharing, que con la cuenta gratuita de Apple solo deja abrir la app en la Mac que la compiló.
 
+- **Face ID:** desde el ADR 0025 las claves se guardan en una entrada protegida que pide Face ID para leerse.
+
 ## Verificado (2026-11-21)
 - `flutter build macos --debug` y `flutter build ios --simulator --debug` compilan con Swift Package Manager, sin
   CocoaPods.
