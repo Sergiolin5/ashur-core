@@ -10,7 +10,8 @@
 - Galaxia solo en Inicio. Chat y paneles conservan fondos oscuros limpios.
 - El chat usa pequeños acentos ámbar para aportar calidez.
 - La respuesta táctil combina cambio nítido y halo suave; iconos geométricos se rellenan al activarse.
-- En Mac se contempla una ventana flotante discreta; en móvil, la presencia de Ashur vive dentro de la app.
+- En Mac hay una burbuja flotante discreta por encima de otras ventanas; al tocarla, Ashur pasa al frente. En móvil,
+  la presencia de Ashur vive dentro de la app.
 
 ## Referencia Roamies
 
@@ -25,8 +26,8 @@ mantiene su cliente Flutter multiplataforma.
 
 El cliente actual aún tiene Chat, Casa y Workbench como pantallas vacías (`app/lib/main.dart`). La capa visual puede
 darles identidad y estados vacíos, pero no debe inventar funciones que el cliente o el core no implementan. La
-ventana flotante de macOS requiere diseño de ciclo de vida e interacción nativa; tratarla como siguiente etapa
-separada, sin dependencia nueva hasta aprobación.
+burbuja flotante de macOS se dibuja con AppKit, sin paquetes nuevos. Trae la ventana Flutter principal al frente; no
+simula un chat compacto porque el cliente aún no tiene chat implementado. El botón de cierre oculta la burbuja.
 
 ## Tokens iniciales
 
