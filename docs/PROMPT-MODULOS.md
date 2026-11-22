@@ -17,16 +17,17 @@ agentes e identidades.
    | `CLAUDE.md` | Las reglas del repo. |
    | `docs/ASHUR.md` | Qué es Ashur, el core y los tres niveles de inferencia. |
    | `docs/MODULOS.md` | El contrato que cumple todo módulo. |
-   | `modules/_plantilla/modulo.json` | El manifiesto de partida. |
+   | `modules/_plantilla/` (los 4 archivos) | El módulo de ejemplo: manifiesto, código y autoprueba. |
+   | `contracts/modulo.schema.json` | El formato exacto del manifiesto. |
    | `docs/GALAXIA.md` | Cómo aparece un módulo en la galaxia. |
    | `contracts/galaxy-state.schema.json` | El formato exacto de la galaxia. |
    | `contracts/recuerdo.schema.json` | Cómo un módulo le entrega lo que aprende al core. |
    | `docs/DECISIONES-ABIERTAS.md` | Lo que no se puede dar por decidido. |
-   | `docs/adr/` (todos) | Las decisiones ya tomadas: stack, memoria, claves, estado de la app. |
+   | `docs/adr/` (todos) | Las decisiones ya tomadas; la 0013 dice cómo corre un módulo. |
    | `docs/HERRAMIENTAS.md` | REA y el advisor. |
 
    Si la herramienta limita los adjuntos, los indispensables son `CLAUDE.md`, `docs/MODULOS.md`,
-   `modules/_plantilla/modulo.json`, `docs/DECISIONES-ABIERTAS.md` y los ADR 0003 y 0004.
+   `modules/_plantilla/` (los 4 archivos), `docs/DECISIONES-ABIERTAS.md` y los ADR 0004 y 0013.
 2. **Pega el prompt de abajo** como instrucciones del proyecto (o como primer mensaje).
 3. **Trabaja un módulo por conversación.** Al final, la IA te da una «Entrega para Claude Code».
 4. **Lleva la entrega a Claude Code** en este repo con el prompt de integración del final de este documento.
@@ -59,8 +60,14 @@ esencial:
   módulo no la declara. Un bloqueo es un asteroide y lo que el módulo entrega es una estrella fugaz.
 - La inferencia va primero a los nodos de casa, después a un modelo en el dispositivo y la nube solo como respaldo.
   La filosofía es reaprovechar el hardware que Sergio ya tiene.
-- Todavía NO está definido cómo se registra un módulo en el core ni en qué lenguaje corre su lógica
-  (docs/MODULOS.md, sección 2). Por eso cada módulo se construye autocontenido, y la integración la hace Claude Code.
+- Un módulo es Python y corre dentro del core (ADR 0013, docs/MODULOS.md sección 2). modules/<id>/ trae
+  modulo.json, modulo.py con una función por acción con la firma def <accion>(contexto, **parametros) -> dict,
+  autoprueba.py y README.md. modules/_plantilla/ es el ejemplo que hay que copiar.
+- Lo único que recibe una acción es contexto.recordar(texto, fecha=None, sensibilidad="normal", identidades=None,
+  objetos=None, opinion=None), que guarda un recuerdo con origen igual al id del módulo. El módulo no importa nada del
+  core ni de otro módulo, y no abre la base.
+- Una acción que escribe no corre al pedirla: queda como pedido pendiente hasta que un administrador lo aprueba.
+- Python 3.13, sin paquetes que no estén en core/pyproject.toml (fastapi, uvicorn, pydantic).
 </contexto>
 
 <reglas>
@@ -75,15 +82,16 @@ esencial:
    escribas va dentro de modules/<id>/; nunca toques core/, app/, contracts/ ni otro módulo.
 5. Nunca propongas un paquete, librería, modelo o herramienta nueva como si ya estuviera aprobada. Ponlo en la
    sección «Dependencias que piden aprobación», con su motivo, su costo y una alternativa sin paquete si existe.
-6. Nunca cierres en silencio una decisión de docs/DECISIONES-ABIERTAS.md ni de la sección 2 de docs/MODULOS.md. Si
-   tu diseño la necesita, propón opciones y déjala como pregunta.
+6. Nunca cierres en silencio una decisión de docs/DECISIONES-ABIERTAS.md. Si tu diseño la necesita, propón opciones y
+   déjala como pregunta.
 7. No contradigas un ADR. Si crees que uno debe cambiar, dilo aparte como propuesta, con motivo y costo.
 8. El repo es público. Nunca escribas claves, tokens, IP, nombres de host, rutas del servidor ni datos personales
    reales (tampoco nombres de personas o mascotas). Usa nombres de variables de entorno (por ejemplo ASHUR_CLAVE) y
    datos inventados en los ejemplos.
 9. Entrega solo lo pedido: sin funciones, abstracciones, configuraciones ni temas extra. La app no tiene temas ni
    ajustes de apariencia; lo visual lo decide Sergio.
-10. Incluye una autoprueba que corra sin red ni servicios externos, con datos inventados. Si puedes ejecutarla, copia
+10. Incluye autoprueba.py, como la de la plantilla: pruebas de pytest con un contexto falso, sin red ni servicios
+    externos, con datos inventados. Si puedes ejecutarla, copia
     la salida real tal cual. Si no puedes ejecutar nada, no digas que algo funciona o pasa pruebas: todo tu código es
     «sin verificar».
 11. Si tienes acceso al repo, nunca hagas push a main ni integres tú: entrega una rama, un pull request o un parche.
@@ -118,7 +126,8 @@ Qué bloqueos publicaría como asteroide y qué eventos como estrella fugaz.
 
 ## Archivos propuestos
 Cada archivo con su ruta relativa a la raíz del repo, todos dentro de modules/<id>/, y su contenido completo:
-manifiesto, código, autoprueba y un README.md breve (qué hace, qué acciones tiene, cómo correr la autoprueba). Si
+modulo.json, modulo.py, autoprueba.py y un README.md breve (qué hace, qué acciones tiene, cómo correr la
+autoprueba). Si
 algo fuera de modules/<id>/ tendría que cambiar, no lo escribas: descríbelo en «Cambios fuera del módulo».
 
 ## Autoprueba
@@ -146,7 +155,8 @@ Revisa tu entrega contra esta lista y corrige lo que falle:
 - Todos los archivos están dentro de modules/<id>/ y solo hay un módulo.
 - El manifiesto tiene los cinco campos de docs/MODULOS.md y cada acción dice si escribe.
 - El módulo no guarda memoria propia ni depende de otro módulo.
-- Hay una autoprueba que no necesita red.
+- modulo.py tiene una función por acción, con la firma de la plantilla, y no importa nada del core.
+- Hay una autoprueba.py que no necesita red.
 - No hay claves, IP, hosts, rutas del servidor ni datos personales reales.
 - Ningún paquete nuevo aparece fuera de «Dependencias que piden aprobación».
 - Ninguna decisión abierta quedó cerrada.
@@ -168,7 +178,8 @@ Te paso una «Entrega para Claude Code» que hizo otra IA. Tú eres el revisor f
 3. Si la entrega pasa la revisión, crea solo modules/<id>/ a partir de modules/_plantilla/. Los «Cambios fuera del
    módulo» no se hacen en esta tarea: anótalos como tareas aparte.
 4. Comprueba que no entre ninguna clave, IP, host, ruta del servidor ni dato personal real.
-5. Corre la autoprueba y las pruebas que apliquen, y pega la salida. Lo que no puedas verificar va como «sin
+5. Corre, desde core/, `uv run pytest ../modules/<id>/autoprueba.py` y `uv run pytest`, y pega la salida. Comprueba
+   también que el módulo aparece sin error en GET /modulos. Lo que no puedas verificar va como «sin
    verificar».
 6. Consulta al advisor antes de dar la tarea por cerrada.
 7. No hagas commit ni push sin mi aprobación.

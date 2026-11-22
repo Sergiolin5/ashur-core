@@ -53,4 +53,4 @@ el `Dockerfile`.
   del Ashur anterior. `/vivo` responde desde la red privada.
 
 ## Pendiente
-- **Registro de módulos:** el mecanismo concreto sigue sin definir (`docs/MODULOS.md`, sección 2).
+- **Registro de módulos:** ya está, en `docs/adr/0013-modulos-en-el-core.md`.

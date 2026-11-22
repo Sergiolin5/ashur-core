@@ -17,12 +17,21 @@ Cada módulo tiene un manifiesto `modulo.json` en su raíz con:
 
 El módulo no guarda memoria propia: lo que aprende se lo entrega al core, que es la única memoria de Ashur.
 
-## 2. Cómo se registra en el core
-- El core descubre cada módulo leyendo su `modulo.json`.
-- Al registrarlo, el core guarda el manifiesto y empieza a ofrecer sus acciones a Ashur.
-- Una acción que `escribe` necesita la aprobación de Sergio antes de ejecutarse.
-- El mecanismo concreto (endpoint REST, carpeta compartida u otro) está por definir sobre el stack del servidor
-  (`docs/adr/0003-stack-servidor.md`).
+## 2. Cómo se registra y corre en el core
+Ver `docs/adr/0013-modulos-en-el-core.md`.
+
+- **Archivos:** además de `modulo.json` (formato exacto en `contracts/modulo.schema.json`), cada módulo trae:
+  - `modulo.py`, con una función por acción, con el mismo nombre que su `id`:
+    `def <accion>(contexto, **parametros) -> dict`;
+  - `autoprueba.py`, que corre sin red ni core, con un contexto falso. Desde `core/`:
+    `uv run pytest ../modules/<id>/autoprueba.py`.
+- **Contexto:** `contexto.recordar(texto, fecha=None, sensibilidad="normal", identidades=None, objetos=None,
+  opinion=None)` guarda un recuerdo en el core con `origen` igual al id del módulo. Es todo lo que el módulo recibe.
+- **Registro:** el core descubre los módulos de `modules/` solo. Uno roto aparece en `GET /modulos` con su error.
+- **Acciones que escriben:** `POST /modulos/<id>/acciones/<accion>` crea un pedido pendiente, y la acción corre recién
+  cuando un administrador lo aprueba en `POST /pedidos/<id>/aprobar`.
+- **Sin paquetes nuevos** salvo aprobación de Sergio; si hace falta uno, se agrega al core en una tarea aparte.
+- **Ejemplo:** `modules/_plantilla/`.
 
 ## 3. Cómo aparece en la galaxia
 - Cada módulo registrado es un **planeta** con `ref: {"tipo": "modulo", "id": <id del módulo>}` y `nombre` igual al
