@@ -40,13 +40,16 @@ def vectores(base: str, modelo: str, entrada: dict, espera_s: float) -> dict:
 
 def conversar(base: str, modelo: str, entrada: dict, num_ctx: int, espera_s: float) -> dict:
     """El pedido del core a /api/chat, y su respuesta como salida del protocolo: {"mensaje": {...}}."""
-    respuesta = _pedir(
-        base, "/api/chat",
-        {"model": modelo, "messages": entrada["messages"], "stream": False, "options": {"num_ctx": num_ctx}},
-        espera_s,
-    )
-    contenido = (respuesta.get("message") or {}).get("content") or ""
-    if not contenido.strip():
+    pedido = {"model": modelo, "messages": entrada["messages"], "stream": False, "options": {"num_ctx": num_ctx}}
+    if entrada.get("tools"):
+        pedido["tools"] = entrada["tools"]  # las corre el core; el modelo solo las pide (ADR 0021)
+    mensaje = _pedir(base, "/api/chat", pedido, espera_s).get("message") or {}
+    contenido = mensaje.get("content") or ""
+    llamadas = mensaje.get("tool_calls") or []
+    if not contenido.strip() and not llamadas:
         # Como error, el core lo reintenta; una salida vacía la rechazaría y el trabajo quedaría tomado hasta vencer.
         raise ValueError(f"{modelo} devolvió una respuesta vacía.")
-    return {"mensaje": {"role": "assistant", "content": contenido}}
+    salida = {"role": "assistant", "content": contenido}
+    if llamadas:
+        salida["tool_calls"] = llamadas
+    return {"mensaje": salida}

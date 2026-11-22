@@ -58,6 +58,23 @@ def test_una_respuesta_vacia_es_un_error_para_que_el_core_reintente(monkeypatch)
     }
 
 
+def test_las_herramientas_viajan_a_ollama_y_las_llamadas_vuelven_al_core(monkeypatch):
+    pedidos = []
+    llamada = {"function": {"name": "buscar_objetos", "arguments": {"texto": "bici"}}}
+
+    def falso(base, ruta, cuerpo, espera):
+        pedidos.append(cuerpo)
+        return {"message": {"role": "assistant", "content": "", "tool_calls": [llamada]}}
+
+    monkeypatch.setattr(ollama, "_pedir", falso)
+    herramienta = {"type": "function", "function": {"name": "buscar_objetos", "parameters": {"type": "object"}}}
+    salida = ollama.conversar("http://x", "qwen2.5:7b", {"messages": [], "tools": [herramienta], "rondas": 0}, 8192, 1)
+    assert salida == {"mensaje": {"role": "assistant", "content": "", "tool_calls": [llamada]}}  # sin texto, vale
+    assert pedidos[0]["tools"] == [herramienta] and "rondas" not in pedidos[0]
+    ollama.conversar("http://x", "qwen2.5:7b", {"messages": []}, 8192, 1)
+    assert "tools" not in pedidos[1]
+
+
 def test_los_embeddings_vuelven_uno_por_texto(monkeypatch):
     import pytest
 
