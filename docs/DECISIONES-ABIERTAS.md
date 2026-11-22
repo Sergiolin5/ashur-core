@@ -2,12 +2,12 @@
 
 Cada una espera la decisión de Sergio. Cuando se cierre, se registra como ADR en `docs/adr/` y se quita de aquí.
 
-## 11. Consentimiento y sensibilidad
-El acceso de otras personas al chat y su privacidad ya están decididos (`docs/adr/0022-personas-y-roles.md`). Quedan
-dos partes:
-- **Consentimiento:** si Sergio les avisa a los demás, antes de darles su clave, que lo que le digan a Ashur queda en
-  su memoria.
-- **Sensibilidad:** `sensibilidad` sigue siendo solo un dato (decisión de Sergio, 2026-11-21). Hay que decidir qué puede
+## 11. Sensibilidad por nivel de inferencia
+El acceso de otras personas al chat y su privacidad ya están decididos (`docs/adr/0022-personas-y-roles.md`). Queda
+una parte:
+- **Consentimiento** (decidido el 2026-11-22): Sergio les avisa en persona, antes de darles su clave, que lo que le
+  digan a Ashur queda en su memoria. Ni la app ni el core muestran un aviso.
+- **Sensibilidad** (abierta): `sensibilidad` sigue siendo solo un dato (decisión de Sergio, 2026-11-21). Hay que decidir qué puede
   usar cada nivel de inferencia antes de que exista el nivel 3, la nube.
 
 ## 12. Cómo se ven los objetos del inventario

@@ -2,8 +2,8 @@
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-11-22
-- **Cierra:** la parte de la decisión 11 que toca al acceso y la privacidad del chat. El consentimiento y la
-  sensibilidad siguen abiertos.
+- **Cierra:** la parte de la decisión 11 que toca al acceso y la privacidad del chat. El consentimiento quedó en
+  que Sergio avisa en persona; la sensibilidad sigue abierta.
 
 ## Contexto
 Sergio quiere que otras personas, como Christian o Erick, hablen con Ashur. Es la fase 5 del chat (ADR 0016).
@@ -53,8 +53,8 @@ Sus decisiones del 2026-11-22:
 
 ## Costos
 - **Sin aviso a los demás:** todo lo que una persona le dice a Ashur queda en la memoria de Sergio. Aparece en
-  `/recuerdos` y en lo que Ashur recuerda con Sergio. Avisarle o no antes de darle su clave es decisión de Sergio, y el
-  core no le muestra ningún aviso.
+  `/recuerdos` y en lo que Ashur recuerda con Sergio. Sergio decidió avisarles en persona antes de darles su clave (2026-11-22);
+  el core no les muestra ningún aviso.
 - **Otra persona puede intentar mandar sobre Ashur en el chat de Sergio:** lo que escribe queda en la memoria de
   Sergio, y la búsqueda de Sergio busca en toda su memoria. Un mensaje plantado puede llegar al pedido de Sergio, que
   tiene todas las herramientas, y las acciones de módulos que solo leen corren en el acto.
