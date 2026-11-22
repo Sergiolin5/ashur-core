@@ -59,9 +59,9 @@ Eso se verificó en la Mac con el commit a47f4a5 de la rama `app-inventario`.
 - Prueba nueva: salir de Inventario mientras la lista todavía carga no lanza errores. Nota: también pasa sin el
   `mounted` que sigue a `listarObjetos`, porque el `catch` de `_cargar` atrapa el error y vuelve a revisar `mounted`.
 
-## Sin verificar
-- **Prueba en el iPhone real:** escribir y pegar la clave de administrador en el dispositivo físico y verificar la
-  experiencia táctil completa lo hace Sergio después.
+## Verificado en el iPhone real (2026-11-22)
+- Sergio pegó la clave de administrador en la pestaña Estado, abrió Inventario, creó un objeto con lugar, lo renombró,
+  lo movió y lo archivó; el planeta Objetos cambió de tamaño. Todo funcionó.
 
 ## Pendiente
 - Visualización de objetos individuales dentro del planeta o como satélites cuando se decida cómo representarlos
