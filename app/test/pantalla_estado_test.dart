@@ -28,6 +28,11 @@ class _FuenteManual extends FuenteGalaxia {
 
   ClienteCore? _cliente;
 
+  void bloquear() {
+    estado = EstadoConexion.bloqueada;
+    notifyListeners();
+  }
+
   void conectar() {
     _cliente = _ClienteVacio();
     estado = EstadoConexion.conectado;
@@ -62,6 +67,24 @@ void main() {
     fuente.conectar();
     await tester.pumpAndSettle();
     expect(find.text('Conecta con el core para ver los nodos y módulos.'), findsNothing);
+    expect(find.text('No hay nodos registrados.'), findsOneWidget);
+    expect(find.text('Conecta con el core para ver la configuración avanzada.'), findsNothing);
+  });
+
+  testWidgets('al desbloquear con Face ID, la configuración avanzada y Lo de Ashur cargan solas', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final fuente = _FuenteManual()..bloquear();
+    await tester.pumpWidget(CupertinoApp(home: PantallaEstado(fuente: fuente)));
+    await tester.pumpAndSettle();
+    expect(find.text('Desbloquear con Face ID'), findsOneWidget);
+    expect(find.text('Conecta con el core para ver los nodos y módulos.'), findsOneWidget);
+
+    fuente.conectar(); // lo que deja actualizar() cuando Face ID acepta
+    await tester.pumpAndSettle();
+    expect(find.text('Desbloquear con Face ID'), findsNothing);
     expect(find.text('No hay nodos registrados.'), findsOneWidget);
     expect(find.text('Conecta con el core para ver la configuración avanzada.'), findsNothing);
   });
