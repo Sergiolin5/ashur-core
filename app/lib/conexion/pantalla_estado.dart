@@ -30,6 +30,7 @@ class PantallaEstado extends StatefulWidget {
 class _PantallaEstadoState extends State<PantallaEstado> {
   final _direccion = TextEditingController();
   final _clave = TextEditingController();
+  final _claveAdmin = TextEditingController();
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _PantallaEstadoState extends State<PantallaEstado> {
       if (!mounted) return;
       _direccion.text = ajustes.$1 ?? '';
       _clave.text = ajustes.$2 ?? '';
+      _claveAdmin.text = ajustes.$3 ?? '';
     });
   }
 
@@ -45,6 +47,7 @@ class _PantallaEstadoState extends State<PantallaEstado> {
   void dispose() {
     _direccion.dispose();
     _clave.dispose();
+    _claveAdmin.dispose();
     super.dispose();
   }
 
@@ -142,6 +145,23 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                     _pegarEn(_clave),
                   ],
                 ),
+                const SizedBox(height: 16),
+                const Text('Clave de administrador (ASHUR_CLAVE_ADMIN)'),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoTextField(
+                        controller: _claveAdmin,
+                        obscureText: true,
+                        autocorrect: false,
+                        decoration: _decoracionCampo,
+                        style: _estiloCampo,
+                      ),
+                    ),
+                    _pegarEn(_claveAdmin),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 CupertinoButton.filled(
                   onPressed: widget.fuente.estado == EstadoConexion.conectando
@@ -149,6 +169,7 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                       : () => widget.fuente.guardarAjustes(
                           _direccion.text,
                           _clave.text,
+                          _claveAdmin.text,
                         ),
                   child: const Text('Guardar y conectar'),
                 ),
