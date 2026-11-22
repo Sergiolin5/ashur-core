@@ -44,6 +44,13 @@ class FuenteGalaxia extends ChangeNotifier {
   bool esEjemplo = false;
   String detalle = '';
 
+  /// Un cliente con la dirección y la clave guardadas, o null si falta alguna.
+  Future<ClienteCore?> cliente() async {
+    final (direccion, clave) = await ajustes();
+    if (direccion == null || direccion.isEmpty || clave == null || clave.isEmpty) return null;
+    return ClienteCore(direccion: Uri.parse(direccion), clave: clave);
+  }
+
   Future<(String?, String?)> ajustes() async => (await almacen.leer(claveDireccion), await almacen.leer(claveClave));
 
   Future<void> guardarAjustes(String direccion, String clave) async {

@@ -17,6 +17,12 @@ Future<HttpServer> coreFalso({int? siempre}) async {
       r.statusCode = siempre;
     } else if (pedido.headers.value('X-Ashur-Clave') != 'buena') {
       r.statusCode = 401;
+    } else if (pedido.uri.path == '/chat') {
+      r.headers.contentType = ContentType.json;
+      r.write(jsonEncode([
+        {'id': 1, 'autor': 'sergio', 'texto': 'Hola', 'fecha': '2026-11-22T00:00:00+00:00'},
+        {'id': 2, 'autor': 'ashur', 'texto': 'Hola, Sergio', 'fecha': '2026-11-22T00:00:01+00:00'},
+      ]));
     } else if (pedido.uri.path == '/galaxia') {
       r.headers.contentType = ContentType.json;
       r.write(ejemplo);
@@ -39,6 +45,15 @@ void main() {
     addTearDown(s.close);
     final g = await ClienteCore(direccion: direccionDe(s), clave: 'buena').galaxia();
     expect(g.aprendizaje.recuerdos, 120);
+  });
+
+  test('lee el chat y manda un mensaje', () async {
+    final s = await coreFalso();
+    addTearDown(s.close);
+    final cliente = ClienteCore(direccion: direccionDe(s), clave: 'buena');
+    final mensajes = await cliente.chat();
+    expect(mensajes.map((m) => (m.deAshur, m.texto)), [(false, 'Hola'), (true, 'Hola, Sergio')]);
+    expect((await cliente.hablar('Hola')).length, 2);
   });
 
   test('distingue clave equivocada, core sin clave y core inalcanzable', () async {

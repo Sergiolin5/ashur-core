@@ -11,6 +11,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'conexion/almacen.dart';
 import 'conexion/cache_archivo.dart';
 import 'conexion/fuente.dart';
+import 'conexion/pantalla_chat.dart';
 import 'conexion/pantalla_estado.dart';
 import 'galaxia/modelo.dart';
 import 'galaxia/vista.dart';
@@ -76,7 +77,7 @@ class Inicio extends StatelessWidget {
                   return VistaGalaxia(
                     estado: galaxia,
                     alTocarNucleo: (punto, tamano) => Navigator.of(context)
-                        .push(rutaZoom(const PantallaVacia(titulo: 'Chats'), punto, tamano)),
+                        .push(rutaZoom(PantallaChat(fuente: fuente), punto, tamano)),
                   );
                 },
               ),
