@@ -56,6 +56,7 @@ sin pasar por su revisión. En Claude Code, esa revisión incluye consultar al a
 | `CLAUDE.md` | Reglas del repo para cualquier sesión de IA. |
 | `docs/GALAXIA.md` | Glosario visual y modelo matemático de la galaxia. |
 | `docs/MODULOS.md` | Contrato que cumple todo módulo. |
+| `docs/PROMPT-MODULOS.md` | Prompt para construir módulos con otras IA. |
 | `docs/HERRAMIENTAS.md` | REA y el advisor de Claude Code. |
 | `docs/DECISIONES-ABIERTAS.md` | Lo que falta decidir. |
 | `docs/REFERENCIA-PRIVATELM.md` | Qué tomamos de PrivateLM. |
