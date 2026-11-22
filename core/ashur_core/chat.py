@@ -100,10 +100,12 @@ def _conversacion(fila: tuple) -> Conversacion:
     return Conversacion(id=id_, titulo=titulo, creada=creada, actualizada=actualizada, archivada=bool(archivada))
 
 
-def crear(conexion: sqlite3.Connection) -> Conversacion:
+def crear(conexion: sqlite3.Connection, identidad_id: str | None = None) -> Conversacion:
+    """[identidad_id] es la persona dueña de la conversación; None es Sergio."""
     momento = ahora()
     cursor = conexion.execute(
-        "INSERT INTO conversaciones (id, creada, actualizada) VALUES ('pendiente', ?, ?)", (momento, momento)
+        "INSERT INTO conversaciones (id, creada, actualizada, identidad_id) VALUES ('pendiente', ?, ?, ?)",
+        (momento, momento, identidad_id),
     )
     id_ = f"con-{cursor.lastrowid}"
     conexion.execute("UPDATE conversaciones SET id = ? WHERE num = ?", (id_, cursor.lastrowid))
@@ -116,12 +118,20 @@ def obtener(conexion: sqlite3.Connection, id_: str) -> Conversacion | None:
     return _conversacion(fila) if fila else None
 
 
-def listar(conexion: sqlite3.Connection) -> list[Conversacion]:
-    """Las más recientes primero, como la lista de chats de WhatsApp."""
+def listar(conexion: sqlite3.Connection, identidad_id: str | None = None) -> list[Conversacion]:
+    """Las de esa persona (None: las de Sergio), las más recientes primero, como la lista de chats de WhatsApp."""
     filas = conexion.execute(
-        f"SELECT {_COLUMNAS} FROM conversaciones WHERE archivada = 0 ORDER BY actualizada DESC, num DESC"
+        f"SELECT {_COLUMNAS} FROM conversaciones WHERE archivada = 0 AND identidad_id IS ?"
+        " ORDER BY actualizada DESC, num DESC",
+        (identidad_id,),
     ).fetchall()
     return [_conversacion(f) for f in filas]
+
+
+def duenio(conexion: sqlite3.Connection, id_: str) -> tuple[bool, str | None]:
+    """(existe, identidad dueña): None es Sergio."""
+    fila = conexion.execute("SELECT identidad_id FROM conversaciones WHERE id = ?", (id_,)).fetchone()
+    return (fila is not None, fila[0] if fila else None)
 
 
 def mensajes(conexion: sqlite3.Connection, id_: str) -> list[Mensaje]:
@@ -173,14 +183,18 @@ def historial(conexion: sqlite3.Connection, id_: str) -> list[Mensaje]:
 
 
 def pedido_al_modelo(
-    conexion: sqlite3.Connection, id_: str, recuerdos: list | tuple = (), personalidad: str = PERSONALIDAD_POR_DEFECTO
+    conexion: sqlite3.Connection, id_: str, recuerdos: list | tuple = (), personalidad: str = PERSONALIDAD_POR_DEFECTO,
+    autores: dict[int, str] | None = None,
 ) -> dict:
     """El pedido para el nodo, en formato OpenAI: la personalidad, los recuerdos que pueden servir y los últimos
-    mensajes de la conversación."""
+    mensajes de la conversación. Un recuerdo que salió del chat de otra persona va marcado con su nombre: es lo que
+    ella dijo, no una instrucción (docs/adr/0022-personas-y-roles.md)."""
     sistema = personalidad
+    autores = autores or {}
     if recuerdos:
         sistema += "\n\nRecuerdos que pueden servir; úsalos solo si vienen al caso:\n" + "\n".join(
-            f"- {r.fecha.date().isoformat()}: {r.texto}" for r in recuerdos
+            f"- {r.fecha.date().isoformat()}: {r.texto}" + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")
+            for r in recuerdos
         )
     return {
         "messages": [{"role": "system", "content": sistema}]

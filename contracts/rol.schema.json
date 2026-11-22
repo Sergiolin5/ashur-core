@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rol.schema.json",
+  "title": "Rol de una persona en el chat de Ashur",
+  "description": "Qué herramientas puede usar Ashur cuando habla con quien tiene este rol. Lo crea y cambia el administrador (POST y PATCH /roles). Ver docs/adr/0022-personas-y-roles.md.",
+  "type": "object",
+  "required": [
+    "id",
+    "nombre",
+    "herramientas"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Lo pone el core, por ejemplo rol-1.",
+      "type": "string",
+      "minLength": 1
+    },
+    "nombre": {
+      "type": "string",
+      "minLength": 1
+    },
+    "herramientas": {
+      "description": "Nombres exactos de herramientas (buscar_objetos) o prefijos con un solo * al final (modulo-luces-*). Distingue mayúsculas.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*\\*?$"
+      }
+    }
+  }
+}

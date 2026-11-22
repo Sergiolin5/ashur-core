@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from ashur_core import identidades, inventario, memoria
+from ashur_core import identidades, inventario, memoria, personas
 
 # Va al final de la personalidad cuando el pedido lleva herramientas. Sin esto, qwen2.5:7b decía que no sabía dónde
 # estaba un objeto sin buscarlo en el inventario (docs/adr/0021-herramientas-del-chat.md).
@@ -90,10 +90,14 @@ def de_modulos(registro) -> list[Herramienta]:
     return lista
 
 
-def herramientas_para(conversacion_id: str, registro) -> list[Herramienta]:
-    """La única puerta: qué herramientas se ofrecen en una conversación. Hoy, todas, porque el chat es solo de
-    Sergio; la fase 5 decide aquí según el rol de quien habla."""
-    return list(DEL_CORE) + de_modulos(registro)
+def herramientas_para(con, identidad_id: str | None, registro) -> list[Herramienta]:
+    """La única puerta: qué herramientas se ofrecen a quien habla. Sergio, todas; otra persona, las de su rol actual,
+    y ninguna si no tiene rol (docs/adr/0022-personas-y-roles.md)."""
+    todas = list(DEL_CORE) + de_modulos(registro)
+    if identidad_id is None:
+        return todas
+    patrones = personas.patrones_de(con, identidad_id)
+    return [h for h in todas if personas.permite(patrones, h.nombre)]
 
 
 def _recortar(texto: str) -> str:
@@ -108,9 +112,11 @@ def _lineas(lineas: list[str], vacio: str) -> str:
 
 
 def correr(
-    con, nombre: str, argumentos, ofrecidas: list[Herramienta], correr_modulo: Callable[[str, str, dict], str]
+    con, nombre: str, argumentos, ofrecidas: list[Herramienta], correr_modulo: Callable[[str, str, dict], str],
+    permitidos: set[int] | None = None,
 ) -> str:
-    """El resultado de una llamada, siempre como texto para el modelo."""
+    """El resultado de una llamada, siempre como texto para el modelo. Con [permitidos], buscar_recuerdos solo ve esos:
+    el rol decide qué herramientas hay, pero la privacidad vale dentro de cada una."""
     herramienta = next((h for h in ofrecidas if h.nombre == nombre), None)
     if herramienta is None:
         return f"No existe la herramienta {nombre}."
@@ -134,7 +140,8 @@ def correr(
     elif nombre == "listar_identidades":
         resultado = _lineas([f"{i.nombre} ({i.clase})" for i in identidades.listar(con)], "Ashur no conoce a nadie todavía.")
     else:
-        recuerdos = [memoria.obtener(con, i) for i in memoria.buscar_alguna(con, args.texto, limite=ELEMENTOS)]
+        ids = memoria.buscar_alguna(con, args.texto, limite=ELEMENTOS, permitidos=permitidos)
+        recuerdos = [memoria.obtener(con, i) for i in ids]
         resultado = _lineas(
             [f"{r.fecha.date().isoformat()}: {r.texto}" for r in recuerdos if r is not None], "No hay recuerdos con eso."
         )

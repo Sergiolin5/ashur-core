@@ -228,6 +228,7 @@ class Pedido(BaseModel):
     creado: str
     resultado: dict | None
     error: str | None
+    pedido_por: str | None = None  # la identidad que lo pidió desde el chat; None es Sergio
 
 
 def crear_tabla_pedidos(conexion: sqlite3.Connection) -> None:
@@ -246,20 +247,22 @@ def crear_tabla_pedidos(conexion: sqlite3.Connection) -> None:
 
 
 def _pedido(fila: tuple) -> Pedido:
-    id_, modulo, accion, parametros, estado, creado, resultado, error = fila
+    id_, modulo, accion, parametros, estado, creado, resultado, error, pedido_por = fila
     return Pedido(
         id=id_, modulo=modulo, accion=accion, parametros=json.loads(parametros), estado=estado, creado=creado,
-        resultado=json.loads(resultado) if resultado else None, error=error,
+        resultado=json.loads(resultado) if resultado else None, error=error, pedido_por=pedido_por,
     )
 
 
-_COLUMNAS = "id, modulo, accion, parametros, estado, creado, resultado, error"
+_COLUMNAS = "id, modulo, accion, parametros, estado, creado, resultado, error, pedido_por"
 
 
-def pedir(conexion: sqlite3.Connection, modulo: str, accion: str, parametros: dict) -> Pedido:
+def pedir(
+    conexion: sqlite3.Connection, modulo: str, accion: str, parametros: dict, pedido_por: str | None = None
+) -> Pedido:
     cursor = conexion.execute(
-        "INSERT INTO pedidos (modulo, accion, parametros, creado) VALUES (?, ?, ?, ?)",
-        (modulo, accion, json.dumps(parametros, ensure_ascii=False), datetime.now(timezone.utc).isoformat()),
+        "INSERT INTO pedidos (modulo, accion, parametros, creado, pedido_por) VALUES (?, ?, ?, ?, ?)",
+        (modulo, accion, json.dumps(parametros, ensure_ascii=False), datetime.now(timezone.utc).isoformat(), pedido_por),
     )
     conexion.commit()
     return obtener_pedido(conexion, cursor.lastrowid)

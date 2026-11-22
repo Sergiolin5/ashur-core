@@ -4,5 +4,7 @@
   "clase": "persona",
   "archivada": false,
   "menciones": 3,
-  "nivel": 1
+  "nivel": 1,
+  "rol": null,
+  "con_clave": false
 }

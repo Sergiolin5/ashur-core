@@ -12,13 +12,13 @@ uv run pytest
 uv run uvicorn ashur_core.app:app --port 8720
 ```
 
-Rutas: memoria (`docs/adr/0004-memoria.md`), galaxia (0011), identidades (0012), módulos (0013), inventario (0014), chat y nodos (0016), búsqueda híbrida (0018), ajustes de módulos y nodos (0019) y herramientas del chat (0021).
+Rutas: memoria (`docs/adr/0004-memoria.md`), galaxia (0011), identidades (0012), módulos (0013), inventario (0014), chat y nodos (0016), búsqueda híbrida (0018), ajustes de módulos y nodos (0019), herramientas del chat (0021) y personas y roles (0022).
 
 Variables de entorno:
 
 | Variable | Qué es |
 | --- | --- |
-| `ASHUR_CLAVE` | Clave para crear y listar recuerdos, en el encabezado `X-Ashur-Clave`. Sin ella, esos endpoints responden 503. |
+| `ASHUR_CLAVE` | La clave de Sergio, en el encabezado `X-Ashur-Clave`. Sin ella, todo responde 503. Las demás personas usan su propia clave en el mismo encabezado, y solo les abre su chat (`docs/adr/0022-personas-y-roles.md`). |
 | `ASHUR_CLAVE_ADMIN` | Clave de administrador en el encabezado `X-Ashur-Clave-Admin`, para editar y borrar recuerdos. Sin ella, nadie puede. |
 | `ASHUR_DB` | Ruta de la base SQLite. Por defecto, `/datos/ashur.db`. |
 | `ASHUR_MODULOS` | Carpeta de los módulos. Por defecto, `modules/` al lado de `core/`. |

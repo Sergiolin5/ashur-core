@@ -2,10 +2,13 @@
 
 Cada una espera la decisión de Sergio. Cuando se cierre, se registra como ADR en `docs/adr/` y se quita de aquí.
 
-## 11. Reglas por sensibilidad y consentimiento
-Por ahora `sensibilidad` es solo un dato y no cambia nada (decisión de Sergio, 2026-11-21, mientras Ashur es una
-prueba). Las reglas de qué puede usar cada nivel y qué consentimiento hace falta se deciden antes de que alguien más
-que Sergio use Ashur.
+## 11. Consentimiento y sensibilidad
+El acceso de otras personas al chat y su privacidad ya están decididos (`docs/adr/0022-personas-y-roles.md`). Quedan
+dos partes:
+- **Consentimiento:** si Sergio les avisa a los demás, antes de darles su clave, que lo que le digan a Ashur queda en
+  su memoria.
+- **Sensibilidad:** `sensibilidad` sigue siendo solo un dato (decisión de Sergio, 2026-11-21). Hay que decidir qué puede
+  usar cada nivel de inferencia antes de que exista el nivel 3, la nube.
 
 ## 12. Cómo se ven los objetos del inventario
 Los objetos no son cuerpos de la galaxia todavía. Sergio quiere decidir su forma según el objeto, cuidando que el

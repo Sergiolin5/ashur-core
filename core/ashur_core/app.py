@@ -6,10 +6,13 @@ from collections.abc import Iterator
 
 from fastapi import Depends, FastAPI, HTTPException, Response, Security
 from fastapi.security import APIKeyHeader
+from pydantic import BaseModel
 
 from functools import lru_cache
 
-from ashur_core import chat, galaxia, herramientas, identidades, inventario, memoria, modulos, nodos, significado
+from ashur_core import (
+    chat, galaxia, herramientas, identidades, inventario, memoria, modulos, nodos, personas, significado,
+)
 
 app = FastAPI(title="Ashur Core")
 
@@ -141,11 +144,50 @@ def listar_identidades(archivadas: bool = False, con=Depends(conexion)) -> list[
     "/identidades/{id_}", response_model=identidades.Identidad, dependencies=[Depends(exigir_clave_admin)]
 )
 def editar_identidad(id_: str, cambios: identidades.CambiosIdentidad, con=Depends(conexion)) -> identidades.Identidad:
-    """Editar, archivar o restaurar. No hay DELETE: se archiva (decisión 8)."""
+    """Editar, archivar o restaurar, y ponerle o quitarle un rol. No hay DELETE: se archiva (decisión 8). Archivada,
+    su clave deja de abrir el chat."""
+    if cambios.rol is not None and personas.obtener_rol(con, cambios.rol) is None:
+        raise HTTPException(status_code=422, detail=f"No existe el rol {cambios.rol}.")
     editada = identidades.editar(con, id_, cambios)
     if editada is None:
         raise HTTPException(status_code=404, detail="No existe esa identidad.")
     return editada
+
+
+class ClaveCreada(BaseModel):
+    identidad: identidades.Identidad
+    clave: str  # se muestra una sola vez; el core solo guarda su hash
+
+
+@app.post("/identidades/{id_}/clave", status_code=201, response_model=ClaveCreada, dependencies=[Depends(exigir_clave_admin)])
+def crear_clave(id_: str, con=Depends(conexion)) -> ClaveCreada:
+    """Crea o reemplaza la clave con la que esa persona entra a su chat (docs/adr/0022-personas-y-roles.md)."""
+    identidad = identidades.obtener(con, id_)
+    if identidad is None:
+        raise HTTPException(status_code=404, detail="No existe esa identidad.")
+    if identidad.archivada:
+        raise HTTPException(status_code=409, detail="Esa identidad está archivada.")
+    clave = personas.nueva_clave(con, id_)
+    return ClaveCreada(identidad=identidades.obtener(con, id_), clave=clave)
+
+
+@app.post("/roles", status_code=201, response_model=personas.Rol, dependencies=[Depends(exigir_clave_admin)])
+def crear_rol(nuevo: personas.RolNuevo, con=Depends(conexion)) -> personas.Rol:
+    return personas.crear_rol(con, nuevo)
+
+
+@app.get("/roles", response_model=list[personas.Rol], dependencies=[Depends(exigir_clave)])
+def listar_roles(con=Depends(conexion)) -> list[personas.Rol]:
+    return personas.listar_roles(con)
+
+
+@app.patch("/roles/{id_}", response_model=personas.Rol, dependencies=[Depends(exigir_clave_admin)])
+def cambiar_rol(id_: str, cambios: personas.CambiosRol, con=Depends(conexion)) -> personas.Rol:
+    """Cambia en la ronda siguiente de cada conversación: la puerta lee el rol actual."""
+    rol = personas.cambiar_rol(con, id_, cambios)
+    if rol is None:
+        raise HTTPException(status_code=404, detail="No existe ese rol.")
+    return rol
 
 
 @app.post("/objetos", status_code=201, response_model=inventario.Objeto, dependencies=[Depends(exigir_clave)])
@@ -179,6 +221,35 @@ def nodo_autenticado(clave: str | None = Security(_encabezado_nodo), con=Depends
     return id_nodo
 
 
+class Quien:
+    """Quién habla en el chat: Sergio (identidad None) o una persona con su clave."""
+
+    def __init__(self, identidad_id: str | None):
+        self.identidad_id = identidad_id
+
+
+def quien_habla(clave: str | None = Security(_encabezado_clave), con=Depends(conexion)) -> Quien:
+    """Para las rutas del chat, las únicas que abre la clave de una persona. Las demás siguen con exigir_clave, que
+    solo acepta la de Sergio. Sin ASHUR_CLAVE, todo queda cerrado, también para las personas."""
+    esperada = os.environ.get("ASHUR_CLAVE")
+    if not esperada:
+        raise HTTPException(status_code=503, detail="ASHUR_CLAVE no está configurada.")
+    if clave is not None and secrets.compare_digest(clave, esperada):
+        return Quien(None)
+    identidad = personas.autenticar(con, clave) if clave else None
+    if identidad is None:
+        raise HTTPException(status_code=401, detail="Clave inválida.")
+    return Quien(identidad)
+
+
+def _suya(con, id_conversacion: str, quien: Quien) -> chat.Conversacion:
+    """Una conversación ajena responde igual que una que no existe: los ids se pueden adivinar."""
+    existe, duenio = chat.duenio(con, id_conversacion)
+    if not existe or duenio != quien.identidad_id:
+        raise HTTPException(status_code=404, detail="No existe esa conversación.")
+    return chat.obtener(con, id_conversacion)
+
+
 def _completa(con, conversacion: chat.Conversacion) -> chat.ConversacionCompleta:
     trabajo = chat.trabajo_actual(con, conversacion.id)
     estado = nodos.estado_de(con, trabajo) if trabajo is not None else None
@@ -187,48 +258,48 @@ def _completa(con, conversacion: chat.Conversacion) -> chat.ConversacionCompleta
 
 
 def _decir(con, id_conversacion: str, rol: str, origen: str, texto: str) -> chat.Mensaje:
-    """Todo mensaje del chat también es un recuerdo, por el mismo camino que POST /recuerdos."""
+    """Todo mensaje del chat también es un recuerdo, por el mismo camino que POST /recuerdos. En la conversación de
+    otra persona, el recuerdo la enlaza: así crece en la galaxia mientras habla con Ashur."""
     fecha = chat.ahora()
+    _, duenio = chat.duenio(con, id_conversacion)
+    persona = identidades.obtener(con, duenio) if duenio else None
+    enlaces = [memoria.Identidad(nombre=persona.nombre, identidad_id=persona.id)] if persona else []
     recuerdo = _guardar_recuerdo(
         con,
         memoria.RecuerdoNuevo(
-            texto=texto, origen=origen, fecha=fecha, sensibilidad="normal", identidades=[], objetos=[], opinion=None
+            texto=texto, origen=origen, fecha=fecha, sensibilidad="normal", identidades=enlaces, objetos=[], opinion=None
         ),
     )
     return chat.agregar(con, id_conversacion, rol, texto, fecha, recuerdo.id)
 
 
-@app.post("/conversaciones", status_code=201, response_model=chat.Conversacion, dependencies=[Depends(exigir_clave)])
-def crear_conversacion(con=Depends(conexion)) -> chat.Conversacion:
-    return chat.crear(con)
+RUTAS_DE_PERSONAS = {"/conversaciones", "/conversaciones/{id_}", "/conversaciones/{id_}/mensajes"}
 
 
-@app.get("/conversaciones", response_model=list[chat.Conversacion], dependencies=[Depends(exigir_clave)])
-def listar_conversaciones(con=Depends(conexion)) -> list[chat.Conversacion]:
-    return chat.listar(con)
+@app.post("/conversaciones", status_code=201, response_model=chat.Conversacion)
+def crear_conversacion(quien: Quien = Depends(quien_habla), con=Depends(conexion)) -> chat.Conversacion:
+    return chat.crear(con, quien.identidad_id)
 
 
-@app.get(
-    "/conversaciones/{id_}", response_model=chat.ConversacionCompleta, dependencies=[Depends(exigir_clave)]
-)
-def ver_conversacion(id_: str, con=Depends(conexion)) -> chat.ConversacionCompleta:
-    conversacion = chat.obtener(con, id_)
-    if conversacion is None:
-        raise HTTPException(status_code=404, detail="No existe esa conversación.")
-    return _completa(con, conversacion)
+@app.get("/conversaciones", response_model=list[chat.Conversacion])
+def listar_conversaciones(quien: Quien = Depends(quien_habla), con=Depends(conexion)) -> list[chat.Conversacion]:
+    """Las de quien pregunta. Sergio ve lo que dicen los demás en sus recuerdos, no en esta lista."""
+    return chat.listar(con, quien.identidad_id)
 
 
-@app.post(
-    "/conversaciones/{id_}/mensajes", status_code=202, response_model=chat.ConversacionCompleta,
-    dependencies=[Depends(exigir_clave)],
-)
-def enviar_mensaje(id_: str, nuevo: chat.MensajeNuevo, con=Depends(conexion)) -> chat.ConversacionCompleta:
+@app.get("/conversaciones/{id_}", response_model=chat.ConversacionCompleta)
+def ver_conversacion(id_: str, quien: Quien = Depends(quien_habla), con=Depends(conexion)) -> chat.ConversacionCompleta:
+    return _completa(con, _suya(con, id_, quien))
+
+
+@app.post("/conversaciones/{id_}/mensajes", status_code=202, response_model=chat.ConversacionCompleta)
+def enviar_mensaje(
+    id_: str, nuevo: chat.MensajeNuevo, quien: Quien = Depends(quien_habla), con=Depends(conexion)
+) -> chat.ConversacionCompleta:
     """Guarda el mensaje y deja en la cola el primer paso de la respuesta, que llega cuando un nodo la entregue. Si hay
     un nodo con el modelo de embeddings, el primer paso es buscar por significado; si no, Ashur responde con lo que
     encuentra por palabras (docs/adr/0018-busqueda-hibrida.md)."""
-    conversacion = chat.obtener(con, id_)
-    if conversacion is None:
-        raise HTTPException(status_code=404, detail="No existe esa conversación.")
+    _suya(con, id_, quien)
     buscar_primero = nodos.hay_quien(con, "embedding")
     trabajo = nodos.encolar(con, "embedding" if buscar_primero else "conversar", {}, id_, estado="preparando")
     if not chat.reservar(con, id_, trabajo):
@@ -253,19 +324,30 @@ def _recordar(con, id_conversacion: str, vector: list[float] | None) -> list[mem
     historial = chat.historial(con, id_conversacion)
     ultimo = next((m.texto for m in reversed(historial) if m.rol == "user"), "")
     vistos = {m.recuerdo_id for m in historial}
-    listas = [[i for i in memoria.buscar_alguna(con, ultimo) if i not in vistos]]
+    permitidos = _permitidos(con, id_conversacion)
+    listas = [[i for i in memoria.buscar_alguna(con, ultimo, permitidos=permitidos) if i not in vistos]]
     if vector is not None:
-        listas.append([i for i in significado.cercanos(con, vector) if i not in vistos])
+        listas.append([i for i in significado.cercanos(con, vector, permitidos) if i not in vistos])
     ids = significado.combinar(*listas, cuantos=RECUERDOS_EN_EL_PEDIDO)
     return [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
+
+
+def _permitidos(con, id_conversacion: str) -> set[int] | None:
+    """Con Sergio, toda la memoria (None). Con otra persona, solo lo que salió de sus mensajes (docs/adr/0022)."""
+    _, duenio = chat.duenio(con, id_conversacion)
+    return None if duenio is None else personas.recuerdos_de(con, duenio)
 
 
 def _pedido(con, id_conversacion: str, vector: list[float] | None) -> dict:
     """El pedido al modelo, con lo que encontró la búsqueda y, si hay un nodo que sepa usarlas, las herramientas que
     se ofrecen en esta conversación (docs/adr/0021-herramientas-del-chat.md)."""
-    pedido = chat.pedido_al_modelo(con, id_conversacion, _recordar(con, id_conversacion, vector))
-    if nodos.hay_quien(con, "conversar", requiere="tools"):
-        ofrecidas = herramientas.herramientas_para(id_conversacion, registro_de_modulos())
+    recuerdos = _recordar(con, id_conversacion, vector)
+    pedido = chat.pedido_al_modelo(
+        con, id_conversacion, recuerdos, autores=personas.autores(con, [r.id for r in recuerdos])
+    )
+    _, duenio = chat.duenio(con, id_conversacion)
+    ofrecidas = herramientas.herramientas_para(con, duenio, registro_de_modulos())
+    if ofrecidas and nodos.hay_quien(con, "conversar", requiere="tools"):
         pedido.update(tools=[h.definicion() for h in ofrecidas], rondas=0)
         pedido["messages"][0]["content"] += "\n\n" + herramientas.AVISO
     return pedido
@@ -431,14 +513,18 @@ def _respuesta_de(salida: dict) -> tuple[str, dict, list] | None:
 def _ronda_de_herramientas(con, id_conversacion: str, entrada: dict, mensaje: dict, llamadas: list) -> None:
     """Corre lo que pidió el modelo, solo entre lo que se le ofreció en este trabajo, y deja la ronda siguiente. Tras
     herramientas.RONDAS rondas, el modelo responde sin herramientas: la conversación siempre termina en texto."""
-    ofrecidas = herramientas.herramientas_para(id_conversacion, registro_de_modulos())
+    _, duenio = chat.duenio(con, id_conversacion)
+    # Lo que se ofreció en este trabajo y que el rol actual todavía permite: quitar un rol corta en la ronda siguiente.
+    ofrecidas = herramientas.herramientas_para(con, duenio, registro_de_modulos())
     nombres = {t["function"]["name"] for t in entrada.get("tools", [])}
     ofrecidas = [h for h in ofrecidas if h.nombre in nombres]
+    permitidos = _permitidos(con, id_conversacion)
     resultados = []
     for nombre, argumentos in llamadas:
         try:
             texto = herramientas.correr(
-                con, nombre, argumentos, ofrecidas, lambda m, a, p: _modulo_desde_el_chat(con, m, a, p)
+                con, nombre, argumentos, ofrecidas, lambda m, a, p: _modulo_desde_el_chat(con, m, a, p, duenio),
+                permitidos,
             )
         except Exception as e:  # todo error es texto para el modelo; si la ronda fallara, se repetiría entera
             texto = f"La herramienta {nombre} falló: {type(e).__name__}: {e}"
@@ -449,14 +535,14 @@ def _ronda_de_herramientas(con, id_conversacion: str, entrada: dict, mensaje: di
     _seguir(con, id_conversacion, chat.otra_ronda(entrada, mensaje, resultados, siguientes))
 
 
-def _modulo_desde_el_chat(con, id_modulo: str, accion: str, parametros: dict) -> str:
+def _modulo_desde_el_chat(con, id_modulo: str, accion: str, parametros: dict, pedido_por: str | None = None) -> str:
     """Una acción que solo lee corre ya; una que escribe queda como pedido, igual que desde POST /modulos/... ."""
     modulo = registro_de_modulos().modulos.get(id_modulo)
     definicion = modulo.accion(accion) if modulo else None
     if definicion is None:
         return f"El módulo {id_modulo} ya no tiene la acción {accion}."
     if definicion.escribe:
-        pedido = modulos.pedir(con, id_modulo, accion, parametros)
+        pedido = modulos.pedir(con, id_modulo, accion, parametros, pedido_por)
         return f"Quedó pendiente de la aprobación de Sergio (pedido {pedido.id}). Todavía no se hizo."
     try:
         resultado = modulos.ejecutar(modulo, accion, parametros, _contexto(con, id_modulo))

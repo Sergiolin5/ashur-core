@@ -24,6 +24,8 @@ class Identidad(IdentidadNueva):
     archivada: bool
     menciones: int = Field(ge=0)
     nivel: int = Field(ge=0, le=3)
+    rol: str | None = None  # qué herramientas puede usar Ashur con ella en el chat (docs/adr/0022)
+    con_clave: bool = False  # si tiene su propia clave para el chat; la clave nunca vuelve
 
 
 class CambiosIdentidad(BaseModel):
@@ -34,10 +36,11 @@ class CambiosIdentidad(BaseModel):
     nombre: str | None = Field(default=None, min_length=1)
     clase: Clase | None = None
     archivada: bool | None = None
+    rol: str | None = None  # null le quita el rol
 
     @model_validator(mode="after")
     def sin_nulos(self) -> "CambiosIdentidad":
-        nulos = [c for c in self.model_fields_set if getattr(self, c) is None]
+        nulos = [c for c in self.model_fields_set if c != "rol" and getattr(self, c) is None]
         if nulos:
             raise ValueError(f"Estos campos no pueden ser null: {', '.join(sorted(nulos))}")
         return self
@@ -92,13 +95,14 @@ def _menciones(conexion: sqlite3.Connection, id_: str) -> int:
 
 
 def _desde_fila(conexion: sqlite3.Connection, fila: tuple) -> Identidad:
-    id_, nombre, clase, archivada, nivel = fila
+    id_, nombre, clase, archivada, nivel, rol, con_clave = fila
     return Identidad(
-        id=id_, nombre=nombre, clase=clase, archivada=bool(archivada), menciones=_menciones(conexion, id_), nivel=nivel
+        id=id_, nombre=nombre, clase=clase, archivada=bool(archivada), menciones=_menciones(conexion, id_), nivel=nivel,
+        rol=rol, con_clave=bool(con_clave),
     )
 
 
-_COLUMNAS = "id, nombre, clase, archivada, nivel"
+_COLUMNAS = "id, nombre, clase, archivada, nivel, rol, clave_hash IS NOT NULL"
 
 
 def recalcular_niveles(conexion: sqlite3.Connection) -> None:

@@ -8,10 +8,10 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from ashur_core import chat, identidades, inventario, modulos, nodos, significado
+from ashur_core import chat, identidades, inventario, modulos, nodos, personas, significado
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 11
+VERSION_ESQUEMA = 12
 
 
 class Identidad(BaseModel):
@@ -113,6 +113,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
         if version < 11:
             modulos.crear_tabla_ajustes(conexion)  # versión 11: ajustes de los módulos
             nodos.agregar_ajustes(conexion)  # y de los nodos
+        if version < 12:
+            personas.migrar(conexion)  # versión 12: otras personas en el chat, con su clave y su rol
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
@@ -231,7 +233,9 @@ PALABRAS_VACIAS = frozenset(
 )
 
 
-def buscar_alguna(conexion: sqlite3.Connection, texto: str, limite: int = 20) -> list[int]:
+def buscar_alguna(
+    conexion: sqlite3.Connection, texto: str, limite: int = 20, permitidos: set[int] | None = None
+) -> list[int]:
     """Para el chat: recuerdos con alguna de las palabras de [texto] (de tres letras o más y que no sean palabras
     vacías), los más relevantes primero. A diferencia de [buscar], no exige todas: una frase entera casi nunca aparece
     completa en un recuerdo."""
@@ -239,10 +243,13 @@ def buscar_alguna(conexion: sqlite3.Connection, texto: str, limite: int = 20) ->
     if not palabras:
         return []
     consulta = " OR ".join(f'"{p}"*' for p in palabras)
+    limite_sql = "" if permitidos is not None else f" LIMIT {int(limite)}"
     filas = conexion.execute(
-        "SELECT rowid FROM recuerdos_busqueda WHERE recuerdos_busqueda MATCH ? ORDER BY rank LIMIT ?", (consulta, limite)
+        f"SELECT rowid FROM recuerdos_busqueda WHERE recuerdos_busqueda MATCH ? ORDER BY rank{limite_sql}", (consulta,)
     ).fetchall()
-    return [f[0] for f in filas]
+    # Con [permitidos], solo esos: con otra persona, Ashur solo usa lo que salió de ella (docs/adr/0022).
+    ids = [f[0] for f in filas if permitidos is None or f[0] in permitidos]
+    return ids[:limite]
 
 
 def obtener(conexion: sqlite3.Connection, id_: int) -> Recuerdo | None:

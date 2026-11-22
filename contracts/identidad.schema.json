@@ -7,20 +7,38 @@
     "nueva": {
       "description": "Lo que el cliente envía para crear una identidad.",
       "type": "object",
-      "required": ["nombre", "clase"],
+      "required": [
+        "nombre",
+        "clase"
+      ],
       "additionalProperties": false,
       "properties": {
-        "nombre": { "type": "string", "minLength": 1 },
+        "nombre": {
+          "type": "string",
+          "minLength": 1
+        },
         "clase": {
           "description": "Provisional: puede crecer.",
-          "enum": ["persona", "mascota"]
+          "enum": [
+            "persona",
+            "mascota"
+          ]
         }
       }
     },
     "identidad": {
       "description": "Una identidad guardada.",
       "type": "object",
-      "required": ["id", "nombre", "clase", "archivada", "menciones", "nivel"],
+      "required": [
+        "id",
+        "nombre",
+        "clase",
+        "archivada",
+        "menciones",
+        "nivel",
+        "rol",
+        "con_clave"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -28,8 +46,12 @@
           "type": "string",
           "minLength": 1
         },
-        "nombre": { "$ref": "#/$defs/nueva/properties/nombre" },
-        "clase": { "$ref": "#/$defs/nueva/properties/clase" },
+        "nombre": {
+          "$ref": "#/$defs/nueva/properties/nombre"
+        },
+        "clase": {
+          "$ref": "#/$defs/nueva/properties/clase"
+        },
         "archivada": {
           "description": "Archivada: no aparece en la galaxia ni en las listas, pero los recuerdos conservan su enlace.",
           "type": "boolean"
@@ -44,6 +66,17 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 3
+        },
+        "rol": {
+          "description": "El rol que decide qué herramientas puede usar Ashur con ella en el chat (contracts/rol.schema.json); null: ninguna. Ver docs/adr/0022-personas-y-roles.md.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "con_clave": {
+          "description": "Si tiene su propia clave para entrar a su chat. La clave nunca vuelve.",
+          "type": "boolean"
         }
       }
     }
