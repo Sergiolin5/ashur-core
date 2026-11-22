@@ -1,0 +1,10 @@
+# Lista de lo que entra a la imagen del core (core/Dockerfile): todo lo demás se queda afuera.
+*
+!core/pyproject.toml
+!core/uv.lock
+!core/.python-version
+!core/ashur_core/
+!modules/
+**/__pycache__
+**/.pytest_cache
+**/.venv

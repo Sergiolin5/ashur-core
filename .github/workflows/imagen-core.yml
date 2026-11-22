@@ -1,11 +1,11 @@
-# Construye la imagen del core y la publica en GHCR (docs/adr/0003-stack-servidor.md).
+# Construye la imagen del core, con los módulos, y la publica en GHCR (docs/adr/0003-stack-servidor.md, 0013).
 # Se llama ashur-nucleo porque ghcr.io/sergiolin5/ashur-core es la imagen del repo anterior.
 name: Imagen del core
 
 on:
   push:
     branches: [main]
-    paths: ["core/**", ".github/workflows/imagen-core.yml"]
+    paths: ["core/**", "modules/**", ".dockerignore", ".github/workflows/imagen-core.yml"]
   workflow_dispatch:
 
 permissions:
@@ -22,6 +22,6 @@ jobs:
       - name: Iniciar sesión en GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - name: Construir (linux/amd64)
-        run: docker build --platform linux/amd64 -t "$IMAGEN:latest" -t "$IMAGEN:${GITHUB_SHA::7}" core
+        run: docker build --platform linux/amd64 -t "$IMAGEN:latest" -t "$IMAGEN:${GITHUB_SHA::7}" -f core/Dockerfile .
       - name: Publicar
         run: docker push --all-tags "$IMAGEN"
