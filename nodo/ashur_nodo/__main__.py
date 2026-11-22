@@ -12,6 +12,7 @@ import os
 import sys
 import threading
 import time
+from datetime import datetime
 import urllib.error
 import urllib.request
 
@@ -50,16 +51,25 @@ class Nodo:
         self.trabajando = threading.Event()
         self.carga_ajena: float | None = None
         self.modo_fijo = os.environ.get("ASHUR_MODO")  # para probar o forzar un modo
+        # Lo que Sergio le puso a este nodo en el core; llega en la respuesta de cada latido (ADR 0019).
+        self.ajustes: dict = {}
+
+    def contexto(self) -> int:
+        return self.ajustes.get("num_ctx") or self.num_ctx
 
     def latido(self) -> dict:
         if not self.trabajando.is_set():  # entre trabajos, para no contar el propio modelo
             self.carga_ajena = senales.carga()
         modo = self.modo_fijo or politica.modo(senales.leer(self.carga_ajena))
+        if not politica.en_horario(self.ajustes.get("horario"), datetime.now().strftime("%H:%M")):
+            modo = "off"  # fuera del horario que Sergio le puso
         try:
             modelos = ollama.modelos(self.ollama, self.ofrecidos)
         except OSError:
             modelos, modo = [], "off"  # sin Ollama no hay nada que prestar
-        estado, _ = self.core.pedir("/nodo/latido", {"modo": modo, "modelos": modelos})
+        estado, respuesta = self.core.pedir("/nodo/latido", {"modo": modo, "modelos": modelos})
+        if estado == 200 and respuesta and isinstance(respuesta.get("ajustes"), dict):
+            self.ajustes = respuesta["ajustes"]
         return {"estado": estado, "modo": modo, "modelos": [m["nombre"] for m in modelos]}
 
     def latir_siempre(self) -> None:
@@ -79,7 +89,7 @@ class Nodo:
         inicio = time.monotonic()
         try:
             if trabajo["necesidad"] == "conversar":
-                resultado = {"salida": ollama.conversar(self.ollama, trabajo["modelo"], trabajo["entrada"], self.num_ctx, self.espera_s)}
+                resultado = {"salida": ollama.conversar(self.ollama, trabajo["modelo"], trabajo["entrada"], self.contexto(), self.espera_s)}
             else:
                 resultado = {"salida": ollama.vectores(self.ollama, trabajo["modelo"], trabajo["entrada"], self.espera_s)}
         except (OSError, ValueError, KeyError) as e:

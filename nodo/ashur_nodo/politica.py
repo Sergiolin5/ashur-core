@@ -36,3 +36,14 @@ def modo(s: Senales) -> str:
     if s.inactivo_s is not None and s.inactivo_s < INACTIVO_S:
         return "light"
     return "full"
+
+
+def en_horario(horario: dict | None, hora: str) -> bool:
+    """Si la hora local ("HH:MM") cae dentro del horario que Sergio le puso al nodo en el core. Sin horario, siempre.
+    Si hasta < desde, el horario cruza la medianoche (docs/adr/0019-ajustes-de-modulos-y-nodos.md)."""
+    if not horario:
+        return True
+    desde, hasta = horario["desde"], horario["hasta"]
+    if desde <= hasta:
+        return desde <= hora < hasta
+    return hora >= desde or hora < hasta

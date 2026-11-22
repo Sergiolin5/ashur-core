@@ -20,6 +20,16 @@ def test_sergio_siempre_gana_en_sus_maquinas():
     assert modo(S(enchufado=False, bateria=10, carga_ajena=0.9)) == "off"
 
 
+def test_el_horario_que_sergio_le_pone_al_nodo():
+    from ashur_nodo.politica import en_horario
+
+    assert en_horario(None, "03:00")
+    de_dia = {"desde": "08:00", "hasta": "18:00"}
+    assert en_horario(de_dia, "08:00") and en_horario(de_dia, "17:59") and not en_horario(de_dia, "18:00")
+    de_noche = {"desde": "22:00", "hasta": "07:00"}  # cruza la medianoche
+    assert en_horario(de_noche, "23:30") and en_horario(de_noche, "06:59") and not en_horario(de_noche, "12:00")
+
+
 def test_sin_senales_el_equipo_se_ofrece_entero():
     assert modo(Senales(None, None, None, None)) == "full"  # un equipo sin batería ni lector, siempre encendido
 

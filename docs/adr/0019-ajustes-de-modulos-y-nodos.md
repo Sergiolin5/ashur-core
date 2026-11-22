@@ -61,6 +61,7 @@ Lo de Ashur (personalidad, madurez, roles) se suma cuando existan sus rutas, en 
     - `null` vuelve a lo del nodo;
     - los valores inválidos dan 422.
   - La plantilla trae un ajuste de ejemplo (`saludo`) y su autoprueba lo cubre.
+- `uv run pytest ../nodo/tests`: el horario del nodo, también el que cruza la medianoche.
 
 ## Pendiente
 - La sección «Configuración avanzada» de la app, con su ADR 0020.
