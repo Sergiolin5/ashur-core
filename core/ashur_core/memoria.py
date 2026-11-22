@@ -11,7 +11,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validato
 from ashur_core import chat, identidades, inventario, modulos, nodos, significado
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 10
+VERSION_ESQUEMA = 11
 
 
 class Identidad(BaseModel):
@@ -110,6 +110,9 @@ def abrir(ruta: str) -> sqlite3.Connection:
             nodos.crear_tablas(conexion)  # y los nodos de casa con su cola de trabajos
         if version < 10:
             significado.crear_tabla(conexion)  # versión 10: embeddings para la búsqueda por significado
+        if version < 11:
+            modulos.crear_tabla_ajustes(conexion)  # versión 11: ajustes de los módulos
+            nodos.agregar_ajustes(conexion)  # y de los nodos
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:

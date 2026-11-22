@@ -4,7 +4,13 @@
   "title": "Manifiesto de un módulo de Ashur",
   "description": "El archivo modulo.json de modules/<id>/. Ver docs/MODULOS.md y docs/adr/0013-modulos-en-el-core.md.",
   "type": "object",
-  "required": ["id", "nombre", "version", "descripcion", "acciones"],
+  "required": [
+    "id",
+    "nombre",
+    "version",
+    "descripcion",
+    "acciones"
+  ],
   "additionalProperties": false,
   "properties": {
     "id": {
@@ -12,18 +18,40 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*$"
     },
-    "nombre": { "type": "string", "minLength": 1 },
-    "version": { "type": "string", "minLength": 1 },
-    "descripcion": { "type": "string", "minLength": 1 },
+    "nombre": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "descripcion": {
+      "type": "string",
+      "minLength": 1
+    },
     "acciones": {
       "type": "array",
-      "items": { "$ref": "#/$defs/accion" }
+      "items": {
+        "$ref": "#/$defs/accion"
+      }
+    },
+    "ajustes": {
+      "description": "Opcional. Lo que Sergio puede cambiar del módulo desde la app; el módulo lo lee con contexto.ajuste(id). Ver docs/adr/0019-ajustes-de-modulos-y-nodos.md.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ajuste"
+      }
     }
   },
   "$defs": {
     "accion": {
       "type": "object",
-      "required": ["id", "descripcion", "escribe"],
+      "required": [
+        "id",
+        "descripcion",
+        "escribe"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -31,10 +59,54 @@
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$"
         },
-        "descripcion": { "type": "string", "minLength": 1 },
+        "descripcion": {
+          "type": "string",
+          "minLength": 1
+        },
         "escribe": {
           "description": "true si cambia algo fuera de Ashur: entonces espera la aprobación de un administrador.",
           "type": "boolean"
+        }
+      }
+    },
+    "ajuste": {
+      "type": "object",
+      "required": [
+        "id",
+        "tipo",
+        "descripcion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Único dentro del módulo.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "tipo": {
+          "enum": [
+            "texto",
+            "numero",
+            "booleano"
+          ]
+        },
+        "descripcion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "por_defecto": {
+          "description": "Del mismo tipo, o null si no tiene.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        "secreto": {
+          "description": "Solo para tipo texto: la app nunca lo vuelve a mostrar.",
+          "type": "boolean",
+          "default": false
         }
       }
     }

@@ -18,7 +18,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 PATRON_ID = r"^[a-z][a-z0-9_]*$"
 
@@ -31,6 +33,37 @@ class Accion(BaseModel):
     escribe: bool
 
 
+TipoAjuste = Literal["texto", "numero", "booleano"]
+
+
+def _del_tipo(tipo: str, valor: Any) -> bool:
+    if tipo == "texto":
+        return isinstance(valor, str) and valor != ""
+    if tipo == "numero":
+        return isinstance(valor, (int, float)) and not isinstance(valor, bool)
+    return isinstance(valor, bool)
+
+
+class Ajuste(BaseModel):
+    """Un ajuste que el módulo declara y Sergio cambia desde la app (docs/adr/0019-ajustes-de-modulos-y-nodos.md)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=PATRON_ID)
+    tipo: TipoAjuste
+    descripcion: str = Field(min_length=1)
+    por_defecto: str | float | bool | None = None
+    secreto: bool = False
+
+    @model_validator(mode="after")
+    def coherente(self) -> "Ajuste":
+        if self.por_defecto is not None and not _del_tipo(self.tipo, self.por_defecto):
+            raise ValueError(f"por_defecto de {self.id} no es de tipo {self.tipo}")
+        if self.secreto and self.tipo != "texto":
+            raise ValueError(f"{self.id}: solo un ajuste de tipo texto puede ser secreto")
+        return self
+
+
 class Manifiesto(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -39,6 +72,14 @@ class Manifiesto(BaseModel):
     version: str = Field(min_length=1)
     descripcion: str = Field(min_length=1)
     acciones: list[Accion]
+    ajustes: list[Ajuste] = Field(default_factory=list)  # opcional: los manifiestos de antes siguen valiendo
+
+    @model_validator(mode="after")
+    def ajustes_unicos(self) -> "Manifiesto":
+        ids = [a.id for a in self.ajustes]
+        if len(ids) != len(set(ids)):
+            raise ValueError("hay ajustes con el mismo id")
+        return self
 
 
 class EstadoModulo(BaseModel):
@@ -122,9 +163,16 @@ def descubrir(carpeta: Path) -> Registro:
 class Contexto:
     """Lo único que un módulo recibe del core. No hay conexión a la base: el módulo no guarda memoria propia."""
 
-    def __init__(self, id_modulo: str, guardar_recuerdo: Callable[[dict], dict]):
+    def __init__(
+        self, id_modulo: str, guardar_recuerdo: Callable[[dict], dict], leer_ajuste: Callable[[str], Any] | None = None
+    ):
         self.id_modulo = id_modulo
         self._guardar = guardar_recuerdo
+        self._ajuste = leer_ajuste or (lambda id_: None)
+
+    def ajuste(self, id_: str) -> Any:
+        """El valor de un ajuste del manifiesto: el que puso Sergio, o el por_defecto. None si no tiene ninguno."""
+        return self._ajuste(id_)
 
     def recordar(
         self,
@@ -245,3 +293,76 @@ def cerrar_pedido(conexion: sqlite3.Connection, id_: int, estado: str, resultado
         (estado, json.dumps(resultado, ensure_ascii=False) if resultado is not None else None, error, id_),
     )
     conexion.commit()
+
+
+# ── Ajustes de los módulos (docs/adr/0019-ajustes-de-modulos-y-nodos.md) ──
+
+
+class EstadoAjuste(BaseModel):
+    """Lo que la app ve de un ajuste. Un secreto nunca vuelve: solo se sabe si está configurado."""
+
+    id: str
+    tipo: str
+    descripcion: str
+    secreto: bool
+    por_defecto: str | float | bool | None
+    valor: str | float | bool | None
+    configurado: bool
+
+
+def crear_tabla_ajustes(conexion: sqlite3.Connection) -> None:
+    conexion.execute(
+        """CREATE TABLE ajustes_modulos (
+            modulo TEXT NOT NULL,
+            ajuste TEXT NOT NULL,
+            valor TEXT NOT NULL,
+            PRIMARY KEY (modulo, ajuste)
+        )"""
+    )
+
+
+def _guardados(conexion: sqlite3.Connection, modulo: str) -> dict:
+    filas = conexion.execute("SELECT ajuste, valor FROM ajustes_modulos WHERE modulo = ?", (modulo,)).fetchall()
+    return {a: json.loads(v) for a, v in filas}
+
+
+def valor_de(conexion: sqlite3.Connection, manifiesto: Manifiesto, id_: str) -> Any:
+    ajuste = next((a for a in manifiesto.ajustes if a.id == id_), None)
+    if ajuste is None:
+        return None
+    return _guardados(conexion, manifiesto.id).get(id_, ajuste.por_defecto)
+
+
+def ajustes_de(conexion: sqlite3.Connection, manifiesto: Manifiesto) -> list[EstadoAjuste]:
+    guardados = _guardados(conexion, manifiesto.id)
+    estados = []
+    for a in manifiesto.ajustes:
+        valor = guardados.get(a.id, a.por_defecto)
+        estados.append(
+            EstadoAjuste(
+                id=a.id, tipo=a.tipo, descripcion=a.descripcion, secreto=a.secreto,
+                por_defecto=None if a.secreto else a.por_defecto, valor=None if a.secreto else valor,
+                configurado=valor is not None,
+            )
+        )
+    return estados
+
+
+def cambiar_ajustes(conexion: sqlite3.Connection, manifiesto: Manifiesto, cambios: dict) -> list[EstadoAjuste]:
+    """Cambia los ajustes enviados; null vuelve al por_defecto. Lanza ValueError si alguno no existe o no es del tipo."""
+    declarados = {a.id: a for a in manifiesto.ajustes}
+    for id_, valor in cambios.items():
+        if id_ not in declarados:
+            raise ValueError(f"El módulo {manifiesto.id} no declara el ajuste {id_}.")
+        if valor is not None and not _del_tipo(declarados[id_].tipo, valor):
+            raise ValueError(f"El ajuste {id_} es de tipo {declarados[id_].tipo}.")
+    for id_, valor in cambios.items():
+        if valor is None:
+            conexion.execute("DELETE FROM ajustes_modulos WHERE modulo = ? AND ajuste = ?", (manifiesto.id, id_))
+        else:
+            conexion.execute(
+                "INSERT OR REPLACE INTO ajustes_modulos (modulo, ajuste, valor) VALUES (?, ?, ?)",
+                (manifiesto.id, id_, json.dumps(valor, ensure_ascii=False)),
+            )
+    conexion.commit()
+    return ajustes_de(conexion, manifiesto)

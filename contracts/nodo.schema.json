@@ -7,40 +7,82 @@
     "modelo": {
       "description": "Un modelo que el nodo ofrece, como lo informa Ollama.",
       "type": "object",
-      "required": ["nombre", "tamano", "capacidades"],
+      "required": [
+        "nombre",
+        "tamano",
+        "capacidades"
+      ],
       "additionalProperties": false,
       "properties": {
-        "nombre": { "type": "string", "minLength": 1 },
-        "tamano": { "description": "En bytes.", "type": "integer", "minimum": 0 },
+        "nombre": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tamano": {
+          "description": "En bytes.",
+          "type": "integer",
+          "minimum": 0
+        },
         "capacidades": {
           "description": "Por ejemplo completion, tools o embedding.",
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "latido": {
       "description": "POST /nodo/latido, cada 15 s. Tres latidos perdidos dejan al nodo fuera de línea.",
       "type": "object",
-      "required": ["modo", "modelos"],
+      "required": [
+        "modo",
+        "modelos"
+      ],
       "additionalProperties": false,
       "properties": {
         "modo": {
           "description": "full: cualquier trabajo. light: solo modelos livianos. busy u off: nada. Sergio siempre gana en sus máquinas.",
-          "enum": ["full", "light", "busy", "off"]
+          "enum": [
+            "full",
+            "light",
+            "busy",
+            "off"
+          ]
         },
-        "modelos": { "type": "array", "items": { "$ref": "#/$defs/modelo" } }
+        "modelos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/modelo"
+          }
+        }
       }
     },
     "trabajo": {
       "description": "Respuesta de POST /nodo/trabajos/tomar (204 si no hay ninguno). El core ya eligió el modelo.",
       "type": "object",
-      "required": ["id", "necesidad", "modelo", "entrada"],
+      "required": [
+        "id",
+        "necesidad",
+        "modelo",
+        "entrada"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "integer", "minimum": 1 },
-        "necesidad": { "enum": ["conversar", "embedding"] },
-        "modelo": { "type": "string", "minLength": 1 },
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "necesidad": {
+          "enum": [
+            "conversar",
+            "embedding"
+          ]
+        },
+        "modelo": {
+          "type": "string",
+          "minLength": 1
+        },
         "entrada": {
           "description": "Para conversar: {messages: [{role, content}]}, en el formato de OpenAI.",
           "type": "object"
@@ -54,9 +96,75 @@
       "properties": {
         "salida": {
           "description": "Para conversar: {mensaje: {role: assistant, content}}.",
-          "type": ["object", "null"]
+          "type": [
+            "object",
+            "null"
+          ]
         },
-        "error": { "type": ["string", "null"], "minLength": 1 }
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "ajustes": {
+      "description": "Vuelven en la respuesta de POST /nodo/latido (campo ajustes). null: lo que el nodo decida. Ver docs/adr/0019-ajustes-de-modulos-y-nodos.md.",
+      "type": "object",
+      "required": [
+        "modelos_ofrecidos",
+        "num_ctx",
+        "horario"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "modelos_ofrecidos": {
+          "description": "Los únicos modelos que el core le asigna; null: todos.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "num_ctx": {
+          "description": "Contexto que el nodo le pide a su modelo; null: el del nodo.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 512,
+          "maximum": 131072
+        },
+        "horario": {
+          "description": "Fuera de este horario, en la hora local del equipo, el nodo se ofrece en off. Si hasta < desde, cruza la medianoche. null: a toda hora.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "desde",
+                "hasta"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "desde": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "hasta": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                }
+              }
+            }
+          ]
+        }
       }
     }
   }

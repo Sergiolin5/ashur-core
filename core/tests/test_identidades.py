@@ -3,6 +3,8 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+
+from bases import quitar_desde
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -106,8 +108,7 @@ def test_una_base_de_la_version_4_recibe_la_tabla_de_identidades(tmp_path):
     con.execute("DROP TABLE identidades")
     con.execute("DROP TABLE pedidos")
     con.execute("DROP TABLE objetos")
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):  # de los esquemas 9 y 10
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 4")
     con.commit()
     con.close()
@@ -124,8 +125,7 @@ def test_un_enlace_viejo_a_una_identidad_no_lo_hereda_una_identidad_nueva(tmp_pa
     identidades.crear(con, identidades.IdentidadNueva(nombre="Ana", clase="persona"))
     # Antes de la versión 5 se aceptaba cualquier identidad_id, así que una base de la 7 puede traer ide-9.
     memoria.crear(con, memoria.RecuerdoNuevo.model_validate(recuerdo_con("ide-9", "ide-1", None)))
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):  # de los esquemas 9 y 10
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 7")
     con.commit()
     con.close()

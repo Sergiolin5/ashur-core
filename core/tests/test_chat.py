@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from bases import quitar_desde
 from fastapi.testclient import TestClient
 
 from ashur_core import memoria, nodos
@@ -213,8 +214,7 @@ def test_dos_mensajes_a_la_vez_dejan_un_solo_trabajo(cliente):
 def test_una_base_de_la_version_8_recibe_el_chat(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 8")
     con.commit()
     con.close()

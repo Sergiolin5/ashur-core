@@ -295,9 +295,9 @@ def listar_nodos(con=Depends(conexion)) -> list[nodos.Nodo]:
 
 
 @app.patch("/nodos/{id_}", response_model=nodos.Nodo, dependencies=[Depends(exigir_clave_admin)])
-def archivar_nodo(id_: str, cambios: nodos.CambiosNodo, con=Depends(conexion)) -> nodos.Nodo:
-    """Archivado, el nodo pierde su clave. No hay DELETE (decisión 8)."""
-    nodo = nodos.archivar(con, id_, cambios.archivado)
+def cambiar_nodo(id_: str, cambios: nodos.CambiosNodo, con=Depends(conexion)) -> nodos.Nodo:
+    """Archiva o restaura (archivado, el nodo pierde su clave; no hay DELETE, decisión 8) y cambia sus ajustes."""
+    nodo = nodos.cambiar(con, id_, cambios)
     if nodo is None:
         raise HTTPException(status_code=404, detail="No existe ese nodo.")
     return nodo
@@ -306,7 +306,7 @@ def archivar_nodo(id_: str, cambios: nodos.CambiosNodo, con=Depends(conexion)) -
 @app.post("/nodo/latido", response_model=nodos.Nodo)
 def latir(latido: nodos.Latido, id_nodo: str = Depends(nodo_autenticado), con=Depends(conexion)) -> nodos.Nodo:
     nodo = nodos.latir(con, id_nodo, latido)
-    if nodos.mejor_modelo("embedding", nodo.modo, nodo.modelos):
+    if nodos.mejor_modelo("embedding", nodo.modo, nodo.prestados()):
         _repartir_embeddings(con)
     return nodo
 
@@ -404,6 +404,30 @@ def registro_de_modulos() -> modulos.Registro:
     return _registro(str(modulos.carpeta_por_defecto()))
 
 
+@app.get(
+    "/modulos/{id_}/ajustes", response_model=list[modulos.EstadoAjuste], dependencies=[Depends(exigir_clave)]
+)
+def ver_ajustes_de_modulo(id_: str, con=Depends(conexion)) -> list[modulos.EstadoAjuste]:
+    modulo = registro_de_modulos().modulos.get(id_)
+    if modulo is None:
+        raise HTTPException(status_code=404, detail="No hay un módulo registrado con ese id.")
+    return modulos.ajustes_de(con, modulo.manifiesto)
+
+
+@app.patch(
+    "/modulos/{id_}/ajustes", response_model=list[modulos.EstadoAjuste], dependencies=[Depends(exigir_clave_admin)]
+)
+def cambiar_ajustes_de_modulo(id_: str, cambios: dict, con=Depends(conexion)) -> list[modulos.EstadoAjuste]:
+    """Solo los ajustes enviados; null vuelve al por_defecto."""
+    modulo = registro_de_modulos().modulos.get(id_)
+    if modulo is None:
+        raise HTTPException(status_code=404, detail="No hay un módulo registrado con ese id.")
+    try:
+        return modulos.cambiar_ajustes(con, modulo.manifiesto, cambios)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from None
+
+
 def _contexto(con, id_modulo: str) -> modulos.Contexto:
     def guardar(datos: dict) -> dict:
         try:
@@ -412,7 +436,11 @@ def _contexto(con, id_modulo: str) -> modulos.Contexto:
             raise ValueError(f"El recuerdo del módulo no cumple el contrato: {e}") from None
         return _guardar_recuerdo(con, nuevo).model_dump(mode="json")
 
-    return modulos.Contexto(id_modulo, guardar)
+    def ajuste(id_ajuste: str):
+        modulo = registro_de_modulos().modulos.get(id_modulo)
+        return modulos.valor_de(con, modulo.manifiesto, id_ajuste) if modulo else None
+
+    return modulos.Contexto(id_modulo, guardar, ajuste)
 
 
 def _correr(con, modulo: modulos.ModuloCargado, accion: str, parametros: dict) -> dict:

@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 
 import pytest
+
+from bases import quitar_desde
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -104,8 +106,7 @@ def test_una_base_de_la_version_6_recibe_la_tabla_de_objetos(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE objetos")
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):  # de los esquemas 9 y 10
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 6")
     con.commit()
     con.close()
@@ -119,8 +120,7 @@ def test_un_enlace_viejo_a_un_objeto_no_lo_hereda_un_objeto_nuevo(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE objetos")
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):  # de los esquemas 9 y 10
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 6")
     con.commit()
     # En la versión 6 se aceptaba cualquier inventario_id.

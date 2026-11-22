@@ -3,6 +3,8 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+
+from bases import quitar_desde
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -195,8 +197,7 @@ def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
         "TABLE identidades", "TABLE pedidos", "TABLE objetos",
     ):
         con.execute(f"DROP {objeto}")
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):  # de los esquemas 9 y 10
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 2")
     con.commit()
     con.close()
@@ -236,8 +237,7 @@ def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
         "TABLE identidades", "TABLE pedidos", "TABLE objetos",
     ):
         con.execute(f"DROP {objeto}")
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):  # de los esquemas 9 y 10
-        con.execute(f"DROP TABLE {tabla}")
+    quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 3")
     con.commit()
     con.close()

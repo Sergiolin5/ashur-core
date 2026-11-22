@@ -44,7 +44,8 @@ def cliente(tmp_path, monkeypatch):
 def test_la_plantilla_cumple_el_contrato_y_su_accion_corre():
     modulo = modulos.cargar_uno(PLANTILLA)
     guardados = []
-    contexto = modulos.Contexto("plantilla", lambda r: guardados.append(r) or r)
+    por_defecto = {a.id: a.por_defecto for a in modulo.manifiesto.ajustes}
+    contexto = modulos.Contexto("plantilla", lambda r: guardados.append(r) or r, por_defecto.get)
     assert modulos.ejecutar(modulo, "saludar", {"nombre": "Ana"}, contexto) == {"saludo": "Hola, Ana."}
     assert guardados[0]["origen"] == "plantilla"
 

@@ -64,8 +64,12 @@ esencial:
   modulo.json, modulo.py con una función por acción con la firma def <accion>(contexto, **parametros) -> dict,
   autoprueba.py y README.md. modules/_plantilla/ es el ejemplo que hay que copiar.
 - Lo único que recibe una acción es contexto.recordar(texto, fecha=None, sensibilidad="normal", identidades=None,
-  objetos=None, opinion=None), que guarda un recuerdo con origen igual al id del módulo. El módulo no importa nada del
-  core ni de otro módulo, y no abre la base.
+  objetos=None, opinion=None), que guarda un recuerdo con origen igual al id del módulo, y contexto.ajuste(id), que da
+  el valor de un ajuste. El módulo no importa nada del core ni de otro módulo, y no abre la base.
+- Si el módulo necesita algo que Sergio configura (una dirección, una clave, un intervalo), lo declara en "ajustes" del
+  manifiesto: id, tipo (texto, numero o booleano), descripcion, por_defecto y secreto (solo para texto). Ningún otro
+  campo: el core rechaza un manifiesto con campos que no conoce. Nunca pone una clave real en el código ni en
+  por_defecto.
 - Una acción que escribe no corre al pedirla: queda como pedido pendiente hasta que un administrador lo aprueba.
 - Un módulo no puede consultar la lista de identidades ni el inventario. Usa identidad_id: null e inventario_id: null
   en los recuerdos que guarda: un id que no existe hace fallar la acción.

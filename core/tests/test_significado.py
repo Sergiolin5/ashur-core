@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from bases import quitar_desde
 from fastapi.testclient import TestClient
 
 from ashur_core import memoria, nodos, significado
@@ -222,11 +223,11 @@ def test_un_recuerdo_que_siempre_falla_no_deja_sin_vector_a_los_demas(cliente, t
 def test_una_base_de_la_version_9_recibe_los_embeddings(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
-    con.execute("DROP TABLE embeddings")
+    quitar_desde(con, 10)
     con.execute("PRAGMA user_version = 9")
     con.commit()
     con.close()
     con = memoria.abrir(ruta)
-    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA == 10
+    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
     assert significado.faltantes(con) == []
     con.close()

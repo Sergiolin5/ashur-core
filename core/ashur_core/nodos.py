@@ -12,7 +12,7 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ashur_core import significado
 
@@ -53,6 +53,26 @@ class NodoNuevo(BaseModel):
     nombre: str = Field(min_length=1)
 
 
+class Horario(BaseModel):
+    """Cuándo presta el equipo su modelo, en la hora local del equipo. Si hasta < desde, cruza la medianoche."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    desde: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    hasta: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+class AjustesNodo(BaseModel):
+    """Lo que Sergio decide de cada nodo desde la app (docs/adr/0019-ajustes-de-modulos-y-nodos.md). null: lo que
+    el nodo decida por su cuenta (todos sus modelos, su contexto por defecto, a toda hora)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    modelos_ofrecidos: list[str] | None = None
+    num_ctx: int | None = Field(default=None, ge=512, le=131072)
+    horario: Horario | None = None
+
+
 class Nodo(NodoNuevo):
     id: str
     archivado: bool
@@ -60,6 +80,14 @@ class Nodo(NodoNuevo):
     modo: Modo
     modelos: list[Modelo]
     ultimo_latido: str | None
+    ajustes: AjustesNodo
+
+    def prestados(self) -> list[Modelo]:
+        """Los modelos que Sergio le deja prestar a este nodo. El core lo hace cumplir, diga lo que diga el nodo."""
+        ofrecidos = self.ajustes.modelos_ofrecidos
+        if ofrecidos is None:
+            return self.modelos
+        return [m for m in self.modelos if m.nombre in ofrecidos or m.nombre.split(":")[0] in ofrecidos]
 
 
 class NodoCreado(BaseModel):
@@ -68,9 +96,20 @@ class NodoCreado(BaseModel):
 
 
 class CambiosNodo(BaseModel):
+    """Solo se tocan los campos enviados. archivado no puede ser null; los ajustes en null vuelven a lo del nodo."""
+
     model_config = ConfigDict(extra="forbid")
 
-    archivado: bool
+    archivado: bool | None = None
+    modelos_ofrecidos: list[str] | None = None
+    num_ctx: int | None = Field(default=None, ge=512, le=131072)
+    horario: Horario | None = None
+
+    @model_validator(mode="after")
+    def archivado_no_null(self) -> "CambiosNodo":
+        if "archivado" in self.model_fields_set and self.archivado is None:
+            raise ValueError("archivado no puede ser null")
+        return self
 
 
 class Trabajo(BaseModel):
@@ -165,15 +204,20 @@ def _hash(clave: str) -> str:
 
 
 def _nodo(fila: tuple, ahora: datetime) -> Nodo:
-    id_, nombre, archivado, modo, modelos, ultimo = fila
+    id_, nombre, archivado, modo, modelos, ultimo, ajustes = fila
     en_linea = ultimo is not None and ahora - datetime.fromisoformat(ultimo) < timedelta(seconds=FUERA_DE_LINEA_S)
     return Nodo(
         id=id_, nombre=nombre, archivado=bool(archivado), en_linea=en_linea and not archivado, modo=modo,
-        modelos=json.loads(modelos), ultimo_latido=ultimo,
+        modelos=json.loads(modelos), ultimo_latido=ultimo, ajustes=AjustesNodo.model_validate_json(ajustes or "{}"),
     )
 
 
-_COLUMNAS = "id, nombre, archivado, modo, modelos, ultimo_latido"
+_COLUMNAS = "id, nombre, archivado, modo, modelos, ultimo_latido, ajustes"
+
+
+def agregar_ajustes(conexion: sqlite3.Connection) -> None:
+    """Versión 11: los ajustes de cada nodo."""
+    conexion.execute("ALTER TABLE nodos ADD COLUMN ajustes TEXT")
 
 
 def crear(conexion: sqlite3.Connection, nuevo: NodoNuevo) -> NodoCreado:
@@ -197,10 +241,17 @@ def listar(conexion: sqlite3.Connection, ahora: datetime | None = None) -> list[
     return [_nodo(f, ahora or _ahora()) for f in filas]
 
 
-def archivar(conexion: sqlite3.Connection, id_: str, archivado: bool) -> Nodo | None:
-    if obtener(conexion, id_) is None:
+def cambiar(conexion: sqlite3.Connection, id_: str, cambios: CambiosNodo) -> Nodo | None:
+    """Archiva o restaura, y cambia los ajustes enviados."""
+    nodo = obtener(conexion, id_)
+    if nodo is None:
         return None
-    conexion.execute("UPDATE nodos SET archivado = ? WHERE id = ?", (int(archivado), id_))
+    if "archivado" in cambios.model_fields_set:
+        conexion.execute("UPDATE nodos SET archivado = ? WHERE id = ?", (int(cambios.archivado), id_))
+    campos = cambios.model_fields_set - {"archivado"}
+    if campos:
+        ajustes = nodo.ajustes.model_copy(update={c: getattr(cambios, c) for c in campos})
+        conexion.execute("UPDATE nodos SET ajustes = ? WHERE id = ?", (ajustes.model_dump_json(), id_))
     conexion.commit()
     return obtener(conexion, id_)
 
@@ -256,7 +307,7 @@ def tomar(conexion: sqlite3.Connection, id_nodo: str, ahora: datetime | None = N
     nodo = obtener(conexion, id_nodo, ahora)
     if nodo is None or not nodo.en_linea:
         return None
-    otros = [(n.modo, n.modelos) for n in listar(conexion, ahora) if n.en_linea and n.id != id_nodo]
+    otros = [(n.modo, n.prestados()) for n in listar(conexion, ahora) if n.en_linea and n.id != id_nodo]
     disponibles = conexion.execute(
         "SELECT id, necesidad, creado FROM trabajos"
         " WHERE estado = 'pendiente' OR (estado = 'tomado' AND vence < ?)"
@@ -264,7 +315,7 @@ def tomar(conexion: sqlite3.Connection, id_nodo: str, ahora: datetime | None = N
         (ahora.isoformat(),),
     ).fetchall()
     for id_, necesidad, creado in disponibles:
-        modelo = mejor_modelo(necesidad, nodo.modo, nodo.modelos)
+        modelo = mejor_modelo(necesidad, nodo.modo, nodo.prestados())
         if modelo is None:
             continue
         edad = (ahora - datetime.fromisoformat(creado)).total_seconds()
@@ -323,7 +374,7 @@ def tomado_por(conexion: sqlite3.Connection, id_: int, id_nodo: str) -> dict | N
 
 def hay_quien(conexion: sqlite3.Connection, necesidad: str, ahora: datetime | None = None) -> bool:
     """Si algún nodo en línea puede atender esa necesidad en este momento."""
-    return any(n.en_linea and mejor_modelo(necesidad, n.modo, n.modelos) for n in listar(conexion, ahora))
+    return any(n.en_linea and mejor_modelo(necesidad, n.modo, n.prestados()) for n in listar(conexion, ahora))
 
 
 def pendientes(conexion: sqlite3.Connection, necesidad: str, con_conversacion: bool) -> list[tuple[int, str, str | None]]:
