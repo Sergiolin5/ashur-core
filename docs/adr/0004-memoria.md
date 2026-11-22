@@ -31,8 +31,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
   palabra se busca también como prefijo ("bici" encuentra "bicicleta"). Unos disparadores mantienen el índice al crear,
   editar y borrar. La búsqueda por significado llega después, con embeddings que calcule el modelo de los nodos de
   casa, guardados en la misma base.
-- **Archivar en vez de borrar** (decisión 8, 2026-11-21): cuando existan el inventario y la lista de identidades, un
-  objeto o una identidad que ya no se quiere ver se archiva, no se borra. Desaparece de la galaxia y de las listas,
+- **Archivar en vez de borrar** (decisión 8, 2026-11-21): un objeto del inventario o una identidad que ya no se
+  quiere ver se archiva, no se borra (ADR 0012 y 0014). Desaparece de la galaxia y de las listas,
   los recuerdos conservan su enlace, y un administrador puede restaurarlo.
 - **Ashur guarda los recuerdos directamente,** sin pedirle aprobación a Sergio (decisión 9, 2026-11-21).
 - **Todo se guarda, también lo sensible.** La `sensibilidad` es solo un dato: no cambia cómo se guarda un recuerdo
@@ -40,7 +40,9 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 
 ### Almacenamiento
 - **Base de datos:** una tabla `recuerdos` en SQLite. `identidades` y `objetos` se guardan como JSON en sus columnas.
-- **Versión del esquema:** se lleva con `PRAGMA user_version` y va en la 4. Una base vacía se crea en la versión 4.
+- **Versión del esquema:** se lleva con `PRAGMA user_version` (la versión actual es `VERSION_ESQUEMA` en
+  `core/ashur_core/memoria.py`; las versiones 5 a 7 están en los ADR 0012, 0013 y 0014). Una base vacía se crea en la
+  versión actual.
   Una de la versión 1 (con `personas` y `contacto_id`) se migra sola a `identidades` e `identidad_id`, y la versión 3
   agrega la tabla `meta` con la fecha en que Ashur empezó a aprender. La versión 4 agrega el índice de búsqueda. La
   migración corre dentro de `BEGIN IMMEDIATE`, así que dos pedidos a la vez no la repiten; una base con
@@ -71,8 +73,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 - **Dependencias:** usa `fastapi.security.APIKeyHeader`, que viene con FastAPI, así que no agrega paquetes.
 
 ## Costos
-- **Los enlaces todavía no apuntan a nada:** `identidad_id` e `inventario_id` esperan a que existan la lista de
-  identidades y el inventario. Las identidades son parte del core: personas y mascotas, como un inventario de seres.
+- **Enlaces:** `identidad_id` e `inventario_id` apuntan a la lista de identidades (ADR 0012) y al inventario
+  (ADR 0014). Un recuerdo nuevo no puede enlazar algo que no existe.
 - **La clave viaja sin cifrar en la red de casa:** el core habla HTTP, así que en la red local la clave va en claro.
   Por Tailscale va cifrada.
 - **FTS5 no entiende el español:** no reduce las palabras a su raíz, así que "perros" no encuentra "perro" salvo

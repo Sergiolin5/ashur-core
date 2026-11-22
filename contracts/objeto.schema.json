@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "objeto.schema.json",
+  "title": "Objeto del inventario de Ashur",
+  "description": "Una cosa física que Sergio tiene y dónde está. Ver docs/adr/0014-inventario.md.",
+  "$defs": {
+    "nuevo": {
+      "description": "Lo que el cliente envía para crear un objeto.",
+      "type": "object",
+      "required": ["nombre", "lugar"],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": { "type": "string", "minLength": 1 },
+        "lugar": {
+          "description": "Dónde está, en texto libre; null si no se sabe.",
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "objeto": {
+      "description": "Un objeto guardado.",
+      "type": "object",
+      "required": ["id", "nombre", "lugar", "archivado", "menciones"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Lo pone el core y nunca se reusa, por ejemplo obj-1.",
+          "type": "string",
+          "minLength": 1
+        },
+        "nombre": { "$ref": "#/$defs/nuevo/properties/nombre" },
+        "lugar": { "$ref": "#/$defs/nuevo/properties/lugar" },
+        "archivado": {
+          "description": "Archivado: no aparece en las listas ni pesa en la galaxia, pero los recuerdos conservan su enlace.",
+          "type": "boolean"
+        },
+        "menciones": {
+          "description": "Cuántos recuerdos distintos lo enlazan.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/objeto"
+}

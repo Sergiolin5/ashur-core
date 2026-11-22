@@ -67,8 +67,8 @@ esencial:
   objetos=None, opinion=None), que guarda un recuerdo con origen igual al id del módulo. El módulo no importa nada del
   core ni de otro módulo, y no abre la base.
 - Una acción que escribe no corre al pedirla: queda como pedido pendiente hasta que un administrador lo aprueba.
-- Un módulo no puede consultar la lista de identidades. Usa identidad_id: null en los recuerdos que guarda: un id que
-  no existe hace fallar la acción.
+- Un módulo no puede consultar la lista de identidades ni el inventario. Usa identidad_id: null e inventario_id: null
+  en los recuerdos que guarda: un id que no existe hace fallar la acción.
 - Python 3.13, sin paquetes que no estén en core/pyproject.toml (fastapi, uvicorn, pydantic).
 </contexto>
 

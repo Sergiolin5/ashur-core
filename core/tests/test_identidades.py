@@ -26,6 +26,7 @@ def recuerdo_con(*ids):
     datos = json.loads((RAIZ / "recuerdo.ejemplo.json").read_text(encoding="utf-8"))
     del datos["id"]
     datos["identidades"] = [{"nombre": "x", "identidad_id": i} for i in ids]
+    datos["objetos"] = []
     return datos
 
 
@@ -104,6 +105,7 @@ def test_una_base_de_la_version_4_recibe_la_tabla_de_identidades(tmp_path):
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE identidades")
     con.execute("DROP TABLE pedidos")
+    con.execute("DROP TABLE objetos")
     con.execute("PRAGMA user_version = 4")
     con.commit()
     con.close()

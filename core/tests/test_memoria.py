@@ -33,6 +33,8 @@ def cliente(tmp_path, monkeypatch):
     c = TestClient(app, headers={"X-Ashur-Clave": CLAVE})
     # El recuerdo de ejemplo enlaza a ide-1, así que esa identidad tiene que existir.
     assert c.post("/identidades", json={"nombre": "Ana", "clase": "persona"}).json()["id"] == "ide-1"
+    # También enlaza a obj-1, así que ese objeto tiene que existir.
+    assert c.post("/objetos", json={"nombre": "bicicleta roja", "lugar": "garaje"}).json()["id"] == "obj-1"
     return c
 
 
@@ -190,7 +192,7 @@ def test_una_base_de_la_version_2_recibe_su_inicio(tmp_path):
     con.execute("DROP TABLE meta")
     for objeto in (
         "TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda",
-        "TABLE identidades", "TABLE pedidos",
+        "TABLE identidades", "TABLE pedidos", "TABLE objetos",
     ):
         con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 2")
@@ -229,7 +231,7 @@ def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
     memoria.crear(con, memoria.RecuerdoNuevo.model_validate(nuevo_ejemplo()))
     for objeto in (
         "TRIGGER recuerdos_ai", "TRIGGER recuerdos_ad", "TRIGGER recuerdos_au", "TABLE recuerdos_busqueda",
-        "TABLE identidades", "TABLE pedidos",
+        "TABLE identidades", "TABLE pedidos", "TABLE objetos",
     ):
         con.execute(f"DROP {objeto}")
     con.execute("PRAGMA user_version = 3")

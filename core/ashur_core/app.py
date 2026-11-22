@@ -7,7 +7,7 @@ from fastapi.security import APIKeyHeader
 
 from functools import lru_cache
 
-from ashur_core import galaxia, identidades, memoria, modulos
+from ashur_core import galaxia, identidades, inventario, memoria, modulos
 
 app = FastAPI(title="Ashur Core")
 
@@ -50,6 +50,13 @@ def _exigir_identidades_conocidas(con, lista: list[memoria.Identidad]) -> None:
         raise HTTPException(status_code=422, detail=f"No existen estas identidades: {', '.join(faltan)}")
 
 
+def _exigir_objetos_conocidos(con, lista: list[memoria.Objeto]) -> None:
+    """Un recuerdo solo puede enlazar objetos que existen (docs/adr/0014-inventario.md)."""
+    faltan = inventario.desconocidos(con, [o.inventario_id for o in lista if o.inventario_id is not None])
+    if faltan:
+        raise HTTPException(status_code=422, detail=f"No existen estos objetos: {', '.join(faltan)}")
+
+
 @app.get("/vivo")
 def vivo() -> dict[str, bool]:
     return {"vivo": True}
@@ -63,6 +70,7 @@ def crear_recuerdo(nuevo: memoria.RecuerdoNuevo, con=Depends(conexion)) -> memor
 def _guardar_recuerdo(con, nuevo: memoria.RecuerdoNuevo) -> memoria.Recuerdo:
     """El único camino para guardar un recuerdo, desde la API o desde un módulo."""
     _exigir_identidades_conocidas(con, nuevo.identidades)
+    _exigir_objetos_conocidos(con, nuevo.objetos)
     creado = memoria.crear(con, nuevo)
     identidades.recalcular_niveles(con)
     return creado
@@ -78,6 +86,8 @@ def listar_recuerdos(buscar: str | None = None, con=Depends(conexion)) -> list[m
 def editar_recuerdo(id_: int, cambios: memoria.CambiosRecuerdo, con=Depends(conexion)) -> memoria.Recuerdo:
     if cambios.identidades is not None:
         _exigir_identidades_conocidas(con, cambios.identidades)
+    if cambios.objetos is not None:
+        _exigir_objetos_conocidos(con, cambios.objetos)
     editado = memoria.editar(con, id_, cambios)
     if editado is None:
         raise HTTPException(status_code=404, detail="No existe ese recuerdo.")
@@ -108,7 +118,7 @@ def ver_galaxia(con=Depends(conexion)) -> galaxia.EstadoGalaxia:
     planetas = [
         (m.manifiesto, memoria.contar_por_origen(con, id_)) for id_, m in registro_de_modulos().modulos.items()
     ]
-    return galaxia.estado_actual(memoria.aprendizaje(con), identidades.listar(con), planetas)
+    return galaxia.estado_actual(memoria.aprendizaje(con), identidades.listar(con), planetas, inventario.contar(con))
 
 
 @app.post("/identidades", status_code=201, response_model=identidades.Identidad, dependencies=[Depends(exigir_clave)])
@@ -131,6 +141,26 @@ def editar_identidad(id_: str, cambios: identidades.CambiosIdentidad, con=Depend
     if editada is None:
         raise HTTPException(status_code=404, detail="No existe esa identidad.")
     return editada
+
+
+@app.post("/objetos", status_code=201, response_model=inventario.Objeto, dependencies=[Depends(exigir_clave)])
+def crear_objeto(nuevo: inventario.ObjetoNuevo, con=Depends(conexion)) -> inventario.Objeto:
+    return inventario.crear(con, nuevo)
+
+
+@app.get("/objetos", response_model=list[inventario.Objeto], dependencies=[Depends(exigir_clave)])
+def listar_objetos(archivados: bool = False, con=Depends(conexion)) -> list[inventario.Objeto]:
+    """Sin archivados, salvo que se pidan."""
+    return inventario.listar(con, archivados)
+
+
+@app.patch("/objetos/{id_}", response_model=inventario.Objeto, dependencies=[Depends(exigir_clave_admin)])
+def editar_objeto(id_: str, cambios: inventario.CambiosObjeto, con=Depends(conexion)) -> inventario.Objeto:
+    """Editar, mover, archivar o restaurar. No hay DELETE: se archiva (decisión 8)."""
+    editado = inventario.editar(con, id_, cambios)
+    if editado is None:
+        raise HTTPException(status_code=404, detail="No existe ese objeto.")
+    return editado
 
 
 # ── Módulos (docs/adr/0013-modulos-en-el-core.md) ──

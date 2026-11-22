@@ -27,6 +27,8 @@ Ver `docs/adr/0013-modulos-en-el-core.md`.
     `uv run pytest ../modules/<id>/autoprueba.py`.
 - **Contexto:** `contexto.recordar(texto, fecha=None, sensibilidad="normal", identidades=None, objetos=None,
   opinion=None)` guarda un recuerdo en el core con `origen` igual al id del módulo. Es todo lo que el módulo recibe.
+  Como no puede consultar las identidades ni el inventario, usa `identidad_id: null` e `inventario_id: null`: un id
+  que no existe hace fallar la acción.
 - **Registro:** el core descubre los módulos de `modules/` solo. Uno roto aparece en `GET /modulos` con su error.
 - **Acciones que escriben:** `POST /modulos/<id>/acciones/<accion>` crea un pedido pendiente, y la acción corre recién
   cuando un administrador lo aprueba en `POST /pedidos/<id>/aprobar`.
