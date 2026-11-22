@@ -62,7 +62,7 @@ def _fase(id_: str) -> float:
     return (zlib.crc32(id_.encode()) % 1000) / 1000
 
 
-def estado_actual(aprendizaje: Aprendizaje, identidades: list) -> EstadoGalaxia:
+def estado_actual(aprendizaje: Aprendizaje, identidades: list, modulos: list | tuple = ()) -> EstadoGalaxia:
     """La galaxia con lo que el core sabe hoy (docs/adr/0011-app-conectada-al-core.md, docs/adr/0012-identidades.md).
     Cada identidad no archivada aparece según su nivel: personaje sobre Identidades, luna alrededor de Identidades o
     planeta propio. El id del cuerpo no cambia al subir o bajar, para que la cámara pueda seguirlo."""
@@ -76,6 +76,14 @@ def estado_actual(aprendizaje: Aprendizaje, identidades: list) -> EstadoGalaxia:
         ),
         Cuerpo(tipo="planeta", id="objetos", nombre="Objetos", masa=1, orbita=Orbita(centro="ashur", fase=0.6), ref=None),
     ]
+    # Cada módulo registrado es un planeta; su masa es la cantidad de recuerdos con origen igual a su id.
+    for manifiesto, recuerdos in modulos:
+        cuerpos.append(
+            Cuerpo(
+                tipo="planeta", id=f"modulo-{manifiesto.id}", nombre=manifiesto.nombre, masa=1 + recuerdos,
+                orbita=Orbita(centro="ashur", fase=_fase(manifiesto.id)), ref=Ref(tipo="modulo", id=manifiesto.id),
+            )
+        )
     tipos = {1: "personaje", 2: "luna", 3: "planeta"}
     for i in visibles:
         centro = "ashur" if i.nivel == 3 else "identidades"

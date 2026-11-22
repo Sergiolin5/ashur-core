@@ -103,11 +103,12 @@ def test_una_base_de_la_version_4_recibe_la_tabla_de_identidades(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
     con.execute("DROP TABLE identidades")
+    con.execute("DROP TABLE pedidos")
     con.execute("PRAGMA user_version = 4")
     con.commit()
     con.close()
     con = memoria.abrir(ruta)
-    assert con.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
     assert identidades.listar(con) == []
     con.close()
-    assert sqlite3.connect(ruta).execute("PRAGMA user_version").fetchone()[0] == 5
+    assert sqlite3.connect(ruta).execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA

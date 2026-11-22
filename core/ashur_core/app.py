@@ -5,7 +5,9 @@ from collections.abc import Iterator
 from fastapi import Depends, FastAPI, HTTPException, Response, Security
 from fastapi.security import APIKeyHeader
 
-from ashur_core import galaxia, identidades, memoria
+from functools import lru_cache
+
+from ashur_core import galaxia, identidades, memoria, modulos
 
 app = FastAPI(title="Ashur Core")
 
@@ -55,6 +57,11 @@ def vivo() -> dict[str, bool]:
 
 @app.post("/recuerdos", status_code=201, response_model=memoria.Recuerdo, dependencies=[Depends(exigir_clave)])
 def crear_recuerdo(nuevo: memoria.RecuerdoNuevo, con=Depends(conexion)) -> memoria.Recuerdo:
+    return _guardar_recuerdo(con, nuevo)
+
+
+def _guardar_recuerdo(con, nuevo: memoria.RecuerdoNuevo) -> memoria.Recuerdo:
+    """El único camino para guardar un recuerdo, desde la API o desde un módulo."""
     _exigir_identidades_conocidas(con, nuevo.identidades)
     creado = memoria.crear(con, nuevo)
     identidades.recalcular_niveles(con)
@@ -98,7 +105,10 @@ def cambiar_inicio(cambio: memoria.CambioInicio, con=Depends(conexion)) -> memor
 
 @app.get("/galaxia", response_model=galaxia.EstadoGalaxia, dependencies=[Depends(exigir_clave)])
 def ver_galaxia(con=Depends(conexion)) -> galaxia.EstadoGalaxia:
-    return galaxia.estado_actual(memoria.aprendizaje(con), identidades.listar(con))
+    planetas = [
+        (m.manifiesto, memoria.contar_por_origen(con, id_)) for id_, m in registro_de_modulos().modulos.items()
+    ]
+    return galaxia.estado_actual(memoria.aprendizaje(con), identidades.listar(con), planetas)
 
 
 @app.post("/identidades", status_code=201, response_model=identidades.Identidad, dependencies=[Depends(exigir_clave)])
@@ -121,3 +131,88 @@ def editar_identidad(id_: str, cambios: identidades.CambiosIdentidad, con=Depend
     if editada is None:
         raise HTTPException(status_code=404, detail="No existe esa identidad.")
     return editada
+
+
+# ── Módulos (docs/adr/0013-modulos-en-el-core.md) ──
+
+
+@lru_cache
+def _registro(carpeta: str) -> modulos.Registro:
+    return modulos.descubrir(modulos.Path(carpeta))
+
+
+def registro_de_modulos() -> modulos.Registro:
+    """Los módulos se descubren una vez por carpeta, al primer pedido."""
+    return _registro(str(modulos.carpeta_por_defecto()))
+
+
+def _contexto(con, id_modulo: str) -> modulos.Contexto:
+    def guardar(datos: dict) -> dict:
+        try:
+            nuevo = memoria.RecuerdoNuevo.model_validate(datos)
+        except ValueError as e:
+            raise ValueError(f"El recuerdo del módulo no cumple el contrato: {e}") from None
+        return _guardar_recuerdo(con, nuevo).model_dump(mode="json")
+
+    return modulos.Contexto(id_modulo, guardar)
+
+
+def _correr(con, modulo: modulos.ModuloCargado, accion: str, parametros: dict) -> dict:
+    try:
+        return modulos.ejecutar(modulo, accion, parametros, _contexto(con, modulo.manifiesto.id))
+    except modulos.ErrorDeModulo as e:
+        raise HTTPException(status_code=502, detail=f"El módulo {modulo.manifiesto.id} falló: {e.mensaje}") from None
+
+
+@app.get("/modulos", response_model=list[modulos.EstadoModulo], dependencies=[Depends(exigir_clave)])
+def listar_modulos() -> list[modulos.EstadoModulo]:
+    return registro_de_modulos().estados()
+
+
+@app.post("/modulos/{id_}/acciones/{accion}", dependencies=[Depends(exigir_clave)])
+def correr_accion(id_: str, accion: str, response: Response, parametros: dict | None = None, con=Depends(conexion)):
+    """Una acción que solo lee corre ya. Una que escribe queda como pedido pendiente (202) hasta que un administrador
+    la apruebe."""
+    modulo = registro_de_modulos().modulos.get(id_)
+    if modulo is None:
+        raise HTTPException(status_code=404, detail="No hay un módulo registrado con ese id.")
+    definicion = modulo.accion(accion)
+    if definicion is None:
+        raise HTTPException(status_code=404, detail="Ese módulo no tiene esa acción.")
+    if definicion.escribe:
+        response.status_code = 202
+        return modulos.pedir(con, id_, accion, parametros or {}).model_dump()
+    return {"resultado": _correr(con, modulo, accion, parametros or {})}
+
+
+@app.get("/pedidos", response_model=list[modulos.Pedido], dependencies=[Depends(exigir_clave)])
+def listar_pedidos(estado: str | None = None, con=Depends(conexion)) -> list[modulos.Pedido]:
+    return modulos.listar_pedidos(con, estado)
+
+
+@app.post("/pedidos/{id_}/aprobar", response_model=modulos.Pedido, dependencies=[Depends(exigir_clave_admin)])
+def aprobar_pedido(id_: int, con=Depends(conexion)) -> modulos.Pedido:
+    pedido = modulos.obtener_pedido(con, id_)
+    if pedido is None:
+        raise HTTPException(status_code=404, detail="No existe ese pedido.")
+    modulo = registro_de_modulos().modulos.get(pedido.modulo)
+    if modulo is None or modulo.accion(pedido.accion) is None:
+        raise HTTPException(status_code=409, detail="El módulo o la acción de ese pedido ya no están registrados.")
+    if not modulos.tomar_pendiente(con, id_, "corriendo"):
+        raise HTTPException(status_code=409, detail="Ese pedido ya no está pendiente.")
+    try:
+        resultado = modulos.ejecutar(modulo, pedido.accion, pedido.parametros, _contexto(con, pedido.modulo))
+    except modulos.ErrorDeModulo as e:
+        modulos.cerrar_pedido(con, id_, "fallido", None, e.mensaje)
+        raise HTTPException(status_code=502, detail=f"El módulo {pedido.modulo} falló: {e.mensaje}") from None
+    modulos.cerrar_pedido(con, id_, "hecho", resultado, None)
+    return modulos.obtener_pedido(con, id_)
+
+
+@app.post("/pedidos/{id_}/rechazar", response_model=modulos.Pedido, dependencies=[Depends(exigir_clave_admin)])
+def rechazar_pedido(id_: int, con=Depends(conexion)) -> modulos.Pedido:
+    if modulos.obtener_pedido(con, id_) is None:
+        raise HTTPException(status_code=404, detail="No existe ese pedido.")
+    if not modulos.tomar_pendiente(con, id_, "rechazado"):
+        raise HTTPException(status_code=409, detail="Ese pedido ya no está pendiente.")
+    return modulos.obtener_pedido(con, id_)

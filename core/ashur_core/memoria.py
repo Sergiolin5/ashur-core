@@ -8,10 +8,10 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from ashur_core import identidades
+from ashur_core import identidades, modulos
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 5
+VERSION_ESQUEMA = 6
 
 
 class Identidad(BaseModel):
@@ -99,6 +99,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
             _migrar_3_a_4(conexion)
         if version < 5:
             identidades.crear_tabla(conexion)  # versión 5: la lista de identidades
+        if version < 6:
+            modulos.crear_tabla_pedidos(conexion)  # versión 6: pedidos de acciones que escriben
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
@@ -263,3 +265,7 @@ def cambiar_inicio(conexion: sqlite3.Connection, inicio: datetime) -> Aprendizaj
     conexion.execute("UPDATE meta SET valor = ? WHERE clave = 'inicio_aprendizaje'", (inicio.isoformat(),))
     conexion.commit()
     return aprendizaje(conexion)
+
+
+def contar_por_origen(conexion: sqlite3.Connection, origen: str) -> int:
+    return conexion.execute("SELECT COUNT(*) FROM recuerdos WHERE origen = ?", (origen,)).fetchone()[0]
