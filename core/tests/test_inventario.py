@@ -20,6 +20,8 @@ def cliente(tmp_path, monkeypatch):
     monkeypatch.setenv("ASHUR_DB", str(tmp_path / "ashur.db"))
     monkeypatch.setenv("ASHUR_CLAVE", CLAVE)
     monkeypatch.setenv("ASHUR_CLAVE_ADMIN", "a")
+    # Sin los módulos reales del repo: cada módulo es un cuerpo de la galaxia y cambiaría lo que se compara.
+    monkeypatch.setenv("ASHUR_MODULOS", str(tmp_path / "modules"))
     return TestClient(app, headers={"X-Ashur-Clave": CLAVE})
 
 

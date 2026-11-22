@@ -32,6 +32,8 @@ def cliente(tmp_path, monkeypatch):
     monkeypatch.setenv("ASHUR_DB", str(tmp_path / "ashur.db"))
     monkeypatch.setenv("ASHUR_CLAVE", CLAVE)
     monkeypatch.setenv("ASHUR_CLAVE_ADMIN", CLAVE_ADMIN)
+    # Sin los módulos reales del repo: cada módulo es un cuerpo de la galaxia y cambiaría lo que se compara.
+    monkeypatch.setenv("ASHUR_MODULOS", str(tmp_path / "modules"))
     c = TestClient(app, headers={"X-Ashur-Clave": CLAVE})
     # El recuerdo de ejemplo enlaza a ide-1, así que esa identidad tiene que existir.
     assert c.post("/identidades", json={"nombre": "Ana", "clase": "persona"}).json()["id"] == "ide-1"
