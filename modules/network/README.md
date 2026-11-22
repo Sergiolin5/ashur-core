@@ -38,9 +38,18 @@ constituyen evidencia suficiente.
 La confianza indicada es una clasificación inicial de la evidencia
 disponible, no una probabilidad estadística calibrada.
 
+`red_id` e `id_dispositivo` solo admiten letras, números, `.`, `_`, `:` y
+`-`, hasta 64 caracteres: terminan en recuerdos que lee el modelo y, sin
+espacios, no caben frases.
+
+Un mismo equipo que en una instantánea trae `id_dispositivo` y en la otra
+solo MAC aparece como una alta y una baja, no como un cambio. Así se evita
+fusionar identidades con evidencia distinta.
+
 ## Análisis de exposición
 
-Las reglas de puertos son heurísticas. Un hallazgo no confirma una
+Las reglas de puertos son heurísticas y miran el puerto junto con su
+protocolo (por ahora, todas son TCP). Un hallazgo no confirma una
 vulnerabilidad, no prueba que un servicio sea accesible desde Internet y
 no implica que un dispositivo esté comprometido.
 
@@ -48,6 +57,11 @@ no implica que un dispositivo esté comprometido.
 
 El módulo no guarda memoria propia. `recordar_cambios` usa únicamente
 `contexto.recordar()` para entregar recuerdos al core.
+
+Los recuerdos no llevan texto libre del cliente. `clave_correlacion` tiene
+que tener la forma que arma este módulo (`id:...` o `mac:...`), y cada
+cambio se nombra por su `campo` con la etiqueta propia del módulo. Si un
+evento no cumple, la acción falla sin guardar ningún recuerdo.
 
 No consulta identidades ni objetos del inventario.
 
