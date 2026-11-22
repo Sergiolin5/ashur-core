@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 import secrets
 from collections.abc import Iterator
 
@@ -232,10 +233,20 @@ def hablar(nuevo: chat.MensajeNuevo, con=Depends(conexion)) -> list[chat.Mensaje
     responde 503."""
     mio = chat.guardar(con, "sergio", nuevo.texto)
     try:
-        texto, _nodo = chat.responder(con, chat.para_el_modelo(chat.historial(con)))
+        texto, nodo = chat.responder(con, chat.para_el_modelo(chat.historial(con)))
     except chat.SinModelo as e:
         raise HTTPException(status_code=503, detail=str(e)) from None
-    return [mio, chat.guardar(con, "ashur", texto)]
+    respuesta = chat.guardar(con, "ashur", texto)
+    # Ashur guarda directo lo que vale la pena recordar (decisión 9 y opción A del chat).
+    ahora = datetime.now(timezone.utc)
+    for frase in chat.extraer_recuerdos(nodo, chat.para_el_modelo(chat.historial(con))):
+        _guardar_recuerdo(
+            con,
+            memoria.RecuerdoNuevo(
+                texto=frase, origen="chat", fecha=ahora, sensibilidad="normal", identidades=[], objetos=[], opinion=None
+            ),
+        )
+    return [mio, respuesta]
 
 
 @app.get("/nodos", response_model=list[chat.Nodo], dependencies=[Depends(exigir_clave)])

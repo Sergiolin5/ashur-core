@@ -161,12 +161,37 @@ def proveedores(conexion: sqlite3.Connection) -> list[ProveedorOpenAI]:
     return [ProveedorOpenAI(url, modelo, clave, nombre) for nombre, url, modelo, clave in filas]
 
 
-def responder(conexion: sqlite3.Connection, historial: list[dict]) -> tuple[str, str]:
-    """Prueba los nodos en orden, k* = min{k : D_k}, y devuelve (texto, nombre del nodo que respondió)."""
+INSTRUCCION_RECUERDOS = (
+    "Lee la última parte de la conversación entre Sergio y Ashur. Si hay algo que valga la pena recordar a largo "
+    "plazo sobre Sergio, su gente, sus mascotas, sus cosas o sus planes, escríbelo como frases cortas. "
+    'Responde solo con JSON, así: {"recordar": ["frase", "frase"]}. Si no hay nada, responde {"recordar": []}.'
+)
+
+
+def extraer_recuerdos(proveedor: "ProveedorOpenAI", historial: list[dict]) -> list[str]:
+    """Le pregunta al mismo nodo qué vale la pena recordar (decisión de Sergio, opción A). Si la respuesta no es el JSON
+    pedido, no guarda nada: es mejor perder un recuerdo que guardar ruido."""
+    pedido = [*historial[-6:], {"role": "user", "content": INSTRUCCION_RECUERDOS}]
+    try:
+        texto = proveedor.responder(pedido)
+    except SinModelo:
+        return []
+    inicio, fin = texto.find("{"), texto.rfind("}")
+    if inicio < 0 or fin < inicio:
+        return []
+    try:
+        frases = json.loads(texto[inicio : fin + 1]).get("recordar", [])
+    except (json.JSONDecodeError, AttributeError):
+        return []
+    return [f.strip() for f in frases if isinstance(f, str) and f.strip()][:5]
+
+
+def responder(conexion: sqlite3.Connection, historial: list[dict]) -> tuple[str, "ProveedorOpenAI"]:
+    """Prueba los nodos en orden y devuelve (texto, el nodo que respondió)."""
     fallos = []
     for proveedor in proveedores(conexion):
         try:
-            return proveedor.responder(historial), proveedor.nombre
+            return proveedor.responder(historial), proveedor
         except SinModelo as e:
             fallos.append(str(e))
     raise SinModelo("Ningún nodo respondió. " + " ".join(fallos) if fallos else "No hay nodos configurados.")
