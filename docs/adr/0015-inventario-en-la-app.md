@@ -53,17 +53,16 @@ directamente desde su teléfono.
 
 Eso se verificó en la Mac con el commit a47f4a5 de la rama `app-inventario`.
 
+## Verificado en la Mac (2026-11-22, después de la revisión)
+- Los ajustes hechos en Windows (`mounted` antes de cada `setState` tras un `await`, sin `Objeto.aJson()`, sin la
+  condición `cuerpo != 'nucleo'`) compilan: `flutter analyze` sin avisos y `flutter test` con 29 pruebas, todas bien.
+- Prueba nueva: salir de Inventario mientras la lista todavía carga no lanza errores. Nota: también pasa sin el
+  `mounted` que sigue a `listarObjetos`, porque el `catch` de `_cargar` atrapa el error y vuelve a revisar `mounted`.
+
 ## Sin verificar
-- **Los ajustes de la revisión, hechos en el equipo Windows sin Flutter.** Nunca se compilaron, ni se corrieron
-  `flutter test` y `flutter analyze` con ellos:
-  - revisar `mounted` antes de cada `setState` que sigue a un `await` en la pantalla Inventario;
-  - quitar `Objeto.aJson()`, que nadie usa;
-  - quitar la condición `cuerpo != 'nucleo'` en `VistaGalaxia`.
 - **Prueba en el iPhone real:** escribir y pegar la clave de administrador en el dispositivo físico y verificar la
   experiencia táctil completa lo hace Sergio después.
 
 ## Pendiente
-- Correr `flutter test` y `flutter analyze` en la Mac con los ajustes.
-- Una prueba de widgets: salir de Inventario mientras la lista todavía carga no lanza errores.
 - Visualización de objetos individuales dentro del planeta o como satélites cuando se decida cómo representarlos
   gráficamente en la galaxia (decisión 12 de `docs/DECISIONES-ABIERTAS.md`).

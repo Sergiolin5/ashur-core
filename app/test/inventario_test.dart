@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ashur/conexion/almacen.dart';
 import 'package:ashur/conexion/cliente.dart';
 import 'package:ashur/conexion/fuente.dart';
@@ -54,6 +56,16 @@ class _ClienteCoreFalso extends ClienteCore {
     objetos[idx] = nuevo;
     return nuevo;
   }
+}
+
+/// Un core que tarda en mandar la lista: responde cuando la prueba lo decide.
+class _ClienteCoreLento extends ClienteCore {
+  _ClienteCoreLento({required super.direccion, required super.clave});
+
+  final respuesta = Completer<List<Objeto>>();
+
+  @override
+  Future<List<Objeto>> listarObjetos({bool archivados = false}) => respuesta.future;
 }
 
 class _FuenteEspia extends FuenteGalaxia {
@@ -258,5 +270,36 @@ void main() {
     expect(find.text('Regla'), findsOneWidget);
     expect(find.text('Estante'), findsOneWidget);
     expect(actualizaciones, 1);
+  });
+
+  testWidgets('salir de Inventario mientras la lista carga no lanza errores', (tester) async {
+    final cliente = _ClienteCoreLento(direccion: Uri.parse('http://127.0.0.1:8720'), clave: 'buena');
+    final fuente = FuenteGalaxia(
+      almacen: AlmacenEnMemoria(),
+      cache: CacheEnMemoria(),
+      cargarEjemplo: () => EstadoGalaxia.cargar(rootBundle),
+    );
+
+    await tester.pumpWidget(WidgetsApp(
+      color: const Color(0xFF05060B),
+      localizationsDelegates: const [
+        DefaultWidgetsLocalizations.delegate,
+        DefaultCupertinoLocalizations.delegate,
+      ],
+      pageRouteBuilder: <T>(settings, builder) =>
+          PageRouteBuilder<T>(settings: settings, pageBuilder: (context, _, __) => builder(context)),
+      home: PantallaInventario(fuente: fuente, cliente: cliente),
+    ));
+    await tester.pump();
+    expect(find.byType(PantallaInventario), findsOneWidget);
+
+    // Se sale de la pantalla antes de que llegue la lista.
+    await tester.pumpWidget(const SizedBox());
+    cliente.respuesta.complete(const [
+      Objeto(id: 'obj-1', nombre: 'Cuaderno', lugar: 'Escritorio', archivado: false, menciones: 1),
+    ]);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 }
