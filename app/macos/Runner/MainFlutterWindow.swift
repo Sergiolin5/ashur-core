@@ -36,11 +36,26 @@ class MainFlutterWindow: NSWindow {
 
     if let visibleFrame = NSScreen.main?.visibleFrame {
       panel.setFrameOrigin(
-      NSPoint(x: visibleFrame.maxX - size.width - 24, y: visibleFrame.maxY - size.height - 86)
+        NSPoint(x: visibleFrame.maxX - size.width - 24, y: visibleFrame.minY + 28)
       )
     }
+    addCompanionMenuItem()
     panel.orderFrontRegardless()
     companionPanel = panel
+  }
+
+  private func addCompanionMenuItem() {
+    guard let windowMenu = NSApp.mainMenu?.items.first(where: { $0.title == "Window" })?.submenu else {
+      return
+    }
+    windowMenu.addItem(.separator())
+    let item = NSMenuItem(
+      title: "Mostrar u ocultar núcleo de Ashur",
+      action: #selector(toggleCompanion),
+      keyEquivalent: ""
+    )
+    item.target = self
+    windowMenu.addItem(item)
   }
 
   @objc fileprivate func showAshur() {
@@ -50,7 +65,15 @@ class MainFlutterWindow: NSWindow {
 
   @objc fileprivate func closeCompanion() {
     companionPanel?.orderOut(nil)
-    companionPanel = nil
+  }
+
+  @objc fileprivate func toggleCompanion() {
+    guard let companionPanel else { return }
+    if companionPanel.isVisible {
+      companionPanel.orderOut(nil)
+    } else {
+      companionPanel.orderFrontRegardless()
+    }
   }
 }
 
@@ -136,10 +159,10 @@ private final class NucleoButton: NSButton {
       width: width,
       height: height
     ))
-    let transform = NSAffineTransform()
-    transform.translateX(by: center.x, yBy: center.y)
+    var transform = AffineTransform()
+    transform.translate(x: center.x, y: center.y)
     transform.rotate(byDegrees: rotation)
-    transform.translateX(by: -center.x, yBy: -center.y)
+    transform.translate(x: -center.x, y: -center.y)
     orbit.transform(using: transform)
     orbit.lineWidth = 1
     color.setStroke()

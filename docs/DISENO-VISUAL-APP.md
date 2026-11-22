@@ -27,7 +27,8 @@ mantiene su cliente Flutter multiplataforma.
 El cliente actual aún tiene Chat, Casa y Workbench como pantallas vacías (`app/lib/main.dart`). La capa visual puede
 darles identidad y estados vacíos, pero no debe inventar funciones que el cliente o el core no implementan. La
 burbuja flotante de macOS se dibuja con AppKit, sin paquetes nuevos. Trae la ventana Flutter principal al frente; no
-simula un chat compacto porque el cliente aún no tiene chat implementado. El botón de cierre oculta la burbuja.
+simula un chat compacto porque el cliente aún no tiene chat implementado. El botón de cierre la oculta y el menú
+Ventana permite volver a mostrarla.
 
 ## Tokens iniciales
 
