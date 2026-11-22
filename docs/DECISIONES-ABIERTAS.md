@@ -2,11 +2,6 @@
 
 Cada una espera la decisión de Sergio. Cuando se cierre, se registra como ADR en `docs/adr/` y se quita de aquí.
 
-## 10. Búsqueda por significado
-La búsqueda por palabras ya existe (`docs/adr/0004-memoria.md`). Falta la búsqueda por significado, con embeddings que
-calcule el modelo de los nodos de casa: qué modelo, dónde se guardan y cuándo se calculan. Cualquier paquete o modelo
-nuevo necesita aprobación.
-
 ## 11. Reglas por sensibilidad y consentimiento
 Por ahora `sensibilidad` es solo un dato y no cambia nada (decisión de Sergio, 2026-11-21, mientras Ashur es una
 prueba). Las reglas de qué puede usar cada nivel y qué consentimiento hace falta se deciden antes de que alguien más

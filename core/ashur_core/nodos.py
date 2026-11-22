@@ -14,6 +14,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ashur_core import significado
+
 # Un nodo queda fuera de línea tras tres latidos perdidos: 3 × 15 s (docs/REFERENCIA-ANTERIOR.md, punto 2).
 LATIDO_S = 15
 FUERA_DE_LINEA_S = 3 * LATIDO_S
@@ -102,8 +104,13 @@ def puede_correr(modo: str, modelo: Modelo) -> bool:
 
 
 def mejor_modelo(necesidad: str, modo: str, modelos: list[Modelo]) -> Modelo | None:
-    """El modelo más grande que el nodo ofrece para esa necesidad y que su modo le deja correr."""
-    candidatos = [m for m in modelos if _CAPACIDAD[necesidad] in m.capacidades and puede_correr(modo, m)]
+    """El modelo más grande que el nodo ofrece para esa necesidad y que su modo le deja correr. Para embeddings, solo el
+    de significado.MODELO: vectores de modelos distintos no se pueden comparar."""
+    candidatos = [
+        m for m in modelos
+        if _CAPACIDAD[necesidad] in m.capacidades and puede_correr(modo, m)
+        and (necesidad != "embedding" or significado.es_el_modelo(m.nombre))
+    ]
     return max(candidatos, key=lambda m: m.tamano, default=None)
 
 
@@ -243,7 +250,8 @@ def descartar(conexion: sqlite3.Connection, id_: int) -> None:
 
 def tomar(conexion: sqlite3.Connection, id_nodo: str, ahora: datetime | None = None) -> Trabajo | None:
     """El trabajo más viejo que este nodo puede y le toca atender, tomado de forma atómica: dos nodos nunca toman el
-    mismo. Un trabajo cuyo plazo venció vuelve a estar disponible."""
+    mismo. Primero los de una conversación, después los de fondo. Un trabajo cuyo plazo venció vuelve a estar
+    disponible."""
     ahora = ahora or _ahora()
     nodo = obtener(conexion, id_nodo, ahora)
     if nodo is None or not nodo.en_linea:
@@ -251,7 +259,8 @@ def tomar(conexion: sqlite3.Connection, id_nodo: str, ahora: datetime | None = N
     otros = [(n.modo, n.modelos) for n in listar(conexion, ahora) if n.en_linea and n.id != id_nodo]
     disponibles = conexion.execute(
         "SELECT id, necesidad, creado FROM trabajos"
-        " WHERE estado = 'pendiente' OR (estado = 'tomado' AND vence < ?) ORDER BY id",
+        " WHERE estado = 'pendiente' OR (estado = 'tomado' AND vence < ?)"
+        " ORDER BY conversacion_id IS NULL, id",  # primero lo que alguien está esperando en el chat
         (ahora.isoformat(),),
     ).fetchall()
     for id_, necesidad, creado in disponibles:
@@ -281,11 +290,11 @@ def entregar(conexion: sqlite3.Connection, id_nodo: str, id_: int, resultado: Re
     """Cierra el trabajo con su salida, o lo devuelve a la cola si falló y le quedan intentos. Devuelve el estado
     nuevo y la fila (necesidad, conversacion_id) para que el core siga con lo que corresponda."""
     fila = conexion.execute(
-        "SELECT estado, nodo_id, intentos, necesidad, conversacion_id FROM trabajos WHERE id = ?", (id_,)
+        "SELECT estado, nodo_id, intentos, necesidad, conversacion_id, entrada, modelo FROM trabajos WHERE id = ?", (id_,)
     ).fetchone()
     if fila is None or fila[0] != "tomado" or fila[1] != id_nodo:
         raise TrabajoAjeno()
-    _, _, intentos, necesidad, conversacion_id = fila
+    _, _, intentos, necesidad, conversacion_id, entrada, modelo = fila
     if resultado.salida is not None:
         conexion.execute(
             "UPDATE trabajos SET estado = 'hecho', salida = ?, error = NULL WHERE id = ?",
@@ -299,7 +308,39 @@ def entregar(conexion: sqlite3.Connection, id_nodo: str, id_: int, resultado: Re
             (estado, intentos + 1, resultado.error or "El nodo no devolvió salida.", id_),
         )
     conexion.commit()
-    return estado, {"necesidad": necesidad, "conversacion_id": conversacion_id}
+    return estado, {
+        "necesidad": necesidad, "conversacion_id": conversacion_id, "entrada": json.loads(entrada), "modelo": modelo
+    }
+
+
+def tomado_por(conexion: sqlite3.Connection, id_: int, id_nodo: str) -> dict | None:
+    """La necesidad y la entrada de un trabajo que este nodo tiene tomado, para validar su salida antes de cerrarlo."""
+    fila = conexion.execute(
+        "SELECT necesidad, entrada FROM trabajos WHERE id = ? AND estado = 'tomado' AND nodo_id = ?", (id_, id_nodo)
+    ).fetchone()
+    return {"necesidad": fila[0], "entrada": json.loads(fila[1])} if fila else None
+
+
+def hay_quien(conexion: sqlite3.Connection, necesidad: str, ahora: datetime | None = None) -> bool:
+    """Si algún nodo en línea puede atender esa necesidad en este momento."""
+    return any(n.en_linea and mejor_modelo(necesidad, n.modo, n.modelos) for n in listar(conexion, ahora))
+
+
+def pendientes(conexion: sqlite3.Connection, necesidad: str, con_conversacion: bool) -> list[tuple[int, str, str | None]]:
+    """Trabajos pendientes de esa necesidad: (id, creado, conversacion_id)."""
+    condicion = "IS NOT NULL" if con_conversacion else "IS NULL"
+    return conexion.execute(
+        "SELECT id, creado, conversacion_id FROM trabajos"
+        f" WHERE estado = 'pendiente' AND necesidad = ? AND conversacion_id {condicion}",
+        (necesidad,),
+    ).fetchall()
+
+
+def abandonar(conexion: sqlite3.Connection, id_: int) -> bool:
+    """Saca de la cola un trabajo que nadie tomó, de forma atómica."""
+    cursor = conexion.execute("UPDATE trabajos SET estado = 'descartado' WHERE id = ? AND estado = 'pendiente'", (id_,))
+    conexion.commit()
+    return cursor.rowcount == 1
 
 
 def estado_de(conexion: sqlite3.Connection, id_: int) -> dict | None:

@@ -21,7 +21,7 @@ def cliente(tmp_path, monkeypatch):
     return TestClient(app, headers={"X-Ashur-Clave": "c"})
 
 
-def nuevo_nodo(cliente, nombre="windows", modo="full", modelos=(QWEN7, BGE)):
+def nuevo_nodo(cliente, nombre="windows", modo="full", modelos=(QWEN7,)):
     creado = cliente.post("/nodos", json={"nombre": nombre}, headers=ADMIN).json()
     encabezado = {"X-Ashur-Clave-Nodo": creado["clave"]}
     assert cliente.post("/nodo/latido", json={"modo": modo, "modelos": list(modelos)}, headers=encabezado).status_code == 200
@@ -213,7 +213,7 @@ def test_dos_mensajes_a_la_vez_dejan_un_solo_trabajo(cliente):
 def test_una_base_de_la_version_8_recibe_el_chat(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
-    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos"):
+    for tabla in ("conversaciones", "mensajes", "nodos", "trabajos", "embeddings"):
         con.execute(f"DROP TABLE {tabla}")
     con.execute("PRAGMA user_version = 8")
     con.commit()

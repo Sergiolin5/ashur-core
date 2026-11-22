@@ -8,10 +8,10 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from ashur_core import chat, identidades, inventario, modulos, nodos
+from ashur_core import chat, identidades, inventario, modulos, nodos, significado
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 9
+VERSION_ESQUEMA = 10
 
 
 class Identidad(BaseModel):
@@ -108,6 +108,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
         if version < 9:
             chat.crear_tablas(conexion)  # versión 9: el chat
             nodos.crear_tablas(conexion)  # y los nodos de casa con su cola de trabajos
+        if version < 10:
+            significado.crear_tabla(conexion)  # versión 10: embeddings para la búsqueda por significado
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
@@ -218,6 +220,19 @@ def buscar(conexion: sqlite3.Connection, texto: str) -> list[Recuerdo]:
     return [_desde_fila(f) for f in filas]
 
 
+def buscar_alguna(conexion: sqlite3.Connection, texto: str, limite: int = 20) -> list[int]:
+    """Para el chat: recuerdos con alguna de las palabras de [texto] (de tres letras o más), los más relevantes primero.
+    A diferencia de [buscar], no exige todas: una frase entera casi nunca aparece completa en un recuerdo."""
+    palabras = [p for p in re.findall(r"\w+", texto) if len(p) >= 3]
+    if not palabras:
+        return []
+    consulta = " OR ".join(f'"{p}"*' for p in palabras)
+    filas = conexion.execute(
+        "SELECT rowid FROM recuerdos_busqueda WHERE recuerdos_busqueda MATCH ? ORDER BY rank LIMIT ?", (consulta, limite)
+    ).fetchall()
+    return [f[0] for f in filas]
+
+
 def obtener(conexion: sqlite3.Connection, id_: int) -> Recuerdo | None:
     fila = conexion.execute(
         "SELECT id, texto, origen, fecha, sensibilidad, identidades, objetos, opinion FROM recuerdos WHERE id = ?", (id_,)
@@ -246,12 +261,15 @@ def editar(conexion: sqlite3.Connection, id_: int, cambios: CambiosRecuerdo) -> 
             id_,
         ),
     )
+    if nuevo.texto != actual.texto:
+        significado.olvidar(conexion, id_)  # el vector viejo ya no corresponde; se vuelve a calcular
     conexion.commit()
     return Recuerdo(id=id_, **nuevo.model_dump())
 
 
 def borrar(conexion: sqlite3.Connection, id_: int) -> bool:
     cursor = conexion.execute("DELETE FROM recuerdos WHERE id = ?", (id_,))
+    significado.olvidar(conexion, id_)
     conexion.commit()
     return cursor.rowcount > 0
 

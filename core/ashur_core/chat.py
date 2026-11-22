@@ -150,6 +150,12 @@ def trabajo_actual(conexion: sqlite3.Connection, id_: str) -> int | None:
     return fila[0] if fila else None
 
 
+def poner_trabajo(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> None:
+    """Cuando el trabajo de la conversación pasa de la búsqueda por significado a la respuesta."""
+    conexion.execute("UPDATE conversaciones SET trabajo_id = ? WHERE id = ?", (trabajo_id, id_))
+    conexion.commit()
+
+
 def reservar(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> bool:
     """Le pone el trabajo a la conversación solo si no tiene otro abierto, de forma atómica: dos mensajes enviados a la
     vez nunca dejan dos respuestas."""
@@ -162,10 +168,21 @@ def reservar(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> bool:
     return cursor.rowcount == 1
 
 
-def pedido_al_modelo(conexion: sqlite3.Connection, id_: str, personalidad: str = PERSONALIDAD_POR_DEFECTO) -> dict:
-    """El pedido para el nodo, en formato OpenAI: la personalidad y los últimos mensajes de la conversación."""
-    ultimos = mensajes(conexion, id_)[-HISTORIAL:]
+def historial(conexion: sqlite3.Connection, id_: str) -> list[Mensaje]:
+    return mensajes(conexion, id_)[-HISTORIAL:]
+
+
+def pedido_al_modelo(
+    conexion: sqlite3.Connection, id_: str, recuerdos: list | tuple = (), personalidad: str = PERSONALIDAD_POR_DEFECTO
+) -> dict:
+    """El pedido para el nodo, en formato OpenAI: la personalidad, los recuerdos que pueden servir y los últimos
+    mensajes de la conversación."""
+    sistema = personalidad
+    if recuerdos:
+        sistema += "\n\nRecuerdos que pueden servir; úsalos solo si vienen al caso:\n" + "\n".join(
+            f"- {r.fecha.date().isoformat()}: {r.texto}" for r in recuerdos
+        )
     return {
-        "messages": [{"role": "system", "content": personalidad}]
-        + [{"role": m.rol, "content": m.texto} for m in ultimos]
+        "messages": [{"role": "system", "content": sistema}]
+        + [{"role": m.rol, "content": m.texto} for m in historial(conexion, id_)]
     }

@@ -29,8 +29,8 @@ El contrato es `contracts/recuerdo.schema.json`, con un ejemplo inventado en `co
 - **Búsqueda por palabras** (decisión 10, 2026-11-21): un índice FTS5 de SQLite sobre `texto` y `opinion`, que no
   agrega paquetes. Usa el tokenizador `unicode61` con `remove_diacritics`, así que "medico" encuentra "médico", y cada
   palabra se busca también como prefijo ("bici" encuentra "bicicleta"). Unos disparadores mantienen el índice al crear,
-  editar y borrar. La búsqueda por significado llega después, con embeddings que calcule el modelo de los nodos de
-  casa, guardados en la misma base.
+  editar y borrar. La búsqueda por significado llegó con el ADR 0018, con embeddings que calculan los nodos de casa,
+  guardados en la misma base.
 - **Archivar en vez de borrar** (decisión 8, 2026-11-21): un objeto del inventario o una identidad que ya no se
   quiere ver se archiva, no se borra (ADR 0012 y 0014). Desaparece de la galaxia y de las listas,
   los recuerdos conservan su enlace, y un administrador puede restaurarlo.

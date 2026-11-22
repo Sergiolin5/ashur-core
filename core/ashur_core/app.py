@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import datetime, timedelta, timezone
 from collections.abc import Iterator
 
 from fastapi import Depends, FastAPI, HTTPException, Response, Security
@@ -7,7 +8,7 @@ from fastapi.security import APIKeyHeader
 
 from functools import lru_cache
 
-from ashur_core import chat, galaxia, identidades, inventario, memoria, modulos, nodos
+from ashur_core import chat, galaxia, identidades, inventario, memoria, modulos, nodos, significado
 
 app = FastAPI(title="Ashur Core")
 
@@ -221,17 +222,65 @@ def ver_conversacion(id_: str, con=Depends(conexion)) -> chat.ConversacionComple
     dependencies=[Depends(exigir_clave)],
 )
 def enviar_mensaje(id_: str, nuevo: chat.MensajeNuevo, con=Depends(conexion)) -> chat.ConversacionCompleta:
-    """Guarda el mensaje y deja en la cola el pedido al modelo. La respuesta llega cuando un nodo la entregue."""
+    """Guarda el mensaje y deja en la cola el primer paso de la respuesta, que llega cuando un nodo la entregue. Si hay
+    un nodo con el modelo de embeddings, el primer paso es buscar por significado; si no, Ashur responde con lo que
+    encuentra por palabras (docs/adr/0018-busqueda-hibrida.md)."""
     conversacion = chat.obtener(con, id_)
     if conversacion is None:
         raise HTTPException(status_code=404, detail="No existe esa conversación.")
-    trabajo = nodos.encolar(con, "conversar", {}, id_, estado="preparando")
+    buscar_primero = nodos.hay_quien(con, "embedding")
+    trabajo = nodos.encolar(con, "embedding" if buscar_primero else "conversar", {}, id_, estado="preparando")
     if not chat.reservar(con, id_, trabajo):
         nodos.descartar(con, trabajo)
         raise HTTPException(status_code=409, detail="Ashur todavía está respondiendo el mensaje anterior.")
     _decir(con, id_, "user", chat.ORIGEN_SERGIO, nuevo.texto)
-    nodos.preparar(con, trabajo, chat.pedido_al_modelo(con, id_))
+    if buscar_primero:
+        nodos.preparar(con, trabajo, {"input": [nuevo.texto]})
+    else:
+        nodos.preparar(con, trabajo, chat.pedido_al_modelo(con, id_, _recordar(con, id_, None)))
     return _completa(con, chat.obtener(con, id_))
+
+
+RECUERDOS_EN_EL_PEDIDO = 5
+# Si nadie toma la búsqueda por significado en este tiempo, Ashur responde solo con la búsqueda por palabras.
+ESPERA_SIGNIFICADO_S = 15
+
+
+def _recordar(con, id_conversacion: str, vector: list[float] | None) -> list[memoria.Recuerdo]:
+    """Búsqueda híbrida: los recuerdos que mejor combinan la búsqueda por palabras y, si hay vector, la búsqueda por
+    significado. Sin los que ya están en el historial que ve el modelo."""
+    historial = chat.historial(con, id_conversacion)
+    ultimo = next((m.texto for m in reversed(historial) if m.rol == "user"), "")
+    vistos = {m.recuerdo_id for m in historial}
+    listas = [[i for i in memoria.buscar_alguna(con, ultimo) if i not in vistos]]
+    if vector is not None:
+        listas.append([i for i in significado.cercanos(con, vector) if i not in vistos])
+    ids = significado.combinar(*listas, cuantos=RECUERDOS_EN_EL_PEDIDO)
+    return [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
+
+
+def _responder(con, id_conversacion: str, vector: list[float] | None) -> None:
+    """Segundo paso: con lo que encontró, deja en la cola el pedido al modelo."""
+    pedido = chat.pedido_al_modelo(con, id_conversacion, _recordar(con, id_conversacion, vector))
+    chat.poner_trabajo(con, id_conversacion, nodos.encolar(con, "conversar", pedido, id_conversacion))
+
+
+def _rescatar_busquedas(con) -> None:
+    """Una búsqueda por significado que nadie tomó a tiempo no frena la respuesta: se responde solo por palabras."""
+    limite = datetime.now(timezone.utc) - timedelta(seconds=ESPERA_SIGNIFICADO_S)
+    for id_, creado, conversacion in nodos.pendientes(con, "embedding", con_conversacion=True):
+        if datetime.fromisoformat(creado) < limite and nodos.abandonar(con, id_):
+            _responder(con, conversacion, None)
+
+
+def _repartir_embeddings(con) -> None:
+    """Los recuerdos sin vector, nuevos o de antes, salen en lotes mientras haya un nodo que pueda calcularlos."""
+    while len(nodos.pendientes(con, "embedding", con_conversacion=False)) < 2:
+        faltan = significado.faltantes(con)
+        if not faltan:
+            return
+        trabajo = nodos.encolar(con, "embedding", {"input": [t for _, t in faltan], "recuerdos": [i for i, _ in faltan]})
+        significado.apartar(con, [i for i, _ in faltan], trabajo)
 
 
 @app.post("/nodos", status_code=201, response_model=nodos.NodoCreado, dependencies=[Depends(exigir_clave_admin)])
@@ -256,12 +305,16 @@ def archivar_nodo(id_: str, cambios: nodos.CambiosNodo, con=Depends(conexion)) -
 
 @app.post("/nodo/latido", response_model=nodos.Nodo)
 def latir(latido: nodos.Latido, id_nodo: str = Depends(nodo_autenticado), con=Depends(conexion)) -> nodos.Nodo:
-    return nodos.latir(con, id_nodo, latido)
+    nodo = nodos.latir(con, id_nodo, latido)
+    if nodos.mejor_modelo("embedding", nodo.modo, nodo.modelos):
+        _repartir_embeddings(con)
+    return nodo
 
 
 @app.post("/nodo/trabajos/tomar", response_model=nodos.Trabajo | None)
 def tomar_trabajo(response: Response, id_nodo: str = Depends(nodo_autenticado), con=Depends(conexion)):
     """Un trabajo para este nodo, o 204 si no hay ninguno que pueda o le toque atender."""
+    _rescatar_busquedas(con)
     trabajo = nodos.tomar(con, id_nodo)
     if trabajo is None:
         return Response(status_code=204)
@@ -274,17 +327,61 @@ def entregar_trabajo(
 ) -> Response:
     if (resultado.salida is None) == (resultado.error is None):
         raise HTTPException(status_code=422, detail="Manda salida o error, uno de los dos.")
+    tomado = nodos.tomado_por(con, id_, id_nodo)
+    if tomado is None:
+        raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.")
     if resultado.salida is not None:
-        texto = _texto_de(resultado.salida)
-        if texto is None:
-            raise HTTPException(status_code=422, detail="La salida no trae mensaje.content.")
+        if tomado["necesidad"] == "conversar":
+            texto = _texto_de(resultado.salida)
+            if texto is None:
+                raise HTTPException(status_code=422, detail="La salida no trae mensaje.content.")
+        else:
+            vectores = _vectores_de(resultado.salida, len(tomado["entrada"]["input"]))
+            if vectores is None:
+                raise HTTPException(status_code=422, detail="La salida no trae un vector por cada texto.")
     try:
         estado, fila = nodos.entregar(con, id_nodo, id_, resultado)
     except nodos.TrabajoAjeno:
         raise HTTPException(status_code=409, detail="Ese trabajo no está tomado por este nodo.") from None
-    if estado == "hecho" and fila["necesidad"] == "conversar" and fila["conversacion_id"]:
-        _decir(con, fila["conversacion_id"], "assistant", chat.ORIGEN_ASHUR, texto)
+    conversacion = fila["conversacion_id"]
+    if fila["necesidad"] == "conversar":
+        if estado == "hecho" and conversacion:
+            _decir(con, conversacion, "assistant", chat.ORIGEN_ASHUR, texto)
+    elif conversacion:  # la búsqueda por significado del mensaje
+        if estado == "hecho":
+            _responder(con, conversacion, vectores[0])
+        elif estado == "fallido":
+            _responder(con, conversacion, None)
+    elif estado == "hecho":  # un lote de recuerdos
+        significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"])
+    elif estado == "fallido":
+        _lote_fallido(con, id_, fila["entrada"])
     return Response(status_code=204)
+
+
+def _lote_fallido(con, trabajo: int, entrada: dict) -> None:
+    """Un lote que falló tres veces se reparte de a uno, para que un recuerdo que siempre falla no deje sin vector a
+    los demás. Si falla uno solo, se queda sin vector: solo se encuentra por palabras."""
+    if len(entrada["recuerdos"]) == 1:
+        significado.abandonar(con, trabajo)
+        return
+    for recuerdo, texto in zip(entrada["recuerdos"], entrada["input"]):
+        uno = nodos.encolar(con, "embedding", {"input": [texto], "recuerdos": [recuerdo]})
+        significado.apartar(con, [recuerdo], uno)
+
+
+def _vectores_de(salida: dict, cuantos: int) -> list[list[float]] | None:
+    """Los embeddings: {"vectores": [[...], ...]}, uno por cada texto de la entrada, todos del mismo largo."""
+    vectores = salida.get("vectores")
+    if not isinstance(vectores, list) or len(vectores) != cuantos or not vectores:
+        return None
+    largo = len(vectores[0]) if isinstance(vectores[0], list) else 0
+    for v in vectores:
+        if not isinstance(v, list) or len(v) != largo or largo == 0:
+            return None
+        if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in v):
+            return None
+    return vectores
 
 
 def _texto_de(salida: dict) -> str | None:
