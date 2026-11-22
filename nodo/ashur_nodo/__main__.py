@@ -81,7 +81,7 @@ class Nodo:
             if trabajo["necesidad"] == "conversar":
                 resultado = {"salida": ollama.conversar(self.ollama, trabajo["modelo"], trabajo["entrada"], self.num_ctx, self.espera_s)}
             else:
-                resultado = {"error": f"Este nodo todavía no atiende {trabajo['necesidad']}."}
+                resultado = {"salida": ollama.vectores(self.ollama, trabajo["modelo"], trabajo["entrada"], self.espera_s)}
         except (OSError, ValueError, KeyError) as e:
             resultado = {"error": f"{type(e).__name__}: {e}"}
         finally:

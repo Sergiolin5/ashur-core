@@ -29,6 +29,15 @@ def modelos(base: str, ofrecidos: list[str] | None) -> list[dict]:
     return modelos_de(_pedir(base, "/api/tags", None, 10), ofrecidos)
 
 
+def vectores(base: str, modelo: str, entrada: dict, espera_s: float) -> dict:
+    """Los embeddings de cada texto de la entrada, como salida del protocolo: {"vectores": [[...], ...]}."""
+    respuesta = _pedir(base, "/api/embed", {"model": modelo, "input": entrada["input"]}, espera_s)
+    lista = respuesta.get("embeddings") or []
+    if len(lista) != len(entrada["input"]):
+        raise ValueError(f"{modelo} devolvió {len(lista)} vectores para {len(entrada['input'])} textos.")
+    return {"vectores": lista}
+
+
 def conversar(base: str, modelo: str, entrada: dict, num_ctx: int, espera_s: float) -> dict:
     """El pedido del core a /api/chat, y su respuesta como salida del protocolo: {"mensaje": {...}}."""
     respuesta = _pedir(

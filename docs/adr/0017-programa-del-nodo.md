@@ -17,7 +17,8 @@ cada equipo de Sergio y le presta su modelo a Ashur. Es la fase 2 del diseño ap
   de que el nodo vaya a buscar el trabajo al core (`docs/REFERENCIA-ANTERIOR.md`, punto 2).
 - **Dos hilos:**
   - uno manda el latido cada 15 s con el modo y los modelos;
-  - el otro toma trabajos, se los pasa a Ollama (`/api/chat`, sin streaming) y devuelve la respuesta.
+  - el otro toma trabajos, se los pasa a Ollama y devuelve la respuesta: `/api/chat`, sin streaming, para conversar,
+    y `/api/embed` para los embeddings (ADR 0018).
 
   Así el nodo sigue en línea mientras el modelo piensa.
 - **Modo según la carga** (`nodo/ashur_nodo/politica.py`): una función pura sobre cuatro señales (punto 5):
@@ -63,4 +64,3 @@ cada equipo de Sergio y le presta su modelo a Ashur. Es la fase 2 del diseño ap
 
 ## Pendiente
 - Arrancar el nodo con el equipo: un servicio en Windows y un `launchd` en la Mac.
-- Trabajos de embeddings (fase 3).

@@ -48,6 +48,23 @@ def test_una_respuesta_vacia_es_un_error_para_que_el_core_reintente(monkeypatch)
     }
 
 
+def test_los_embeddings_vuelven_uno_por_texto(monkeypatch):
+    import pytest
+
+    pedidos = []
+
+    def falso(base, ruta, cuerpo, espera):
+        pedidos.append((ruta, cuerpo))
+        return {"embeddings": [[0.1, 0.2] for _ in cuerpo["input"]]}
+
+    monkeypatch.setattr(ollama, "_pedir", falso)
+    assert ollama.vectores("http://x", "bge-m3:latest", {"input": ["a", "b"]}, 1) == {"vectores": [[0.1, 0.2], [0.1, 0.2]]}
+    assert pedidos == [("/api/embed", {"model": "bge-m3:latest", "input": ["a", "b"]})]
+    monkeypatch.setattr(ollama, "_pedir", lambda *a: {"embeddings": [[0.1]]})
+    with pytest.raises(ValueError):  # uno de menos: error, para que el core reintente
+        ollama.vectores("http://x", "bge-m3:latest", {"input": ["a", "b"]}, 1)
+
+
 def test_las_senales_de_este_sistema_se_leen_sin_fallar():
     s = senales.leer(senales.carga(0.2))
     assert modo(s) in ("full", "light", "busy", "off")
