@@ -425,23 +425,38 @@ def _rescatar_busquedas(con) -> None:
     respuesta, que dejaba entrar otro mensaje y salían dos respuestas."""
     limite = datetime.now(timezone.utc) - timedelta(seconds=ESPERA_SIGNIFICADO_S)
     for id_, creado, conversacion in nodos.pendientes(con, "embedding", con_conversacion=True):
-        if datetime.fromisoformat(creado) < limite and nodos.abandonar(con, id_, confirmar=False):
-            _responder(con, conversacion, None, confirmar=False)
-        con.commit()
+        if datetime.fromisoformat(creado) < limite:
+            _rescatar(con, id_, conversacion)
     # Tampoco la frena un nodo que la tomó y se cayó: sin esto, la conversación esperaba hasta que el nodo volviera.
     for id_, nodo_id, conversacion in nodos.de_nodos_caidos(con, "embedding"):
+        _rescatar(con, id_, conversacion, nodo_id)
+
+
+def _rescatar(con, id_: int, conversacion: str, nodo_id: str | None = None) -> None:
+    try:
         if nodos.abandonar(con, id_, nodo_id, confirmar=False):
             _responder(con, conversacion, None, confirmar=False)
         con.commit()
+    except Exception:
+        # Si responder falla, la búsqueda se cierra sola, como antes: una conversación que siempre falla no traba la
+        # cola de todos los nodos.
+        con.rollback()
+        nodos.abandonar(con, id_, nodo_id)
+        raise
 
 
 def _vencer(con) -> None:
     """Los trabajos cuyo plazo venció cuentan como un intento; los que fallan del todo siguen como al entregarlos. El
     vencimiento y lo que sigue de una conversación van en un solo commit, como al rescatar una búsqueda."""
-    fallidos = nodos.vencer(con, confirmar=False)
-    for fila in sorted(fallidos, key=lambda f: f["conversacion_id"] is None):  # las de una conversación, primero
-        _fallo_final(con, fila["id"], fila["necesidad"], fila["conversacion_id"], fila["entrada"], confirmar=False)
-    con.commit()
+    try:
+        fallidos = nodos.vencer(con, confirmar=False)
+        for fila in sorted(fallidos, key=lambda f: f["conversacion_id"] is None):  # las de una conversación, primero
+            _fallo_final(con, fila["id"], fila["necesidad"], fila["conversacion_id"], fila["entrada"], confirmar=False)
+        con.commit()
+    except Exception:
+        con.rollback()
+        nodos.vencer(con)  # solo, como antes de juntarlos: lo que siempre falla no traba la cola
+        raise
 
 
 def _fallo_final(

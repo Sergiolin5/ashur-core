@@ -95,7 +95,8 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Sin hueco al rescatar la búsqueda (2026-11-22):** cuando la búsqueda por significado se rescata (nadie la tomó a
   tiempo o su nodo se cayó) o vence en su último intento, cerrarla y dejar la respuesta en la cola van en un solo
   commit. Antes iban en dos: en medio, la app veía «fallido» y dejaba de esperar, y otro mensaje podía entrar y
-  dejar dos respuestas. Si algo falla en medio, no se cierra nada y el siguiente pedido de un nodo la rescata.
+  dejar dos respuestas. Si dejar la respuesta falla, la búsqueda se cierra sola, como antes, para que una
+  conversación que siempre falla no trabe la cola de todos los nodos.
 
 ## Decisión de Sergio (2026-11-22)
 - **La espera de otra persona va sin detalles:** en la conversación de una persona, `espera` dice el estado y desde

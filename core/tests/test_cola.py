@@ -162,29 +162,46 @@ def test_una_falla_al_rescatar_la_busqueda_no_traba_la_conversacion(entorno, mon
 
     original = app_mod._responder
     monkeypatch.setattr(app_mod, "_responder", roto)
-    assert c.post("/nodo/trabajos/tomar", headers=hq).status_code == 500
+    assert c.post("/nodo/trabajos/tomar", headers=hq).status_code == 500  # la búsqueda quedó descartada
     monkeypatch.setattr(app_mod, "_responder", original)
-    # Cerrar la búsqueda y dejar la respuesta van juntos: la falla no cerró nada y el siguiente pedido la rescata.
-    assert c.get("/conversaciones/con-1").json()["espera"]["estado"] == "pendiente"
-    assert c.post("/nodo/trabajos/tomar", headers=hq).json()["necesidad"] == "conversar"
+    assert c.get("/conversaciones/con-1").json()["espera"]["estado"] == "fallido"  # dentro del contrato
+    assert c.post("/conversaciones/con-1/mensajes", json={"texto": "¿Hola?"}).status_code == 202
+
+
+def test_una_conversacion_que_siempre_falla_no_traba_la_cola(entorno, monkeypatch):
+    c, db = entorno
+    nuevo_nodo(c, "mac-bge", [BGE])
+    _, hq = nuevo_nodo(c, "win-qwen", [QWEN7])
+    c.post("/conversaciones")
+    c.post("/conversaciones/con-1/mensajes", json={"texto": "Hola"})
+    sql(db, "UPDATE trabajos SET creado = ? WHERE necesidad = 'embedding'", (VIEJO,))
+
+    def roto(*a, **k):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(app_mod, "_responder", roto)
+    assert c.post("/nodo/trabajos/tomar", headers=hq).status_code == 500
+    assert c.post("/nodo/trabajos/tomar", headers=hq).status_code != 500  # sigue roto, pero ya no la intenta
 
 
 def _mirar_a_medias(db, monkeypatch):
-    """Mientras el core arma la respuesta, mira desde otra conexión cómo se ve la búsqueda y si entra otro mensaje."""
-    vistos, original = [], app_mod._pedido
+    """Justo antes del único commit, mira desde otra conexión cómo se ve la búsqueda y si entraría otro mensaje."""
+    vistos, original = [], nodos.encolar
 
-    def pedido(con, conversacion, vector):
+    def encolar(con, necesidad, *args, **kwargs):
+        if necesidad != "conversar":
+            return original(con, necesidad, *args, **kwargs)
         afuera = sqlite3.connect(db)
         vistos.append(afuera.execute("SELECT estado FROM trabajos WHERE necesidad = 'embedding'").fetchone()[0])
         # La condición de chat.reservar, solo leída: mientras el core escribe, otro mensaje no puede reservar.
         vistos.append(afuera.execute(
             "SELECT COUNT(*) = 1 FROM conversaciones WHERE id = ? AND (trabajo_id IS NULL OR trabajo_id IN"
-            " (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido', 'descartado')))", (conversacion,)
+            " (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido', 'descartado')))", (args[1],)
         ).fetchone()[0] == 1)
         afuera.close()
-        return original(con, conversacion, vector)
+        return original(con, necesidad, *args, **kwargs)
 
-    monkeypatch.setattr(app_mod, "_pedido", pedido)
+    monkeypatch.setattr(nodos, "encolar", encolar)
     return vistos
 
 
