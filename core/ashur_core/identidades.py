@@ -141,6 +141,9 @@ def editar(conexion: sqlite3.Connection, id_: str, cambios: CambiosIdentidad) ->
     for campo in cambios.model_fields_set:
         valor = getattr(cambios, campo)
         conexion.execute(f"UPDATE identidades SET {campo} = ? WHERE id = ?", (int(valor) if campo == "archivada" else valor, id_))
+    if cambios.archivada:
+        # Archivar revoca la clave para siempre: restaurar no la vuelve a abrir; hay que crearle otra (ADR 0022).
+        conexion.execute("UPDATE identidades SET clave_hash = NULL WHERE id = ?", (id_,))
     conexion.commit()
     recalcular_niveles(conexion)
     return obtener(conexion, id_)

@@ -40,7 +40,8 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Claves:**
   - El administrador crea cada nodo con `POST /nodos` y recibe su clave una sola vez. El core guarda solo su sha256.
   - La clave va en `X-Ashur-Clave-Nodo` y solo abre `/nodo/...`.
-  - Archivar un nodo le quita la clave. No hay `DELETE` (decisión 8).
+  - Archivar un nodo le quita la clave para siempre: restaurarlo no se la devuelve, así que un nodo restaurado no se
+    puede usar y hay que crear uno nuevo (revisión del 2026-11-22). No hay `DELETE` (decisión 8).
 - **Endpoints:**
 
   | Método y ruta | Clave | Qué hace |

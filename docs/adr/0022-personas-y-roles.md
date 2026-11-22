@@ -17,7 +17,8 @@ Sus decisiones del 2026-11-22:
 - **Claves:**
   - Cada identidad puede tener su propia clave, que crea o reemplaza `POST /identidades/{id}/clave` (administrador). Igual que la de un nodo, se muestra una sola vez y se guarda su sha256.
   - Va en el mismo encabezado `X-Ashur-Clave` que la de Sergio, así que la app no cambia.
-  - Archivar la identidad revoca la clave en el acto. Reemplazarla invalida la anterior.
+  - Archivar la identidad revoca la clave en el acto, y restaurarla no la devuelve: hay que crearle otra (revisión
+    del 2026-11-22). Reemplazarla invalida la anterior.
   - Sin `ASHUR_CLAVE` configurada, todo queda cerrado, también para las personas (503).
 - **Cerrado por defecto:**
   - Una clave de persona solo abre las rutas del chat: `POST/GET /conversaciones`, `GET /conversaciones/{id}` y `POST /conversaciones/{id}/mensajes`, listadas en `RUTAS_DE_PERSONAS`.

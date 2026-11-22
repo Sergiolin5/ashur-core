@@ -28,7 +28,7 @@ class RolNuevo(BaseModel):
         import re
 
         for v in valores:
-            if not re.match(PATRON, v):
+            if not re.fullmatch(PATRON, v):  # match con $ deja pasar un salto de línea al final
                 raise ValueError(f"{v!r} no es un nombre de herramienta ni un prefijo terminado en *")
         return valores
 

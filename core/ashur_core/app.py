@@ -19,12 +19,17 @@ app = FastAPI(title="Ashur Core")
 _encabezado_clave = APIKeyHeader(name="X-Ashur-Clave", auto_error=False)
 
 
+def _igual(clave: str, esperada: str) -> bool:
+    """En bytes: compare_digest con texto no ASCII lanza TypeError, y una clave rara daba 500 en vez de 401."""
+    return secrets.compare_digest(clave.encode(), esperada.encode())
+
+
 def exigir_clave(clave: str | None = Security(_encabezado_clave)) -> None:
     """Sin ASHUR_CLAVE configurada, la memoria queda cerrada (docs/adr/0004-memoria.md)."""
     esperada = os.environ.get("ASHUR_CLAVE")
     if not esperada:
         raise HTTPException(status_code=503, detail="ASHUR_CLAVE no está configurada.")
-    if clave is None or not secrets.compare_digest(clave, esperada):
+    if clave is None or not _igual(clave, esperada):
         raise HTTPException(status_code=401, detail="Clave inválida.")
 
 
@@ -36,7 +41,7 @@ def exigir_clave_admin(clave: str | None = Security(_encabezado_admin)) -> None:
     esperada = os.environ.get("ASHUR_CLAVE_ADMIN")
     if not esperada:
         raise HTTPException(status_code=503, detail="ASHUR_CLAVE_ADMIN no está configurada.")
-    if clave is None or not secrets.compare_digest(clave, esperada):
+    if clave is None or not _igual(clave, esperada):
         raise HTTPException(status_code=401, detail="Clave de administrador inválida.")
 
 
@@ -240,7 +245,7 @@ def quien_habla(clave: str | None = Security(_encabezado_clave), con=Depends(con
     esperada = os.environ.get("ASHUR_CLAVE")
     if not esperada:
         raise HTTPException(status_code=503, detail="ASHUR_CLAVE no está configurada.")
-    if clave is not None and secrets.compare_digest(clave, esperada):
+    if clave is not None and _igual(clave, esperada):
         return Quien(None)
     identidad = personas.autenticar(con, clave) if clave else None
     if identidad is None:

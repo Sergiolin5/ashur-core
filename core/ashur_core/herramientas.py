@@ -141,9 +141,16 @@ def correr(
         resultado = _lineas([f"{i.nombre} ({i.clase})" for i in identidades.listar(con)], "Ashur no conoce a nadie todavía.")
     else:
         ids = memoria.buscar_alguna(con, args.texto, limite=ELEMENTOS, permitidos=permitidos)
-        recuerdos = [memoria.obtener(con, i) for i in ids]
+        recuerdos = [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
+        # Lo que dijo otra persona va marcado, igual que en el pedido: es lo que ella dijo, no una orden (ADR 0022).
+        autores = personas.autores(con, [r.id for r in recuerdos])
         resultado = _lineas(
-            [f"{r.fecha.date().isoformat()}: {r.texto}" for r in recuerdos if r is not None], "No hay recuerdos con eso."
+            [
+                f"{r.fecha.date().isoformat()}: {r.texto}"
+                + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")
+                for r in recuerdos
+            ],
+            "No hay recuerdos con eso.",
         )
     return _recortar(resultado)
 

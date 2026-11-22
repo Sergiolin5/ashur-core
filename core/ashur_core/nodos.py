@@ -251,6 +251,10 @@ def cambiar(conexion: sqlite3.Connection, id_: str, cambios: CambiosNodo) -> Nod
         return None
     if "archivado" in cambios.model_fields_set:
         conexion.execute("UPDATE nodos SET archivado = ? WHERE id = ?", (int(cambios.archivado), id_))
+        if cambios.archivado:
+            # Archivado, el nodo pierde su clave para siempre: restaurarlo no la vuelve a abrir. clave_hash no puede ser
+            # NULL, así que queda el hash de una clave que nadie conoce.
+            conexion.execute("UPDATE nodos SET clave_hash = ? WHERE id = ?", (_hash(secrets.token_hex(32)), id_))
     campos = cambios.model_fields_set - {"archivado"}
     if campos:
         ajustes = nodo.ajustes.model_copy(update={c: getattr(cambios, c) for c in campos})
