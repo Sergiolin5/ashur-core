@@ -49,6 +49,8 @@ esqueleto, y dejó abierta la puerta a módulos como servicios aparte más adela
 - **Un solo lenguaje:** los módulos en otros lenguajes tendrían que llegar como servicios aparte (pendiente).
 
 ## Pendiente
+- **Límite de tiempo para las acciones** (lo señaló el diseño del módulo Network): hoy una acción larga o colgada ocupa
+  un hilo del core. Un escaneo de red no puede correr así.
 - Asteroides para pedidos pendientes o módulos rotos, y estrellas fugaces para lo que un módulo entrega.
 - Módulos como servicios HTTP aparte, para otros lenguajes.
 - Que Ashur ofrezca las acciones de los módulos en el chat, cuando exista.
