@@ -55,6 +55,9 @@ class _PantallaConversacionState extends State<PantallaConversacion> {
   bool _enviando = false;
   Timer? _reloj;
 
+  /// Sube con cada pregunta al core y con cada envío: una respuesta vieja que llega tarde no pisa a una nueva.
+  int _vuelta = 0;
+
   @override
   void initState() {
     super.initState();
@@ -80,15 +83,17 @@ class _PantallaConversacionState extends State<PantallaConversacion> {
   }
 
   Future<void> _actualizar() async {
+    final vuelta = ++_vuelta;
     try {
       final completa = await widget.cliente.verConversacion(widget.id);
-      if (!mounted) return;
+      if (!mounted || vuelta != _vuelta) return;
       _mostrar(completa);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || vuelta != _vuelta) return;
       setState(() => _error = textoError(e));
-      // Un corte de red no debe dejar la respuesta sin llegar: se vuelve a preguntar.
-      if (esperaAbierta(_espera)) _reloj = Timer(widget.intervalo, _actualizar);
+      // Un corte de red no debe dejar la respuesta sin llegar: se vuelve a preguntar, con un solo reloj.
+      _reloj?.cancel();
+      _reloj = esperaAbierta(_espera) ? Timer(widget.intervalo, _actualizar) : null;
     }
   }
 
@@ -99,6 +104,7 @@ class _PantallaConversacionState extends State<PantallaConversacion> {
     try {
       final completa = await widget.cliente.enviarMensaje(widget.id, texto);
       if (!mounted) return;
+      _vuelta++; // lo que se preguntó antes de enviar ya no vale: no puede apagar el reloj de esta respuesta
       _texto.clear();
       _mostrar(completa);
     } catch (e) {

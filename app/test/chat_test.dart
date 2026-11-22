@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ashur/chat/pantalla_chats.dart';
 import 'package:ashur/chat/pantalla_conversacion.dart';
 import 'package:ashur/conexion/almacen.dart';
@@ -47,6 +49,39 @@ class _ClienteGuionado extends ClienteCore {
 
   @override
   Future<List<Map<String, dynamic>>> listarConversaciones() async => [_conversacion('con-1', null)];
+}
+
+/// La primera pregunta tarda hasta que la prueba la suelta; enviar responde en seguida con una espera abierta.
+class _ClienteLento extends _ClienteGuionado {
+  _ClienteLento(super.respuestas, this.alEnviar);
+
+  final Map<String, dynamic> alEnviar;
+  final primera = Completer<Map<String, dynamic>>();
+
+  @override
+  Future<Map<String, dynamic>> verConversacion(String id) {
+    if (preguntas == 0) {
+      preguntas++;
+      return primera.future;
+    }
+    return super.verConversacion(id);
+  }
+
+  @override
+  Future<Map<String, dynamic>> enviarMensaje(String id, String texto) async => alEnviar;
+}
+
+/// La lista falla la primera vez y responde la segunda.
+class _ClienteQueFallaUnaVez extends _ClienteGuionado {
+  _ClienteQueFallaUnaVez() : super([]);
+
+  int listas = 0;
+
+  @override
+  Future<List<Map<String, dynamic>>> listarConversaciones() async {
+    if (listas++ == 0) throw const ErrorCore(FalloCore.inalcanzable);
+    return super.listarConversaciones();
+  }
 }
 
 Map<String, dynamic> _completa(List<Map<String, dynamic>> mensajes, Map<String, dynamic>? espera) => {
@@ -128,6 +163,49 @@ void main() {
     await tester.pumpWidget(_app(PantallaChats(key: UniqueKey(), fuente: fuente)));
     await tester.pump();
     expect(find.text('Las claves están bloqueadas: desbloquéalas con Face ID en la pestaña Estado.'), findsOneWidget);
+  });
+
+  testWidgets('una carga inicial que llega tarde no corta la espera de un mensaje recién enviado', (tester) async {
+    final cliente = _ClienteLento(
+      [
+        _completa([_mensaje(1, 'user', 'Hola')], _espera('tomado')),
+        _completa([_mensaje(1, 'user', 'Hola'), _mensaje(2, 'assistant', 'Hola, Sergio')], null),
+      ],
+      _completa([_mensaje(1, 'user', 'Hola')], _espera('pendiente')),
+    );
+    await tester.pumpWidget(
+      _app(PantallaConversacion(cliente: cliente, id: 'con-1', intervalo: const Duration(milliseconds: 100))),
+    );
+    await tester.enterText(find.byType(CupertinoTextField), 'Hola');
+    await tester.tap(find.text('Enviar'));
+    await tester.pump();
+    expect(find.text('Esperando a que un equipo tome el mensaje…'), findsOneWidget);
+
+    cliente.primera.complete(_completa([], null)); // la carga vieja, de antes de enviar
+    await tester.pump();
+    expect(find.text('Esperando a que un equipo tome el mensaje…'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Hola, Sergio'), findsOneWidget);
+  });
+
+  testWidgets('si la lista de Chats falla, se puede reintentar', (tester) async {
+    final fuente = FuenteGalaxia(
+      almacen: AlmacenEnMemoria(),
+      cache: CacheEnMemoria(),
+      cargarEjemplo: () async => throw 'no',
+    );
+    await tester.pumpWidget(_app(PantallaChats(fuente: fuente, cliente: _ClienteQueFallaUnaVez())));
+    await tester.pump();
+    expect(find.text('Nueva conversación'), findsNothing);
+    await tester.tap(find.text('Reintentar'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Nueva conversación'), findsOneWidget);
+  });
+
+  test('un 404 dice que la conversación ya no existe', () {
+    expect(textoError(const ErrorCore(FalloCore.noExiste)), 'Esa conversación ya no existe.');
   });
 
   testWidgets('con el teclado abierto, el campo y Enviar quedan por encima del teclado', (tester) async {

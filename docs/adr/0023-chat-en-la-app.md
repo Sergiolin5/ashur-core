@@ -50,5 +50,14 @@ teléfonos también presten su modelo (como PrivateLM, `docs/REFERENCIA-PRIVATEL
 - Sergio chateó con Ashur desde el Duo contra el core de prueba, con `qwen2.5:3b` en la Mac: los mensajes llegaron y
   Ashur respondió. La primera versión no subía el campo con el teclado; ya sube.
 
+## Revisión de Ashur Code (2026-11-22)
+- **La carga inicial ya no corta la espera de un mensaje recién enviado:** una respuesta vieja del core que llega
+  tarde se descarta, y un corte de red deja un solo reloj, no dos.
+- **Con las claves bloqueadas,** Chats olvida el cliente y la lista al volver a cargarse. Una conversación que ya
+  estaba abierta sigue con su cliente hasta que se sale de ella.
+- **Si la lista de Chats falla,** aparece «Reintentar».
+- **Un 404** dice que la conversación ya no existe.
+
 ## Sin verificar
 - Los otros iPhones y el iPad M1: no se pudo activar el modo de desarrollador. Queda para otro lote de pruebas.
+- La revisión de Ashur Code: se escribió en Windows sin Flutter, así que ni sus pruebas ni la app se corrieron.

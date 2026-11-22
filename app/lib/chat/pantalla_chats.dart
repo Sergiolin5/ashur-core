@@ -26,6 +26,7 @@ String textoError(Object error) {
       FalloCore.inalcanzable => 'No se pudo llegar al core. ${error.detalle}',
       FalloCore.claveInvalida => 'El core rechazó la clave.',
       FalloCore.conflicto => error.detalle.isEmpty ? 'Ashur todavía está respondiendo.' : error.detalle,
+      FalloCore.noExiste => 'Esa conversación ya no existe.',
       _ => 'El core respondió algo inesperado. ${error.detalle}',
     };
   }
@@ -62,7 +63,13 @@ class _PantallaChatsState extends State<PantallaChats> {
       final c = widget.cliente ?? await widget.fuente.cliente();
       if (!mounted) return;
       if (c == null) {
-        setState(() => _cargando = false);
+        // Sin core o con las claves bloqueadas por Face ID: se olvida el cliente y la lista que había.
+        setState(() {
+          _cliente = null;
+          _conversaciones = [];
+          _cargando = false;
+          _error = null;
+        });
         return;
       }
       final lista = await c.listarConversaciones();
@@ -156,6 +163,14 @@ class _PantallaChatsState extends State<PantallaChats> {
               if (_error != null) ...[
                 Text(_error!, style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 14)),
                 const SizedBox(height: 12),
+                if (_cliente == null && !_cargando)
+                  CupertinoButton(
+                    onPressed: () {
+                      setState(() => _cargando = true);
+                      _cargar();
+                    },
+                    child: const Text('Reintentar'),
+                  ),
               ],
               if (_cliente != null) ...[
                 CupertinoButton.filled(
