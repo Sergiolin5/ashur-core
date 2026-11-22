@@ -22,8 +22,8 @@ la decisión 4 (almacenamiento en Flutter).
 - `flutter test` y `flutter analyze` pasan.
 
 ## Sin verificar
-- **Leer y escribir el Llavero:** ningún código usa el paquete todavía. Se usa cuando la app se conecte al core, y
-  ahí se prueba también la opción de macOS.
+- **Leer y escribir el Llavero:** desde el ADR 0011 la app guarda ahí la dirección y la clave del core; falta probarlo
+  en el dispositivo.
 - **Windows:** no se compila desde la Mac (`docs/adr/0001-cliente-flutter.md`).
 - **Android:** el paquete pide el SDK mínimo 23, y `app/android/app/build.gradle.kts` usa `flutter.minSdkVersion`.
   Hay que fijarlo antes de la primera compilación de Android. Además, el Android SDK no está instalado en la Mac.

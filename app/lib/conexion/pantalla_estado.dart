@@ -4,6 +4,8 @@
 // ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
+import 'package:flutter/services.dart' show Clipboard;
+
 import '../pantallas.dart';
 import 'fuente.dart';
 
@@ -46,16 +48,30 @@ class _PantallaEstadoState extends State<PantallaEstado> {
     super.dispose();
   }
 
+  /// Botón para pegar en un campo lo que hay en el portapapeles: la clave tiene 64 caracteres.
+  Widget _pegarEn(TextEditingController campo) => CupertinoButton(
+    padding: const EdgeInsets.only(left: 12),
+    onPressed: () async {
+      final datos = await Clipboard.getData(Clipboard.kTextPlain);
+      final texto = datos?.text?.trim();
+      if (texto != null && texto.isNotEmpty) campo.text = texto;
+    },
+    child: const Text('Pegar'),
+  );
+
   String _texto(FuenteGalaxia f) => switch (f.estado) {
-        EstadoConexion.sinConfigurar => 'Todavía no hay un core configurado. La galaxia es de ejemplo.',
-        EstadoConexion.conectando => 'Conectando con el core…',
-        EstadoConexion.conectado => 'Conectado. La galaxia es la del core: ${f.galaxia?.aprendizaje.recuerdos ?? 0} recuerdos.',
-        EstadoConexion.sinConexion =>
-          'No se pudo llegar al core. Revisa la dirección y que Tailscale esté encendido. ${f.detalle}',
-        EstadoConexion.claveInvalida => 'El core rechazó la clave. Revisa que sea ASHUR_CLAVE.',
-        EstadoConexion.coreSinClave => 'El core no tiene ASHUR_CLAVE configurada.',
-        EstadoConexion.error => 'El core respondió algo inesperado. ${f.detalle}',
-      };
+    EstadoConexion.sinConfigurar =>
+      'Todavía no hay un core configurado. La galaxia es de ejemplo.',
+    EstadoConexion.conectando => 'Conectando con el core…',
+    EstadoConexion.conectado =>
+      'Conectado. La galaxia es la del core: ${f.galaxia?.aprendizaje.recuerdos ?? 0} recuerdos.',
+    EstadoConexion.sinConexion =>
+      'No se pudo llegar al core. Revisa la dirección y que Tailscale esté encendido. ${f.detalle}',
+    EstadoConexion.claveInvalida =>
+      'El core rechazó la clave. Revisa que sea ASHUR_CLAVE.',
+    EstadoConexion.coreSinClave => 'El core no tiene ASHUR_CLAVE configurada.',
+    EstadoConexion.error => 'El core respondió algo inesperado. ${f.detalle}',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +95,13 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                         child: Text('‹', style: TextStyle(fontSize: 28)),
                       ),
                     ),
-                    const Text('Estado', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Estado',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -87,30 +109,47 @@ class _PantallaEstadoState extends State<PantallaEstado> {
                 const SizedBox(height: 24),
                 const Text('Dirección del core'),
                 const SizedBox(height: 6),
-                CupertinoTextField(
-                  controller: _direccion,
-                  placeholder: 'http://servidor:8720',
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  decoration: _decoracionCampo,
-                  style: _estiloCampo,
-                  placeholderStyle: _estiloPista,
+                Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoTextField(
+                        controller: _direccion,
+                        placeholder: 'http://servidor:8720',
+                        keyboardType: TextInputType.url,
+                        autocorrect: false,
+                        decoration: _decoracionCampo,
+                        style: _estiloCampo,
+                        placeholderStyle: _estiloPista,
+                      ),
+                    ),
+                    _pegarEn(_direccion),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 const Text('Clave (ASHUR_CLAVE)'),
                 const SizedBox(height: 6),
-                CupertinoTextField(
-                  controller: _clave,
-                  obscureText: true,
-                  autocorrect: false,
-                  decoration: _decoracionCampo,
-                  style: _estiloCampo,
+                Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoTextField(
+                        controller: _clave,
+                        obscureText: true,
+                        autocorrect: false,
+                        decoration: _decoracionCampo,
+                        style: _estiloCampo,
+                      ),
+                    ),
+                    _pegarEn(_clave),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 CupertinoButton.filled(
                   onPressed: widget.fuente.estado == EstadoConexion.conectando
                       ? null
-                      : () => widget.fuente.guardarAjustes(_direccion.text, _clave.text),
+                      : () => widget.fuente.guardarAjustes(
+                          _direccion.text,
+                          _clave.text,
+                        ),
                   child: const Text('Guardar y conectar'),
                 ),
               ],
