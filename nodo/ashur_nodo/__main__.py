@@ -79,6 +79,8 @@ class Nodo:
                 print("latido", self.latido(), flush=True)
             except OSError as e:
                 print("latido sin core:", e, flush=True)
+            except Exception as e:  # cualquier otra cosa rara: el hilo del latido nunca muere en silencio
+                print(f"latido falló: {type(e).__name__}: {e}", flush=True)
             time.sleep(LATIDO_S)
 
     def atender_uno(self) -> bool:
@@ -92,7 +94,7 @@ class Nodo:
                 resultado = {"salida": ollama.conversar(self.ollama, trabajo["modelo"], trabajo["entrada"], self.contexto(), self.espera_s)}
             else:
                 resultado = {"salida": ollama.vectores(self.ollama, trabajo["modelo"], trabajo["entrada"], self.espera_s)}
-        except (OSError, ValueError, KeyError) as e:
+        except Exception as e:  # lo que sea que devuelva Ollama: el core recibe un error y lo reintenta
             resultado = {"error": f"{type(e).__name__}: {e}"}
         finally:
             self.trabajando.clear()
@@ -121,6 +123,9 @@ def principal() -> None:
                 time.sleep(SIN_TRABAJO_S)
         except OSError as e:
             print("sin core:", e, flush=True)
+            time.sleep(LATIDO_S)
+        except Exception as e:  # por ejemplo, un core que responde HTML: el nodo sigue vivo
+            print(f"el core respondió algo raro: {type(e).__name__}: {e}", flush=True)
             time.sleep(LATIDO_S)
 
 

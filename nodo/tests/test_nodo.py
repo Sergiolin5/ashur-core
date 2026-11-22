@@ -3,8 +3,59 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # el nodo no es un paquete instalado
 
-from ashur_nodo import ollama, senales  # noqa: E402
+import pytest  # noqa: E402
+
+from ashur_nodo import __main__ as nodo_main, ollama, senales  # noqa: E402
 from ashur_nodo.politica import Senales, modo  # noqa: E402
+
+
+class CoreFalso:
+    def __init__(self, respuestas):
+        self.respuestas = list(respuestas)
+        self.llamadas = []
+
+    def pedir(self, ruta, cuerpo):
+        self.llamadas.append((ruta, cuerpo))
+        return self.respuestas.pop(0)
+
+
+TRABAJO = (200, {"id": 7, "necesidad": "conversar", "modelo": "qwen2.5:7b", "entrada": {"messages": []}})
+
+
+@pytest.mark.parametrize("respuesta", [{"message": "texto"}, {"message": {"content": ["a"]}}, ["lista"]])
+def test_un_ollama_raro_vuelve_como_error_y_no_tumba_al_nodo(monkeypatch, respuesta):
+    monkeypatch.setattr(ollama, "_pedir", lambda *a: respuesta)
+    core = CoreFalso([TRABAJO, (204, None)])
+    assert nodo_main.Nodo(core, "http://x", None, 8192, 280).atender_uno()
+    ruta, cuerpo = core.llamadas[1]
+    assert ruta == "/nodo/trabajos/7" and "error" in cuerpo
+
+
+def test_familias_null_no_matan_el_latido(monkeypatch):
+    raro = {"models": [{"name": "x", "size": 1, "details": {"families": None}}, "no-es-un-modelo"]}
+    assert ollama.modelos_de(raro, None) == [{"nombre": "x", "tamano": 1, "capacidades": ["completion"]}]
+    monkeypatch.setattr(ollama, "_pedir", lambda *a: {"models": None})
+    monkeypatch.setattr(nodo_main.senales, "carga", lambda: 0.0)
+
+    class Alto(BaseException):
+        """Corta el bucle de la prueba; el nodo nunca atrapa un BaseException."""
+
+    vueltas = []
+
+    def dormir(_):
+        vueltas.append(1)
+        if len(vueltas) >= 2:
+            raise Alto
+
+    def core_raro(ruta, cuerpo):
+        raise ValueError("el core respondió HTML")
+
+    monkeypatch.setattr(nodo_main.time, "sleep", dormir)
+    nodo = nodo_main.Nodo(CoreFalso([]), "http://x", None, 8192, 280)
+    nodo.core.pedir = core_raro
+    with pytest.raises(Alto):
+        nodo.latir_siempre()
+    assert len(vueltas) == 2  # el primer latido falló y el bucle siguió latiendo
 
 
 def S(inactivo_s=1000.0, carga_ajena=0.1, enchufado=True, bateria=100):

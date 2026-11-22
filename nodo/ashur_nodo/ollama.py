@@ -17,10 +17,13 @@ def modelos_de(etiquetas: dict, ofrecidos: list[str] | None) -> list[dict]:
     """Los modelos de GET /api/tags en el formato del protocolo (contracts/nodo.schema.json). Con [ofrecidos], solo
     esos: Sergio elige qué presta cada equipo."""
     modelos = []
-    for m in etiquetas.get("models", []):
+    for m in etiquetas.get("models") or []:
+        if not isinstance(m, dict) or not isinstance(m.get("name"), str):
+            continue  # una entrada rara no deja al nodo sin latido
         if ofrecidos is not None and m["name"] not in ofrecidos:
             continue
-        capacidades = m.get("capabilities") or (["embedding"] if "bert" in m.get("details", {}).get("families", []) else ["completion"])
+        familias = (m.get("details") or {}).get("families") or []
+        capacidades = m.get("capabilities") or (["embedding"] if "bert" in familias else ["completion"])
         modelos.append({"nombre": m["name"], "tamano": int(m.get("size", 0)), "capacidades": list(capacidades)})
     return modelos
 
@@ -44,8 +47,12 @@ def conversar(base: str, modelo: str, entrada: dict, num_ctx: int, espera_s: flo
     if entrada.get("tools"):
         pedido["tools"] = entrada["tools"]  # las corre el core; el modelo solo las pide (ADR 0021)
     mensaje = _pedir(base, "/api/chat", pedido, espera_s).get("message") or {}
+    if not isinstance(mensaje, dict):
+        raise ValueError(f"{modelo} devolvió un mensaje que no es un objeto.")
     contenido = mensaje.get("content") or ""
     llamadas = mensaje.get("tool_calls") or []
+    if not isinstance(contenido, str) or not isinstance(llamadas, list):
+        raise ValueError(f"{modelo} devolvió un mensaje con un formato que el nodo no conoce.")
     if not contenido.strip() and not llamadas:
         # Como error, el core lo reintenta; una salida vacía la rechazaría y el trabajo quedaría tomado hasta vencer.
         raise ValueError(f"{modelo} devolvió una respuesta vacía.")
