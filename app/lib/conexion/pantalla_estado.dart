@@ -7,7 +7,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart' show Clipboard;
 
 import '../pantallas.dart';
+import 'ajustes_avanzados.dart';
 import 'fuente.dart';
+import 'lo_de_ashur.dart';
 
 // Campo oscuro, para que el texto claro de la app se lea.
 final _decoracionCampo = BoxDecoration(
@@ -83,97 +85,108 @@ class _PantallaEstadoState extends State<PantallaEstado> {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: ListenableBuilder(
-            listenable: widget.fuente,
-            builder: (context, _) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Padding(
-                        padding: EdgeInsets.only(right: 16),
-                        child: Text('‹', style: TextStyle(fontSize: 28)),
-                      ),
-                    ),
-                    const Text(
-                      'Estado',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Text(_texto(widget.fuente)),
-                const SizedBox(height: 24),
-                const Text('Dirección del core'),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoTextField(
-                        controller: _direccion,
-                        placeholder: 'http://servidor:8720',
-                        keyboardType: TextInputType.url,
-                        autocorrect: false,
-                        decoration: _decoracionCampo,
-                        style: _estiloCampo,
-                        placeholderStyle: _estiloPista,
-                      ),
-                    ),
-                    _pegarEn(_direccion),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text('Clave (ASHUR_CLAVE)'),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoTextField(
-                        controller: _clave,
-                        obscureText: true,
-                        autocorrect: false,
-                        decoration: _decoracionCampo,
-                        style: _estiloCampo,
-                      ),
-                    ),
-                    _pegarEn(_clave),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text('Clave de administrador (ASHUR_CLAVE_ADMIN)'),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoTextField(
-                        controller: _claveAdmin,
-                        obscureText: true,
-                        autocorrect: false,
-                        decoration: _decoracionCampo,
-                        style: _estiloCampo,
-                      ),
-                    ),
-                    _pegarEn(_claveAdmin),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                CupertinoButton.filled(
-                  onPressed: widget.fuente.estado == EstadoConexion.conectando
-                      ? null
-                      : () => widget.fuente.guardarAjustes(
-                          _direccion.text,
-                          _clave.text,
-                          _claveAdmin.text,
+          child: SingleChildScrollView(
+            child: ListenableBuilder(
+              listenable: widget.fuente,
+              builder: (context, _) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 16),
+                          child: Text('‹', style: TextStyle(fontSize: 28)),
                         ),
-                  child: const Text('Guardar y conectar'),
-                ),
-              ],
+                      ),
+                      const Text(
+                        'Estado',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(_texto(widget.fuente)),
+                  const SizedBox(height: 24),
+                  const Text('Dirección del core'),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: _direccion,
+                          placeholder: 'http://servidor:8720',
+                          keyboardType: TextInputType.url,
+                          autocorrect: false,
+                          decoration: _decoracionCampo,
+                          style: _estiloCampo,
+                          placeholderStyle: _estiloPista,
+                        ),
+                      ),
+                      _pegarEn(_direccion),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Clave (ASHUR_CLAVE)'),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: _clave,
+                          obscureText: true,
+                          autocorrect: false,
+                          decoration: _decoracionCampo,
+                          style: _estiloCampo,
+                        ),
+                      ),
+                      _pegarEn(_clave),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Clave de administrador (ASHUR_CLAVE_ADMIN)'),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: _claveAdmin,
+                          obscureText: true,
+                          autocorrect: false,
+                          decoration: _decoracionCampo,
+                          style: _estiloCampo,
+                        ),
+                      ),
+                      _pegarEn(_claveAdmin),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  CupertinoButton.filled(
+                    onPressed: widget.fuente.estado == EstadoConexion.conectando
+                        ? null
+                        : () => widget.fuente.guardarAjustes(
+                            _direccion.text,
+                            _clave.text,
+                            _claveAdmin.text,
+                          ),
+                    child: const Text('Guardar y conectar'),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Configuración avanzada',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+                  AjustesAvanzados(fuente: widget.fuente),
+                  const SizedBox(height: 20),
+                  LoDeAshur(fuente: widget.fuente),
+                ],
+              ),
             ),
           ),
         ),

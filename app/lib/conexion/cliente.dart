@@ -17,6 +17,9 @@ enum FalloCore {
   /// El core respondió 404: el recurso no existe.
   noExiste,
 
+  /// El core respondió 409: la identidad está archivada.
+  conflicto,
+
   /// El core respondió 422: los datos son inválidos.
   datosInvalidos,
 
@@ -51,7 +54,8 @@ class ClienteCore {
   final String? claveAdmin;
   final Duration espera;
 
-  Future<EstadoGalaxia> galaxia() async => EstadoGalaxia.fromJson(await _pedir('/galaxia'));
+  Future<EstadoGalaxia> galaxia() async =>
+      EstadoGalaxia.fromJson(await _pedir('/galaxia'));
 
   Future<List<Objeto>> listarObjetos({bool archivados = false}) async {
     final ruta = archivados ? '/objetos?archivados=true' : '/objetos';
@@ -68,7 +72,9 @@ class ClienteCore {
       '/objetos',
       cuerpo: {
         'nombre': nombre.trim(),
-        'lugar': (lugarLimpio == null || lugarLimpio.isEmpty) ? null : lugarLimpio,
+        'lugar': (lugarLimpio == null || lugarLimpio.isEmpty)
+            ? null
+            : lugarLimpio,
       },
     );
     return Objeto.fromJson(respuesta as Map<String, dynamic>);
@@ -84,6 +90,134 @@ class ClienteCore {
     return Objeto.fromJson(respuesta as Map<String, dynamic>);
   }
 
+  Future<Map<String, dynamic>> crearNodo(String nombre) async => await _enviar(
+    'POST',
+    '/nodos',
+    cuerpo: {'nombre': nombre.trim()},
+    admin: true,
+  ) as Map<String, dynamic>;
+
+  Future<Map<String, dynamic>> verPersonalidad() async {
+    return await _enviar('GET', '/personalidad') as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> guardarPersonalidad(
+    Map<String, dynamic> personalidad,
+  ) async {
+    return await _enviar(
+      'PUT',
+      '/personalidad',
+      cuerpo: personalidad,
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> reemplazarCorrecciones(
+    List<Map<String, dynamic>> correcciones,
+  ) async {
+    return await _enviar(
+      'PUT',
+      '/personalidad/correcciones',
+      cuerpo: correcciones,
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> listarRoles() async {
+    final respuesta = await _enviar('GET', '/roles') as List<dynamic>;
+    return respuesta.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> crearRol(
+    String nombre,
+    List<String> herramientas,
+  ) async {
+    return await _enviar(
+      'POST',
+      '/roles',
+      cuerpo: {'nombre': nombre, 'herramientas': herramientas},
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> editarRol(
+    String id,
+    String nombre,
+    List<String> herramientas,
+  ) async {
+    return await _enviar(
+      'PATCH',
+      '/roles/${Uri.encodeComponent(id)}',
+      cuerpo: {'nombre': nombre, 'herramientas': herramientas},
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> listarIdentidades() async {
+    final respuesta = await _enviar('GET', '/identidades') as List<dynamic>;
+    return respuesta.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> asignarRol(String id, String? rol) async {
+    return await _enviar(
+      'PATCH',
+      '/identidades/${Uri.encodeComponent(id)}',
+      cuerpo: {'rol': rol},
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> crearClaveIdentidad(String id) async {
+    return await _enviar(
+      'POST',
+      '/identidades/${Uri.encodeComponent(id)}/clave',
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> listarModulos() async {
+    final respuesta = await _enviar('GET', '/modulos') as List<dynamic>;
+    return respuesta.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> verAjustesModulo(String id) async {
+    final respuesta = await _enviar(
+      'GET',
+      '/modulos/${Uri.encodeComponent(id)}/ajustes',
+    ) as List<dynamic>;
+    return respuesta.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> cambiarAjustesModulo(
+    String id,
+    Map<String, dynamic> cambios,
+  ) async {
+    final respuesta = await _enviar(
+      'PATCH',
+      '/modulos/${Uri.encodeComponent(id)}/ajustes',
+      cuerpo: cambios,
+      admin: true,
+    ) as List<dynamic>;
+    return respuesta.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> listarNodos() async {
+    final respuesta = await _enviar('GET', '/nodos') as List<dynamic>;
+    return respuesta.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> editarNodo(
+    String id,
+    Map<String, dynamic> cambios,
+  ) async {
+    return await _enviar(
+      'PATCH',
+      '/nodos/${Uri.encodeComponent(id)}',
+      cuerpo: cambios,
+      admin: true,
+    ) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> _pedir(String ruta) async {
     final respuesta = await _enviar('GET', ruta);
     return respuesta as Map<String, dynamic>;
@@ -97,7 +231,9 @@ class ClienteCore {
   }) async {
     final cliente = HttpClient()..connectionTimeout = espera;
     try {
-      final pedido = await cliente.openUrl(metodo, direccion.resolve(ruta)).timeout(espera);
+      final pedido = await cliente
+          .openUrl(metodo, direccion.resolve(ruta))
+          .timeout(espera);
       if (admin) {
         if (claveAdmin != null) {
           pedido.headers.set('X-Ashur-Clave-Admin', claveAdmin!);
@@ -112,7 +248,10 @@ class ClienteCore {
         pedido.add(bytes);
       }
       final respuesta = await pedido.close().timeout(espera);
-      final texto = await respuesta.transform(utf8.decoder).join().timeout(espera);
+      final texto = await respuesta
+          .transform(utf8.decoder)
+          .join()
+          .timeout(espera);
       switch (respuesta.statusCode) {
         case 200:
         case 201:
@@ -122,8 +261,10 @@ class ClienteCore {
           throw const ErrorCore(FalloCore.claveInvalida);
         case 404:
           throw const ErrorCore(FalloCore.noExiste);
+        case 409:
+          throw ErrorCore(FalloCore.conflicto, _detalle(texto));
         case 422:
-          throw ErrorCore(FalloCore.datosInvalidos, texto);
+          throw ErrorCore(FalloCore.datosInvalidos, _detalle(texto));
         case 503:
           throw const ErrorCore(FalloCore.coreSinClave);
         default:
@@ -138,5 +279,17 @@ class ClienteCore {
     } finally {
       cliente.close(force: true);
     }
+  }
+
+  String _detalle(String texto) {
+    try {
+      final datos = jsonDecode(texto);
+      if (datos is Map<String, dynamic> && datos['detail'] != null) {
+        return datos['detail'].toString();
+      }
+    } on FormatException {
+      // Algunos cores pueden devolver texto sin un cuerpo JSON.
+    }
+    return texto;
   }
 }
