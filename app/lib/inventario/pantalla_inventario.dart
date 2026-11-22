@@ -451,10 +451,25 @@ class _PantallaInventarioState extends State<PantallaInventario> {
                           style: TextStyle(color: Color(0x80E8E8F0)),
                         )
                       else
-                        for (final objeto in _objetos) ...[
-                          _tarjetaObjeto(objeto),
-                          const SizedBox(height: 12),
-                        ],
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final columnas = constraints.maxWidth >= 680;
+                            final ancho = columnas
+                                ? (constraints.maxWidth - 12) / 2
+                                : constraints.maxWidth;
+                            return Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                for (final objeto in _objetos)
+                                  SizedBox(
+                                    width: ancho,
+                                    child: _tarjetaObjeto(objeto),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),

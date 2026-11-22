@@ -35,11 +35,24 @@ class PantallaVacia extends StatelessWidget {
                         horizontal: 30,
                         vertical: 38,
                       ),
-                      decoration: panelAshur(),
+                      decoration: panelAshur(elevado: true),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const MarcaAshur(tamano: 66),
+                          Container(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              color: PaletaAshur.fondo.withValues(alpha: 0.55),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: PaletaAshur.borde,
+                                width: 0.7,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const MarcaAshur(tamano: 66),
+                          ),
                           if (titulo == 'Chats') ...[
                             const SizedBox(height: 12),
                             Container(
