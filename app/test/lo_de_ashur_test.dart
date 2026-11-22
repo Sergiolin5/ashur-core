@@ -290,13 +290,16 @@ class _AlmacenObservado implements AlmacenSecreto {
   final List<(String, String)> escrituras = [];
 
   @override
-  Future<String?> leer(String clave) async => valores[clave];
+  Future<String?> leer(String clave, {bool protegido = false}) async => valores[clave];
 
   @override
-  Future<void> escribir(String clave, String valor) async {
+  Future<void> escribir(String clave, String valor, {bool protegido = false}) async {
     escrituras.add((clave, valor));
     valores[clave] = valor;
   }
+
+  @override
+  Future<void> borrar(String clave) async => valores.remove(clave);
 }
 
 class _ClienteWidgetFalso extends ClienteCore {
@@ -360,10 +363,10 @@ FuenteGalaxia _fuente(
   required bool admin,
   required _AlmacenObservado almacen,
 }) {
+  // Las claves ya en la entrada protegida de Face ID (ADR 0025): así leerlas no migra nada ni escribe en el almacén.
   almacen.valores.addAll({
     claveDireccion: 'http://127.0.0.1:${servidor.port}',
-    claveClave: 'normal',
-    if (admin) claveClaveAdmin: 'admin',
+    claveClaves: jsonEncode({'clave': 'normal', 'admin': admin ? 'admin' : null}),
   });
   return FuenteGalaxia(
     almacen: almacen,

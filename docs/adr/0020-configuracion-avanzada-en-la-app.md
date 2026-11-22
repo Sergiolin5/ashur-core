@@ -40,5 +40,13 @@ app todavía no está creada. La app es pública y la personalidad de Sergio es 
   valor por defecto.
 - `flutter analyze` revisa la app Flutter.
 
+Eso se verificó en la Mac con el commit 788f7a5 de la rama `config-avanzada`, antes de unirla sobre Face ID
+(ADR 0025). La unión, las guardas de `SecretoBloqueado` y el almacén falso de `lo_de_ashur_test.dart` puesto al día no
+se compilaron: en el equipo Windows no hay Flutter.
+
 ## Pendiente
-- Verificar en un iPhone la lectura y edición de ajustes y el copiado de la clave de nodo.
+- Correr `flutter analyze` y `flutter test` en la Mac con la unión.
+- Verificar en un iPhone la lectura y edición de ajustes y el copiado de la clave de nodo, también con Face ID
+  cancelado.
+- Un nodo restaurado ya no se puede usar, porque archivarlo le quita la clave para siempre (ADR 0016). «Restaurar» solo
+  sirve para verlo en la lista; para volver a usar el equipo, hay que crear un nodo nuevo.
