@@ -162,7 +162,53 @@ def test_una_falla_al_rescatar_la_busqueda_no_traba_la_conversacion(entorno, mon
 
     original = app_mod._responder
     monkeypatch.setattr(app_mod, "_responder", roto)
-    assert c.post("/nodo/trabajos/tomar", headers=hq).status_code == 500  # la búsqueda quedó descartada
+    assert c.post("/nodo/trabajos/tomar", headers=hq).status_code == 500
     monkeypatch.setattr(app_mod, "_responder", original)
-    assert c.get("/conversaciones/con-1").json()["espera"]["estado"] == "fallido"  # dentro del contrato
-    assert c.post("/conversaciones/con-1/mensajes", json={"texto": "¿Hola?"}).status_code == 202
+    # Cerrar la búsqueda y dejar la respuesta van juntos: la falla no cerró nada y el siguiente pedido la rescata.
+    assert c.get("/conversaciones/con-1").json()["espera"]["estado"] == "pendiente"
+    assert c.post("/nodo/trabajos/tomar", headers=hq).json()["necesidad"] == "conversar"
+
+
+def _mirar_a_medias(db, monkeypatch):
+    """Mientras el core arma la respuesta, mira desde otra conexión cómo se ve la búsqueda y si entra otro mensaje."""
+    vistos, original = [], app_mod._pedido
+
+    def pedido(con, conversacion, vector):
+        afuera = sqlite3.connect(db)
+        vistos.append(afuera.execute("SELECT estado FROM trabajos WHERE necesidad = 'embedding'").fetchone()[0])
+        # La condición de chat.reservar, solo leída: mientras el core escribe, otro mensaje no puede reservar.
+        vistos.append(afuera.execute(
+            "SELECT COUNT(*) = 1 FROM conversaciones WHERE id = ? AND (trabajo_id IS NULL OR trabajo_id IN"
+            " (SELECT id FROM trabajos WHERE estado IN ('hecho', 'fallido', 'descartado')))", (conversacion,)
+        ).fetchone()[0] == 1)
+        afuera.close()
+        return original(con, conversacion, vector)
+
+    monkeypatch.setattr(app_mod, "_pedido", pedido)
+    return vistos
+
+
+def test_rescatar_la_busqueda_no_deja_un_hueco(entorno, monkeypatch):
+    c, db = entorno
+    nuevo_nodo(c, "mac-bge", [BGE])
+    _, hq = nuevo_nodo(c, "win-qwen", [QWEN7])
+    c.post("/conversaciones")
+    c.post("/conversaciones/con-1/mensajes", json={"texto": "Hola"})
+    sql(db, "UPDATE trabajos SET creado = ? WHERE necesidad = 'embedding'", (VIEJO,))  # nadie la tomó a tiempo
+    vistos = _mirar_a_medias(db, monkeypatch)
+    assert c.post("/nodo/trabajos/tomar", headers=hq).json()["necesidad"] == "conversar"
+    assert vistos == ["pendiente", False]  # desde afuera sigue abierta: ni «fallido» ni lugar para otro mensaje
+    assert sql(db, "SELECT COUNT(*) FROM trabajos WHERE necesidad = 'conversar'")[0][0] == 1
+
+
+def test_vencer_la_busqueda_no_deja_un_hueco(entorno, monkeypatch):
+    c, db = entorno
+    _, he = nuevo_nodo(c, "mac-bge", [BGE])
+    _, hq = nuevo_nodo(c, "win-qwen", [QWEN7])
+    c.post("/conversaciones")
+    c.post("/conversaciones/con-1/mensajes", json={"texto": "Hola"})
+    j = c.post("/nodo/trabajos/tomar", headers=he).json()["id"]
+    sql(db, "UPDATE trabajos SET vence = ?, intentos = ? WHERE id = ?", (VIEJO, nodos.INTENTOS - 1, j))  # último intento
+    vistos = _mirar_a_medias(db, monkeypatch)
+    assert c.post("/nodo/trabajos/tomar", headers=hq).json()["necesidad"] == "conversar"
+    assert vistos == ["tomado", False]

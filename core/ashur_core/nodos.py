@@ -282,14 +282,16 @@ def latir(conexion: sqlite3.Connection, id_: str, latido: Latido, ahora: datetim
 
 def encolar(
     conexion: sqlite3.Connection, necesidad: str, entrada: dict, conversacion_id: str | None = None,
-    estado: str = "pendiente",
+    estado: str = "pendiente", confirmar: bool = True,
 ) -> int:
-    """Con estado "preparando", ningún nodo lo toma hasta que [preparar] le ponga su entrada."""
+    """Con estado "preparando", ningún nodo lo toma hasta que [preparar] le ponga su entrada. Con confirmar=False, el
+    que llama hace el commit."""
     cursor = conexion.execute(
         "INSERT INTO trabajos (necesidad, entrada, conversacion_id, creado, estado) VALUES (?, ?, ?, ?, ?)",
         (necesidad, json.dumps(entrada, ensure_ascii=False), conversacion_id, _ahora().isoformat(), estado),
     )
-    conexion.commit()
+    if confirmar:
+        conexion.commit()
     return cursor.lastrowid
 
 
@@ -390,10 +392,11 @@ def reclamar(conexion: sqlite3.Connection, id_: int, id_nodo: str, ahora: dateti
     return {"necesidad": fila[0], "entrada": json.loads(fila[1]), "conversacion_id": fila[2], "intentos": fila[3]}
 
 
-def vencer(conexion: sqlite3.Connection, ahora: datetime | None = None) -> list[dict]:
+def vencer(conexion: sqlite3.Connection, ahora: datetime | None = None, confirmar: bool = True) -> list[dict]:
     """Un trabajo cuyo plazo venció cuenta como un intento: vuelve a la cola o, al último, falla. Sin esto, un nodo
     que se cae o una salida que el core rechaza dejaban el trabajo dando vueltas para siempre. Devuelve los que
-    fallaron, para que el core siga con lo que corresponda."""
+    fallaron, para que el core siga con lo que corresponda. Con confirmar=False, el que llama hace el commit después
+    de seguir con ellos."""
     ahora = (ahora or _ahora()).isoformat()
     filas = conexion.execute(
         "SELECT id, intentos, necesidad, conversacion_id, entrada FROM trabajos"
@@ -408,7 +411,8 @@ def vencer(conexion: sqlite3.Connection, ahora: datetime | None = None) -> list[
             " WHERE id = ? AND estado IN ('tomado', 'entregando') AND vence < ?",
             (estado, intentos + 1, "El nodo no respondió a tiempo.", id_, ahora),
         )
-        conexion.commit()
+        if confirmar:
+            conexion.commit()
         if cursor.rowcount == 1 and estado == "fallido":
             fallidos.append(
                 {"id": id_, "necesidad": necesidad, "conversacion_id": conversacion_id, "entrada": json.loads(entrada)}
@@ -431,8 +435,9 @@ def pendientes(conexion: sqlite3.Connection, necesidad: str, con_conversacion: b
     ).fetchall()
 
 
-def abandonar(conexion: sqlite3.Connection, id_: int, nodo_id: str | None = None) -> bool:
-    """Saca de la cola, de forma atómica, un trabajo que nadie tomó o, con [nodo_id], uno que tomó ese nodo."""
+def abandonar(conexion: sqlite3.Connection, id_: int, nodo_id: str | None = None, confirmar: bool = True) -> bool:
+    """Saca de la cola, de forma atómica, un trabajo que nadie tomó o, con [nodo_id], uno que tomó ese nodo. Con
+    confirmar=False, el que llama hace el commit."""
     if nodo_id is None:
         cursor = conexion.execute(
             "UPDATE trabajos SET estado = 'descartado' WHERE id = ? AND estado = 'pendiente'", (id_,)
@@ -442,7 +447,8 @@ def abandonar(conexion: sqlite3.Connection, id_: int, nodo_id: str | None = None
             "UPDATE trabajos SET estado = 'descartado' WHERE id = ? AND estado = 'tomado' AND nodo_id = ?",
             (id_, nodo_id),
         )
-    conexion.commit()
+    if confirmar:
+        conexion.commit()
     return cursor.rowcount == 1
 
 

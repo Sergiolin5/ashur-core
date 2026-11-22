@@ -201,10 +201,12 @@ def trabajo_actual(conexion: sqlite3.Connection, id_: str) -> int | None:
     return fila[0] if fila else None
 
 
-def poner_trabajo(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> None:
-    """Cuando el trabajo de la conversación pasa de la búsqueda por significado a la respuesta."""
+def poner_trabajo(conexion: sqlite3.Connection, id_: str, trabajo_id: int, confirmar: bool = True) -> None:
+    """Cuando el trabajo de la conversación pasa de la búsqueda por significado a la respuesta. Con confirmar=False,
+    el que llama hace el commit."""
     conexion.execute("UPDATE conversaciones SET trabajo_id = ? WHERE id = ?", (trabajo_id, id_))
-    conexion.commit()
+    if confirmar:
+        conexion.commit()
 
 
 def reservar(conexion: sqlite3.Connection, id_: str, trabajo_id: int) -> bool:

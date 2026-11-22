@@ -407,43 +407,52 @@ def _pedido(con, id_conversacion: str, vector: list[float] | None) -> dict:
     return pedido
 
 
-def _seguir(con, id_conversacion: str, pedido: dict) -> int:
+def _seguir(con, id_conversacion: str, pedido: dict, confirmar: bool = True) -> int:
     """Deja el paso siguiente en la cola y la conversación apuntando a él, antes de cerrar el anterior: entre los dos
-    nunca queda un hueco en el que se cuele otro mensaje."""
-    siguiente = nodos.encolar(con, "conversar", pedido, id_conversacion)
-    chat.poner_trabajo(con, id_conversacion, siguiente)
+    nunca queda un hueco en el que se cuele otro mensaje. Con confirmar=False, el que llama hace el commit."""
+    siguiente = nodos.encolar(con, "conversar", pedido, id_conversacion, confirmar=False)
+    chat.poner_trabajo(con, id_conversacion, siguiente, confirmar=confirmar)
     return siguiente
 
 
-def _responder(con, id_conversacion: str, vector: list[float] | None) -> None:
-    _seguir(con, id_conversacion, _pedido(con, id_conversacion, vector))
+def _responder(con, id_conversacion: str, vector: list[float] | None, confirmar: bool = True) -> None:
+    _seguir(con, id_conversacion, _pedido(con, id_conversacion, vector), confirmar)
 
 
 def _rescatar_busquedas(con) -> None:
-    """Una búsqueda por significado que nadie tomó a tiempo no frena la respuesta: se responde solo por palabras."""
+    """Una búsqueda por significado que nadie tomó a tiempo no frena la respuesta: se responde solo por palabras.
+    Cerrar la búsqueda y dejar la respuesta van en un solo commit: desde afuera nunca se ve la búsqueda fallida sin la
+    respuesta, que dejaba entrar otro mensaje y salían dos respuestas."""
     limite = datetime.now(timezone.utc) - timedelta(seconds=ESPERA_SIGNIFICADO_S)
     for id_, creado, conversacion in nodos.pendientes(con, "embedding", con_conversacion=True):
-        if datetime.fromisoformat(creado) < limite and nodos.abandonar(con, id_):
-            _responder(con, conversacion, None)
+        if datetime.fromisoformat(creado) < limite and nodos.abandonar(con, id_, confirmar=False):
+            _responder(con, conversacion, None, confirmar=False)
+        con.commit()
     # Tampoco la frena un nodo que la tomó y se cayó: sin esto, la conversación esperaba hasta que el nodo volviera.
     for id_, nodo_id, conversacion in nodos.de_nodos_caidos(con, "embedding"):
-        if nodos.abandonar(con, id_, nodo_id):
-            _responder(con, conversacion, None)
+        if nodos.abandonar(con, id_, nodo_id, confirmar=False):
+            _responder(con, conversacion, None, confirmar=False)
+        con.commit()
 
 
 def _vencer(con) -> None:
-    """Los trabajos cuyo plazo venció cuentan como un intento; los que fallan del todo siguen como al entregarlos."""
-    for fila in nodos.vencer(con):
-        _fallo_final(con, fila["id"], fila["necesidad"], fila["conversacion_id"], fila["entrada"])
+    """Los trabajos cuyo plazo venció cuentan como un intento; los que fallan del todo siguen como al entregarlos. El
+    vencimiento y lo que sigue de una conversación van en un solo commit, como al rescatar una búsqueda."""
+    fallidos = nodos.vencer(con, confirmar=False)
+    for fila in sorted(fallidos, key=lambda f: f["conversacion_id"] is None):  # las de una conversación, primero
+        _fallo_final(con, fila["id"], fila["necesidad"], fila["conversacion_id"], fila["entrada"], confirmar=False)
+    con.commit()
 
 
-def _fallo_final(con, id_: int, necesidad: str, conversacion: str | None, entrada: dict) -> None:
+def _fallo_final(
+    con, id_: int, necesidad: str, conversacion: str | None, entrada: dict, confirmar: bool = True
+) -> None:
     """Lo que sigue cuando un trabajo falla del todo, al entregarlo o al vencer. Una búsqueda por significado que falla
     no frena la respuesta, y un lote de vectores que falla se reparte de a uno."""
     if necesidad != "embedding":
         return
     if conversacion:
-        _responder(con, conversacion, None)
+        _responder(con, conversacion, None, confirmar)
     else:
         _lote_fallido(con, id_, entrada)
 
