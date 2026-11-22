@@ -54,3 +54,24 @@ class EstadoGalaxia(BaseModel):
     aprendizaje: Aprendizaje
     cuerpos: list[Cuerpo]
     eventos: list[Evento]
+
+
+def estado_actual(aprendizaje: Aprendizaje) -> EstadoGalaxia:
+    """La galaxia con lo que el core sabe hoy: el núcleo, las colecciones del core y lo que hace crecer el polvo.
+    Todavía no hay identidades, agentes ni módulos registrados, así que no hay personajes, lunas ni estrellas fugaces
+    (docs/adr/0011-app-conectada-al-core.md)."""
+    return EstadoGalaxia(
+        aprendizaje=aprendizaje,
+        cuerpos=[
+            Cuerpo(tipo="nucleo", id="ashur", nombre="Ashur", masa=1 + aprendizaje.recuerdos, orbita=None, ref=None),
+            Cuerpo(
+                tipo="planeta", id="identidades", nombre="Identidades", masa=1,
+                orbita=Orbita(centro="ashur", fase=0.1), ref=None,
+            ),
+            Cuerpo(
+                tipo="planeta", id="objetos", nombre="Objetos", masa=1,
+                orbita=Orbita(centro="ashur", fase=0.6), ref=None,
+            ),
+        ],
+        eventos=[],
+    )

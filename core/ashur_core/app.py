@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from fastapi import Depends, FastAPI, HTTPException, Response, Security
 from fastapi.security import APIKeyHeader
 
-from ashur_core import memoria
+from ashur_core import galaxia, memoria
 
 app = FastAPI(title="Ashur Core")
 
@@ -80,3 +80,8 @@ def ver_aprendizaje(con=Depends(conexion)) -> memoria.Aprendizaje:
 @app.patch("/aprendizaje", response_model=memoria.Aprendizaje, dependencies=[Depends(exigir_clave_admin)])
 def cambiar_inicio(cambio: memoria.CambioInicio, con=Depends(conexion)) -> memoria.Aprendizaje:
     return memoria.cambiar_inicio(con, cambio.inicio)
+
+
+@app.get("/galaxia", response_model=galaxia.EstadoGalaxia, dependencies=[Depends(exigir_clave)])
+def ver_galaxia(con=Depends(conexion)) -> galaxia.EstadoGalaxia:
+    return galaxia.estado_actual(memoria.aprendizaje(con))

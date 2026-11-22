@@ -8,6 +8,8 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
+from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
+
 VERSION_ESQUEMA = 4
 
 
@@ -240,15 +242,6 @@ def borrar(conexion: sqlite3.Connection, id_: int) -> bool:
     cursor = conexion.execute("DELETE FROM recuerdos WHERE id = ?", (id_,))
     conexion.commit()
     return cursor.rowcount > 0
-
-
-class Aprendizaje(BaseModel):
-    """Lo que hace crecer el polvo de la galaxia (contracts/galaxy-state.schema.json, campo aprendizaje)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    inicio: AwareDatetime
-    recuerdos: int = Field(ge=0)
 
 
 class CambioInicio(BaseModel):

@@ -229,3 +229,17 @@ def test_una_base_de_la_version_3_indexa_sus_recuerdos(tmp_path):
     con = memoria.abrir(ruta)
     assert [r.id for r in memoria.buscar(con, "bicicleta")] == [1]
     con.close()
+
+
+def test_la_galaxia_real_trae_el_aprendizaje_de_la_base(cliente):
+    cliente.post("/recuerdos", json=nuevo_ejemplo())
+    respuesta = cliente.get("/galaxia")
+    assert respuesta.status_code == 200
+    datos = respuesta.json()
+    assert datos["aprendizaje"] == cliente.get("/aprendizaje").json()
+    assert {c["id"] for c in datos["cuerpos"]} == {"ashur", "identidades", "objetos"}
+    assert datos["eventos"] == []
+    from ashur_core.galaxia import EstadoGalaxia
+
+    EstadoGalaxia.model_validate(datos)  # cumple el contrato
+    assert TestClient(app).get("/galaxia").status_code == 401
