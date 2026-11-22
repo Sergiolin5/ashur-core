@@ -3,5 +3,15 @@
   "nombre": "bicicleta roja",
   "lugar": "garaje",
   "archivado": false,
-  "menciones": 1
+  "menciones": 1,
+  "padre_id": null,
+  "ranura": null,
+  "ranuras": ["caja-inventada"],
+  "identificadores": {"model": "MODELO-FALSO"},
+  "especificaciones": {"peso_kg": 2.5},
+  "evidencia": {
+    "source_files": ["foto-inventada.jpg"],
+    "confidence": {"model": "visto"}
+  },
+  "estado": null
 }
