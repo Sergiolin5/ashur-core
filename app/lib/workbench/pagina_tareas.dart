@@ -297,11 +297,16 @@ class _PantallaTareaState extends State<PantallaTarea> {
   Future<void> _ejecutar() async {
     setState(() => _ejecutando = true);
     await _datos.hacer(() async {
-      await _datos.almacen.ejecutarTarea(widget.id);
-      return 'Ejecución terminada';
+      final tarea = await _datos.almacen.ejecutarTarea(widget.id);
+      return tarea['espera_equipo'] == true ? 'En espera de un equipo' : 'Ejecución terminada';
     });
     if (mounted) setState(() => _ejecutando = false);
   }
+
+  Future<void> _cancelarEspera() => _datos.hacer(() async {
+        await _datos.almacen.editar(tipoTareas, widget.id, {'estado': 'asignada', 'espera_equipo': false});
+        return 'Espera cancelada';
+      });
 
   Future<void> _borrar() async {
     final bien = await _datos.hacer(() async {
@@ -376,14 +381,24 @@ class _PantallaTareaState extends State<PantallaTarea> {
         valor: proveedorId,
         alElegir: (v) => _asignar(tarea, v),
       ),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: Boton(
-          _ejecutando ? 'Ejecutando' : 'Ejecutar',
-          principal: true,
-          alTocar: _ejecutando || proveedorId.isEmpty ? null : _ejecutar,
+      if (tarea['espera_equipo'] == true) ...[
+        Text(
+          tarea['equipo'] == null
+              ? 'Esperando a que un equipo la tome. Se resuelve cuando tu equipo esté en la red con el ejecutor.'
+              : 'La tomó ${tarea['equipo']} el ${fechaCorta(tarea['tomada'])}. Está trabajando en ella.',
+          style: wbCuerpo,
         ),
-      ),
+        const SizedBox(height: 10),
+        Align(alignment: Alignment.centerLeft, child: Boton('Cancelar espera', alTocar: _cancelarEspera)),
+      ] else
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Boton(
+            _ejecutando ? 'Ejecutando' : 'Ejecutar',
+            principal: true,
+            alTocar: _ejecutando || proveedorId.isEmpty ? null : _ejecutar,
+          ),
+        ),
       if (_datos.aviso != null) ...[
         const SizedBox(height: 12),
         Text(_datos.aviso!, style: TextStyle(color: _datos.avisoEsError ? wbRojo : wbVerde, fontSize: 13)),
