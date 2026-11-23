@@ -17,6 +17,8 @@ import 'galaxia/modelo.dart';
 import 'galaxia/vista.dart';
 import 'inventario/pantalla_inventario.dart';
 import 'pantallas.dart';
+import 'workbench/almacen_core.dart';
+import 'workbench/pantalla_workbench.dart';
 
 void main() {
   final fuente = FuenteGalaxia(
@@ -103,8 +105,11 @@ class Inicio extends StatelessWidget {
                         Expanded(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => Navigator.of(context).push(rutaSimple(
-                                nombre == 'Estado' ? PantallaEstado(fuente: fuente) : PantallaVacia(titulo: nombre))),
+                            onTap: () => Navigator.of(context).push(rutaSimple(switch (nombre) {
+                              'Estado' => PantallaEstado(fuente: fuente),
+                              'Workbench' => PantallaWorkbench(almacen: AlmacenWorkbenchCore(fuente.cliente)),
+                              _ => PantallaVacia(titulo: nombre),
+                            })),
                             child: Center(child: Text(nombre)),
                           ),
                         ),

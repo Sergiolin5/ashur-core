@@ -180,6 +180,28 @@ class ClienteCore {
     return respuesta.cast<Map<String, dynamic>>();
   }
 
+  /// Corre una acción de un módulo y devuelve su resultado. Una acción que escribe queda como pedido en el core;
+  /// aquí se aprueba enseguida con la clave de administrador, porque quien la pidió es quien toca el botón.
+  Future<Map<String, dynamic>> accionModulo(
+    String modulo,
+    String accion, [
+    Map<String, dynamic> parametros = const {},
+    Duration? espera,
+  ]) async {
+    final respuesta = await _enviar(
+      'POST',
+      '/modulos/${Uri.encodeComponent(modulo)}/acciones/${Uri.encodeComponent(accion)}',
+      cuerpo: parametros,
+    ) as Map<String, dynamic>;
+    if (respuesta['estado'] != 'pendiente') return respuesta['resultado'] as Map<String, dynamic>;
+    if (claveAdmin == null || claveAdmin!.isEmpty) {
+      throw const ErrorCore(FalloCore.claveInvalida, 'hace falta la clave de administrador');
+    }
+    final hecho = await _enviar('POST', '/pedidos/${respuesta['id']}/aprobar', admin: true, espera: espera)
+        as Map<String, dynamic>;
+    return hecho['resultado'] as Map<String, dynamic>;
+  }
+
   Future<List<Map<String, dynamic>>> verAjustesModulo(String id) async {
     final respuesta = await _enviar(
       'GET',
@@ -247,7 +269,9 @@ class ClienteCore {
     String ruta, {
     Object? cuerpo,
     bool admin = false,
+    Duration? espera,
   }) async {
+    espera ??= this.espera;
     final cliente = HttpClient()..connectionTimeout = espera;
     try {
       final pedido = await cliente
@@ -288,7 +312,8 @@ class ClienteCore {
         case 503:
           throw const ErrorCore(FalloCore.coreSinClave);
         default:
-          throw ErrorCore(FalloCore.otro, 'HTTP ${respuesta.statusCode}');
+          final detalle = _detalle(texto);
+          throw ErrorCore(FalloCore.otro, detalle.isEmpty ? 'HTTP ${respuesta.statusCode}' : detalle);
       }
     } on SocketException catch (e) {
       throw ErrorCore(FalloCore.inalcanzable, e.message);
