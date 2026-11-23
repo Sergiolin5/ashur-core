@@ -1,6 +1,6 @@
 # ADR 0016: el chat vive en el core y los nodos de casa lo responden
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada. La parte de «cada mensaje también es un recuerdo» la reemplaza el ADR 0028.
 - **Fecha:** 2026-11-22
 
 ## Contexto
@@ -23,6 +23,7 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Chat:**
   - Conversaciones `con-N` con título (el comienzo del primer mensaje) y mensajes `user` o `assistant`.
   - Cada mensaje, de Sergio o de Ashur, también es un recuerdo, sin filtro (decisión de Sergio): con origen `chat` los de Sergio y `chat-ashur` los de Ashur.
+    Reemplazado por el ADR 0028: los mensajes son historial y un nodo decide qué se recuerda.
   - El modelo ve los últimos 20 mensajes.
 - **Cola de trabajos:**
   - Cada mensaje deja un trabajo `conversar`.
@@ -73,6 +74,7 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Un nodo ve todo lo que viaja en sus trabajos.** Por eso solo el administrador crea claves de nodo, y solo para los equipos de Sergio.
 - **La respuesta no es inmediata:** la app pregunta por la conversación hasta que llega. Sin nodos en línea, el mensaje espera.
 - **Todo el chat es memoria:** la memoria crece con cada mensaje, también con las respuestas del modelo, sin filtro.
+  Ya no, desde el ADR 0028.
 - **Una conversación a la vez por trabajo:** no se puede escribir de nuevo hasta que Ashur responda o falle.
 - **Sin nodos, la conversación queda esperando:** un trabajo pendiente no vence, así que si todos los equipos están
   apagados esa conversación no acepta otro mensaje hasta que aparezca un nodo. Mientras tanto se puede abrir otra; el
@@ -96,6 +98,8 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Fase 4:** las herramientas del chat (ADR 0021).
 - **Fase 5:** otras personas con su clave y su rol (ADR 0022).
 - **Fase 6:** la personalidad, la madurez y las correcciones (ADR 0024).
+- **Los mensajes dejan de ser recuerdos (2026-11-22):** son historial, y tras cada respuesta un nodo decide qué se
+  recuerda (ADR 0028).
 - **Sin hueco al rescatar la búsqueda (2026-11-22):** cuando la búsqueda por significado se rescata (nadie la tomó a
   tiempo o su nodo se cayó) o vence en su último intento, cerrarla y dejar la respuesta en la cola van en un solo
   commit. Antes iban en dos: en medio, la app veía «fallido» y dejaba de esperar, y otro mensaje podía entrar y

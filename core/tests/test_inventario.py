@@ -237,7 +237,7 @@ def test_migracion_de_la_version_13_conserva_objetos_y_agrega_campos_opcionales(
     con.close()
     con = memoria.abrir(ruta)
     recuperado = inventario.obtener(con, viejo.id)
-    assert memoria.VERSION_ESQUEMA == 14
+    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
     assert (recuperado.nombre, recuperado.lugar, recuperado.padre_id, recuperado.ranuras) == (
         "objeto antiguo", "caja", None, []
     )
@@ -247,12 +247,12 @@ def test_migracion_de_la_version_13_conserva_objetos_y_agrega_campos_opcionales(
 def test_un_enlace_viejo_a_un_objeto_no_lo_hereda_un_objeto_nuevo(tmp_path):
     ruta = str(tmp_path / "ashur.db")
     con = memoria.abrir(ruta)
+    # En la versión 6 se aceptaba cualquier inventario_id.
+    memoria.crear(con, memoria.RecuerdoNuevo.model_validate(recuerdo_con("obj-3", "obj-1", None)))
     con.execute("DROP TABLE objetos")
     quitar_desde(con, 9)
     con.execute("PRAGMA user_version = 6")
     con.commit()
-    # En la versión 6 se aceptaba cualquier inventario_id.
-    memoria.crear(con, memoria.RecuerdoNuevo.model_validate(recuerdo_con("obj-3", "obj-1", None)))
     con.close()
     con = memoria.abrir(ruta)
     nuevo = inventario.crear(con, inventario.ObjetoNuevo(nombre="paraguas", lugar=None))

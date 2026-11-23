@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from ashur_core import herramientas
 from ashur_core.app import app
+from bases import recordar_del_chat
 
 ADMIN = {"X-Ashur-Clave-Admin": "a"}
 GB = 1_000_000_000
@@ -88,8 +89,11 @@ def test_ashur_usa_el_inventario_y_responde_con_lo_que_encontro(cliente):
     completa = cliente.get("/conversaciones/con-1").json()
     assert completa["espera"] is None
     assert [m["texto"] for m in completa["mensajes"]] == ["¿Dónde está la bici?", "Está en el garaje."]
-    # Solo la respuesta final es mensaje y recuerdo; las rondas viven en los trabajos.
-    assert [r["texto"] for r in cliente.get("/recuerdos").json()] == ["¿Dónde está la bici?", "Está en el garaje."]
+    # Solo la respuesta final es mensaje; las rondas viven en los trabajos, y el nodo solo ve el intercambio al
+    # decidir qué recordar.
+    transcripcion = recordar_del_chat(cliente, nodo)["entrada"]["messages"][1]["content"]
+    assert transcripcion == "Último intercambio:\nSergio: ¿Dónde está la bici?\nAshur: Está en el garaje."
+    assert cliente.get("/recuerdos").json() == []
 
 
 def test_argumentos_como_texto_json_y_herramientas_varias(cliente):
@@ -164,6 +168,7 @@ def test_pasado_el_limite_una_respuesta_con_texto_y_llamadas_termina(cliente):
         entregar(cliente, nodo, tomar(cliente, nodo), llamadas=[("listar_identidades", {})])
     entregar(cliente, nodo, tomar(cliente, nodo), "Hola.", llamadas=[("listar_identidades", {})])
     assert cliente.get("/conversaciones/con-1").json()["mensajes"][-1]["texto"] == "Hola."
+    recordar_del_chat(cliente, nodo)
     assert tomar(cliente, nodo) is None
 
 

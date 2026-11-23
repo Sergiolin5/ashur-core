@@ -96,7 +96,8 @@ def test_una_entrega_tardia_no_duplica_la_respuesta(entorno, monkeypatch):
     monkeypatch.setattr(chat, "agregar", original)
     assert intentos_de_b == [None]
     assert c.post(f"/nodo/trabajos/{j}", json=texto("respuesta de B"), headers=hb).status_code == 409
-    assert sql(db, "SELECT COUNT(*) FROM recuerdos WHERE origen = 'chat-ashur'")[0][0] == 1
+    assert sql(db, "SELECT COUNT(*) FROM mensajes WHERE rol = 'assistant'")[0][0] == 1
+    assert sql(db, "SELECT COUNT(*) FROM trabajos WHERE json_extract(entrada, '$.proposito') = 'recuerdos'")[0][0] == 1
 
 
 def test_una_busqueda_de_un_nodo_caido_no_frena_la_respuesta(entorno):
@@ -142,10 +143,10 @@ def test_una_falla_al_guardar_el_mensaje_no_traba_la_conversacion(entorno, monke
     def roto(*a, **k):
         raise sqlite3.OperationalError("database is locked")
 
-    original = app_mod._decir
-    monkeypatch.setattr(app_mod, "_decir", roto)
+    original = chat.agregar
+    monkeypatch.setattr(chat, "agregar", roto)
     assert c.post("/conversaciones/con-1/mensajes", json={"texto": "Hola"}).status_code == 500
-    monkeypatch.setattr(app_mod, "_decir", original)
+    monkeypatch.setattr(chat, "agregar", original)
     assert c.post("/conversaciones/con-1/mensajes", json={"texto": "Hola"}).status_code == 202
 
 

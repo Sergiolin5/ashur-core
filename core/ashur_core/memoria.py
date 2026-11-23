@@ -11,7 +11,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validato
 from ashur_core import chat, identidades, inventario, modulos, nodos, personalidad, personas, significado
 from ashur_core.galaxia import Aprendizaje  # lo que hace crecer el polvo, del contrato de la galaxia
 
-VERSION_ESQUEMA = 14
+VERSION_ESQUEMA = 15
 
 
 class Identidad(BaseModel):
@@ -122,6 +122,8 @@ def abrir(ruta: str) -> sqlite3.Connection:
             personalidad.migrar(conexion)  # versión 13: correcciones al terminar cada conversación
         if version < 14:
             inventario.migrar_13_a_14(conexion)  # versión 14: jerarquía y datos ampliados de los objetos
+        if version < 15:
+            _migrar_14_a_15(conexion)  # versión 15: los mensajes del chat ya no son recuerdos
         conexion.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
         conexion.execute("COMMIT")
     except BaseException:
@@ -131,6 +133,17 @@ def abrir(ruta: str) -> sqlite3.Connection:
         raise
     conexion.isolation_level = ""  # de aquí en adelante, transacciones normales con commit()
     return conexion
+
+
+def _migrar_14_a_15(conexion: sqlite3.Connection) -> None:
+    """Versión 15: cada recuerdo que sale del chat guarda de qué mensaje salió (docs/adr/0028-recuerdos-del-chat.md).
+    Los de antes, cuando cada mensaje era un recuerdo, salieron de su propio mensaje."""
+    conexion.execute("ALTER TABLE recuerdos ADD COLUMN mensaje_id INTEGER")
+    conexion.execute(
+        "UPDATE recuerdos SET mensaje_id = (SELECT m.id FROM mensajes m WHERE m.recuerdo_id = recuerdos.id)"
+        " WHERE id IN (SELECT recuerdo_id FROM mensajes)"
+    )
+    chat.migrar_14_a_15(conexion)
 
 
 def _migrar_3_a_4(conexion: sqlite3.Connection) -> None:
@@ -191,10 +204,12 @@ def _desde_fila(fila: tuple) -> Recuerdo:
     )
 
 
-def crear(conexion: sqlite3.Connection, nuevo: RecuerdoNuevo) -> Recuerdo:
+def crear(conexion: sqlite3.Connection, nuevo: RecuerdoNuevo, mensaje_id: int | None = None) -> Recuerdo:
+    """[mensaje_id] es el mensaje del chat del que un nodo sacó este recuerdo. De ahí sale de qué conversación es, y
+    con eso de quién (ashur_core/personas.py)."""
     cursor = conexion.execute(
-        "INSERT INTO recuerdos (texto, origen, fecha, sensibilidad, identidades, objetos, opinion)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO recuerdos (texto, origen, fecha, sensibilidad, identidades, objetos, opinion, mensaje_id)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             nuevo.texto,
             nuevo.origen,
@@ -203,6 +218,7 @@ def crear(conexion: sqlite3.Connection, nuevo: RecuerdoNuevo) -> Recuerdo:
             json.dumps([i.model_dump() for i in nuevo.identidades], ensure_ascii=False),
             json.dumps([o.model_dump() for o in nuevo.objetos], ensure_ascii=False),
             nuevo.opinion,
+            mensaje_id,
         ),
     )
     conexion.commit()
@@ -240,16 +256,22 @@ PALABRAS_VACIAS = frozenset(
 )
 
 
+def consulta_de(texto: str) -> str | None:
+    """La consulta de FTS5 con alguna de las palabras de [texto] que sirven para buscar, o None si no hay ninguna.
+    También la usa la búsqueda en el historial del chat (chat.buscar)."""
+    palabras = [p for p in re.findall(r"\w+", texto) if len(p) >= 3 and p.lower() not in PALABRAS_VACIAS]
+    return " OR ".join(f'"{p}"*' for p in palabras) if palabras else None
+
+
 def buscar_alguna(
     conexion: sqlite3.Connection, texto: str, limite: int = 20, permitidos: set[int] | None = None
 ) -> list[int]:
     """Para el chat: recuerdos con alguna de las palabras de [texto] (de tres letras o más y que no sean palabras
     vacías), los más relevantes primero. A diferencia de [buscar], no exige todas: una frase entera casi nunca aparece
     completa en un recuerdo."""
-    palabras = [p for p in re.findall(r"\w+", texto) if len(p) >= 3 and p.lower() not in PALABRAS_VACIAS]
-    if not palabras:
+    consulta = consulta_de(texto)
+    if consulta is None:
         return []
-    consulta = " OR ".join(f'"{p}"*' for p in palabras)
     limite_sql = "" if permitidos is not None else f" LIMIT {int(limite)}"
     filas = conexion.execute(
         f"SELECT rowid FROM recuerdos_busqueda WHERE recuerdos_busqueda MATCH ? ORDER BY rank{limite_sql}", (consulta,)
@@ -257,6 +279,15 @@ def buscar_alguna(
     # Con [permitidos], solo esos: con otra persona, Ashur solo usa lo que salió de ella (docs/adr/0022).
     ids = [f[0] for f in filas if permitidos is None or f[0] in permitidos]
     return ids[:limite]
+
+
+def salidos_de(conexion: sqlite3.Connection, mensajes: set[int]) -> set[int]:
+    """Los recuerdos que salieron de esos mensajes del chat."""
+    if not mensajes:
+        return set()
+    marcas = ",".join("?" * len(mensajes))
+    filas = conexion.execute(f"SELECT id FROM recuerdos WHERE mensaje_id IN ({marcas})", list(mensajes)).fetchall()
+    return {f[0] for f in filas}
 
 
 def obtener(conexion: sqlite3.Connection, id_: int) -> Recuerdo | None:
@@ -295,10 +326,13 @@ def editar(conexion: sqlite3.Connection, id_: int, cambios: CambiosRecuerdo) -> 
 
 
 def borrar(conexion: sqlite3.Connection, id_: int) -> bool:
+    fila = conexion.execute("SELECT mensaje_id FROM recuerdos WHERE id = ?", (id_,)).fetchone()
     cursor = conexion.execute("DELETE FROM recuerdos WHERE id = ?", (id_,))
     significado.olvidar(conexion, id_)
     if cursor.rowcount > 0:
         chat.seguir_al_recuerdo(conexion, id_, chat.BORRADO)
+        if fila[0] is not None:
+            chat.borrar_intercambio(conexion, fila[0])
     conexion.commit()
     return cursor.rowcount > 0
 
@@ -323,3 +357,48 @@ def cambiar_inicio(conexion: sqlite3.Connection, inicio: datetime) -> Aprendizaj
 
 def contar_por_origen(conexion: sqlite3.Connection, origen: str) -> int:
     return conexion.execute("SELECT COUNT(*) FROM recuerdos WHERE origen = ?", (origen,)).fetchone()[0]
+
+
+# ── Lo que un nodo decide recordar del chat (docs/adr/0028-recuerdos-del-chat.md) ──
+
+ORIGEN_CHAT = "chat"
+POR_INTERCAMBIO = 3
+LARGO_RECUERDO = 300
+# Cuántos mensajes anteriores ve el nodo para entender el intercambio («sí, ese» no dice nada solo).
+CONTEXTO = 4
+
+INSTRUCCIONES = (
+    "Decides qué vale la pena guardar en la memoria de Ashur, un asistente personal, del último intercambio de una "
+    "conversación con {nombre}. Guarda solo lo que {nombre} contó y que servirá más adelante: hechos de su vida, "
+    "planes, gustos, decisiones, personas, lugares y dónde están sus cosas. No guardes saludos, preguntas, pedidos "
+    "del momento ni lo que dijo Ashur: eso solo sirve para entender. Escribe como máximo {cuantas} líneas, cada una "
+    "empezando con «- », en tercera persona, nombrando a {nombre}, y que se entiendan solas, sin la conversación. Si "
+    "no hay nada que guardar, escribe solo NADA."
+)
+
+
+def pedido_de_recuerdos(mensajes: list, nombre: str, id_conversacion: str) -> dict:
+    """El trabajo de fondo que sale tras cada respuesta de Ashur: [mensajes] termina en el mensaje de la persona y la
+    respuesta. Nunca lleva herramientas."""
+    def lineas(lista):
+        return "\n".join(f"{'Ashur' if m.rol == 'assistant' else nombre}: {m.texto}" for m in lista)
+
+    antes, intercambio = mensajes[:-2], mensajes[-2:]
+    transcripcion = (f"Antes, solo para entender:\n{lineas(antes)}\n\n" if antes else "") + (
+        f"Último intercambio:\n{lineas(intercambio)}"
+    )
+    return {
+        "messages": [
+            {"role": "system", "content": INSTRUCCIONES.format(nombre=nombre, cuantas=POR_INTERCAMBIO)},
+            {"role": "user", "content": transcripcion},
+        ],
+        "proposito": "recuerdos",
+        "conversacion": id_conversacion,
+        "mensaje": intercambio[0].id,
+        "vistos": [m.id for m in mensajes],
+    }
+
+
+def leer_recuerdos(texto: str) -> list[str]:
+    """Las líneas «- …» de la respuesta del nodo, como máximo tres. NADA es ninguna."""
+    return personalidad.vinetas(texto, POR_INTERCAMBIO, LARGO_RECUERDO)

@@ -6,6 +6,7 @@ punto 8). Las pruebas usan texto inventado.
 """
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 
@@ -172,11 +173,20 @@ def pedido_de_correcciones(mensajes: list, id_conversacion: str) -> dict:
 
 def leer_correcciones(texto: str) -> list[str]:
     """Las líneas «- …» de la respuesta, como máximo dos, de una línea y cortas. NADA es ninguna."""
-    if texto.strip().upper().startswith("NADA"):
+    return vinetas(texto, POR_CONVERSACION, LARGO_CORRECCION)
+
+
+def vinetas(texto: str, cuantas: int, largo: int) -> list[str]:
+    """Las líneas «- …» de lo que escribió un modelo, hasta [cuantas] y de hasta [largo] caracteres. También lee así
+    los recuerdos que un nodo saca del chat (memoria.leer_recuerdos)."""
+    def nada(linea: str) -> bool:  # la palabra entera: «Nadar es su deporte» sí es una línea
+        return re.match(r"nada\b", linea.strip(), re.IGNORECASE) is not None
+
+    if nada(texto):
         return []
     lineas = [l.strip()[1:].strip() for l in texto.splitlines() if l.strip().startswith(("-", "•"))]
     # «- Nada que corregir.» también es ninguna: qwen suele contestar con viñetas.
-    return [l[:LARGO_CORRECCION] for l in lineas if l and not l.upper().startswith("NADA")][:POR_CONVERSACION]
+    return [l[:largo] for l in lineas if l and not nada(l)][:cuantas]
 
 
 def migrar(conexion: sqlite3.Connection) -> None:

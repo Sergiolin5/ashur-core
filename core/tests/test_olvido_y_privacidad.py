@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from ashur_core import chat, herramientas
 from ashur_core.app import app
+from bases import recordar_del_chat
 
 ADMIN = {"X-Ashur-Clave-Admin": "a"}
 QWEN7 = {"nombre": "qwen2.5:7b", "tamano": 4_700_000_000, "capacidades": ["completion", "tools"]}
@@ -53,45 +54,76 @@ def persona(cliente, nombre="Christian"):
     return id_, TestClient(app, headers={"X-Ashur-Clave": clave})
 
 
-# ── El mensaje sigue a su recuerdo ──
+# ── Lo que se olvida se olvida en el chat ──
 
 
-def test_borrar_el_recuerdo_de_un_mensaje_lo_borra_del_chat_y_del_titulo(cliente):
+def test_borrar_un_recuerdo_del_chat_borra_del_historial_el_intercambio_del_que_salio(cliente):
     nodo = nuevo_nodo(cliente)
     conv = cliente.post("/conversaciones").json()["id"]
     cliente.post(f"/conversaciones/{conv}/mensajes", json={"texto": "Mi clave del banco es 1234"})
-    responder(cliente, nodo, tomar(cliente, nodo), "Anotado.")
-    recuerdo = cliente.get(f"/conversaciones/{conv}").json()["mensajes"][0]["recuerdo_id"]
+    responder(cliente, nodo, tomar(cliente, nodo), "Anotado: 1234.")
+    recordar_del_chat(cliente, nodo, "- La clave del banco de Sergio es 1234.")
+    cliente.post(f"/conversaciones/{conv}/mensajes", json={"texto": "Gracias"})
+    responder(cliente, nodo, tomar(cliente, nodo), "De nada.")
+    recordar_del_chat(cliente, nodo)
+    recuerdo = cliente.get("/recuerdos").json()[0]["id"]
 
     assert cliente.delete(f"/recuerdos/{recuerdo}", headers=ADMIN).status_code == 204
 
+    # Se van el mensaje y la respuesta de Ashur, que lo repetía; el intercambio siguiente queda.
     completa = cliente.get(f"/conversaciones/{conv}").json()
-    assert [m["texto"] for m in completa["mensajes"]] == [chat.BORRADO, "Anotado."]
+    assert [m["texto"] for m in completa["mensajes"]] == [chat.BORRADO, chat.BORRADO, "Gracias", "De nada."]
     assert completa["conversacion"]["titulo"] == chat.BORRADO
     assert "1234" not in str(cliente.get("/conversaciones").json())
-    cliente.post(f"/conversaciones/{conv}/mensajes", json={"texto": "¿Qué te dije?"})
-    pedido = tomar(cliente, nodo)["entrada"]["messages"]
-    assert "1234" not in str(pedido)
+    # Ni en el historial de esta conversación ni en la búsqueda desde otra.
+    for id_ in (conv, cliente.post("/conversaciones").json()["id"]):
+        cliente.post(f"/conversaciones/{id_}/mensajes", json={"texto": "¿Cuál es la clave del banco?"})
+        trabajo = tomar(cliente, nodo)
+        assert "1234" not in str(trabajo["entrada"]["messages"])
+        responder(cliente, nodo, trabajo, "No lo sé.")
+        recordar_del_chat(cliente, nodo)
 
 
-def test_editar_el_recuerdo_de_un_mensaje_cambia_el_mensaje_y_el_titulo(cliente):
+def test_editar_un_recuerdo_del_chat_no_cambia_lo_que_se_dijo(cliente):
+    nodo = nuevo_nodo(cliente)
     conv = cliente.post("/conversaciones").json()["id"]
     cliente.post(f"/conversaciones/{conv}/mensajes", json={"texto": "Las llaves están en la mesa"})
-    recuerdo = cliente.get(f"/conversaciones/{conv}").json()["mensajes"][0]["recuerdo_id"]
+    responder(cliente, nodo, tomar(cliente, nodo), "Anotado.")
+    recordar_del_chat(cliente, nodo, "- Las llaves de Sergio están en la mesa.")
+    recuerdo = cliente.get("/recuerdos").json()[0]["id"]
 
+    cliente.patch(f"/recuerdos/{recuerdo}", json={"texto": "Las llaves de Sergio están en el cajón."}, headers=ADMIN)
+
+    completa = cliente.get(f"/conversaciones/{conv}").json()
+    assert completa["mensajes"][0]["texto"] == "Las llaves están en la mesa"
+    assert completa["conversacion"]["titulo"] == "Las llaves están en la mesa"
+
+
+def test_un_mensaje_anterior_que_tambien_es_un_recuerdo_lo_sigue(cliente, tmp_path):
+    """Antes del ADR 0028 cada mensaje era un recuerdo: esos siguen cambiando con él, y solo ellos."""
+    conv = cliente.post("/conversaciones").json()["id"]
+    cliente.post(f"/conversaciones/{conv}/mensajes", json={"texto": "Las llaves están en la mesa"})
+    datos = {"texto": "Las llaves están en la mesa", "origen": "chat", "fecha": "2026-11-01T10:00:00+00:00",
+             "sensibilidad": "normal", "identidades": [], "objetos": [], "opinion": None}
+    recuerdo = cliente.post("/recuerdos", json=datos).json()["id"]
+    con = sqlite3.connect(tmp_path / "ashur.db")
+    con.execute("UPDATE mensajes SET recuerdo_id = ?", (recuerdo,))
+    con.execute("UPDATE recuerdos SET mensaje_id = 1")
+    con.execute(  # la respuesta de entonces era otro recuerdo, con su propio id
+        "INSERT INTO mensajes (conversacion_id, rol, texto, fecha, recuerdo_id) VALUES (?, 'assistant', 'Anotado.',"
+        " '2026-11-01T10:00:01+00:00', 99)", (conv,)
+    )
+    con.commit()
+    con.close()
+
+    cliente.patch(f"/recuerdos/{recuerdo}", json={"opinion": "ojo"}, headers=ADMIN)  # otro campo no toca el mensaje
+    assert cliente.get(f"/conversaciones/{conv}").json()["mensajes"][0]["texto"] == "Las llaves están en la mesa"
     cliente.patch(f"/recuerdos/{recuerdo}", json={"texto": "Las llaves están en el cajón"}, headers=ADMIN)
-
     completa = cliente.get(f"/conversaciones/{conv}").json()
     assert completa["mensajes"][0]["texto"] == "Las llaves están en el cajón"
     assert completa["conversacion"]["titulo"] == "Las llaves están en el cajón"
-
-
-def test_editar_otro_campo_no_toca_el_mensaje(cliente):
-    conv = cliente.post("/conversaciones").json()["id"]
-    cliente.post(f"/conversaciones/{conv}/mensajes", json={"texto": "Hola"})
-    recuerdo = cliente.get(f"/conversaciones/{conv}").json()["mensajes"][0]["recuerdo_id"]
-    cliente.patch(f"/recuerdos/{recuerdo}", json={"opinion": "saludo"}, headers=ADMIN)
-    assert cliente.get(f"/conversaciones/{conv}").json()["mensajes"][0]["texto"] == "Hola"
+    cliente.delete(f"/recuerdos/{recuerdo}", headers=ADMIN)
+    assert [m["texto"] for m in cliente.get(f"/conversaciones/{conv}").json()["mensajes"]] == [chat.BORRADO, "Anotado."]
 
 
 # ── WAL ──

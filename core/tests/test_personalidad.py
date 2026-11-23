@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from ashur_core import memoria, personalidad
 from ashur_core.app import app
-from bases import quitar_desde
+from bases import quitar_desde, recordar_del_chat
 
 ADMIN = {"X-Ashur-Clave-Admin": "a"}
 GB = 1_000_000_000
@@ -49,10 +49,11 @@ def sistema_de(trabajo):
     return trabajo["entrada"]["messages"][0]["content"]
 
 
-def conversar(cliente, nodo, texto, respuesta="Listo.", conv="con-1", quien=None):
+def conversar(cliente, nodo, texto, respuesta="Listo.", conv="con-1", quien=None, recuerda="NADA"):
     (quien or cliente).post(f"/conversaciones/{conv}/mensajes", json={"texto": texto})
     trabajo = tomar(cliente, nodo)
     responder(cliente, nodo, trabajo, respuesta)
+    recordar_del_chat(cliente, nodo, recuerda)
     return trabajo
 
 
@@ -71,14 +72,16 @@ def test_la_madurez_sube_con_los_recuerdos_y_solo_entra_la_actual(cliente):
     cliente.put("/personalidad", json=INVENTADA, headers=ADMIN)
     nodo = nuevo_nodo(cliente)
     cliente.post("/conversaciones")
-    primero = conversar(cliente, nodo, "Hola")  # 1 recuerdo al mandar
+    tres = "- Uno.\n- Dos.\n- Tres."  # lo que el nodo decide recordar de cada intercambio
+    primero = conversar(cliente, nodo, "Hola", recuerda=tres)  # sin recuerdos al mandar
     assert "Tu madurez es inicial: Preguntas antes de suponer." in sistema_de(primero)
     assert "Discutes" not in sistema_de(primero)
     assert "Sin halagos." in sistema_de(primero) and "A Sergio le gustan los trenes." in sistema_de(primero)
-    segundo = conversar(cliente, nodo, "¿Y?")  # 3 recuerdos al mandar: intermedio
+    segundo = conversar(cliente, nodo, "¿Y?", recuerda=tres)  # 3 recuerdos al mandar: intermedio
     assert "Tu madurez es intermedio" in sistema_de(segundo)
-    conversar(cliente, nodo, "Ajá")
     assert cliente.get("/personalidad").json()["madurez"]["nivel"] == "pleno"  # 6 recuerdos
+    conversar(cliente, nodo, "Ajá")  # un intercambio del que no se recuerda nada no la sube
+    assert cliente.get("/personalidad").json()["madurez"]["recuerdos"] == 6
 
 
 def test_con_otra_persona_no_entra_lo_de_sergio_y_sabe_con_quien_habla(cliente):

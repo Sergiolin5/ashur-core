@@ -76,5 +76,9 @@ existía (`docs/adr/0004-memoria.md`).
   a qué se refería con «llavecitas». Depende de cómo se presentan los recuerdos y de la personalidad (fase 6). Con la
   personalidad de Sergio cargada, la misma pregunta salió bien (ADR 0024).
 
+## Revisión del 2026-11-22
+- Los mensajes del chat ya no son recuerdos (ADR 0028). La búsqueda híbrida sigue igual sobre los recuerdos, y el
+  historial del chat se busca aparte, solo por palabras.
+
 ## Pendiente
 - La privacidad por persona (fase 5): cada persona solo con sus recuerdos.

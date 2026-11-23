@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from ashur_core import memoria, personas
 from ashur_core.app import RUTAS_DE_PERSONAS, app
-from bases import quitar_desde
+from bases import quitar_desde, recordar_del_chat
 
 ADMIN = {"X-Ashur-Clave-Admin": "a"}
 GB = 1_000_000_000
@@ -137,22 +137,28 @@ def test_con_otra_persona_ashur_solo_usa_lo_que_salio_de_ella(cliente):
     primero = tomar(cliente, nodo)
     assert "plata" not in primero["entrada"]["messages"][0]["content"]
     responder(cliente, nodo, primero, "Qué lindo nombre.")
+    recordar_del_chat(cliente, nodo, "- El perro de Christian se llama Toby y le gusta el almuerzo.")
 
     otra = christian.post("/conversaciones").json()["id"]
     christian.post(f"/conversaciones/{otra}/mensajes", json={"texto": "¿Qué te conté del almuerzo?"})
     sistema = tomar(cliente, nodo)["entrada"]["messages"][0]["content"]
-    assert "Toby" in sistema and "plata" not in sistema  # lo suyo sí, la nota de Sergio no
+    assert "plata" not in sistema  # la nota de Sergio no
+    assert "- 20" in sistema and "El perro de Christian se llama Toby" in sistema  # lo que salió de su chat sí
+    assert "Christian: Mi perro se llama Toby y le gusta el almuerzo." in sistema  # y su historial, sin marca
+    assert "en el chat de" not in sistema
 
     # Con Sergio, lo que dijo Christian llega marcado con su nombre.
     cliente.post("/conversaciones")
     cliente.post("/conversaciones/con-3/mensajes", json={"texto": "¿Cómo se llama el perro de Christian?"})
     sistema_sergio = tomar(cliente, nodo)["entrada"]["messages"][0]["content"]  # el de Christian sigue tomado
     assert "Toby y le gusta el almuerzo. (lo dijo Christian en su chat)" in sistema_sergio
+    assert "Christian: Mi perro se llama Toby y le gusta el almuerzo. (en el chat de Christian)" in sistema_sergio
 
-    # Lo que dice Christian también es memoria de Sergio, y lo enlaza.
+    # Lo que el nodo recordó del chat de Christian también es memoria de Sergio, y lo enlaza.
     textos = {r["texto"]: r for r in cliente.get("/recuerdos").json()}
-    assert textos["Mi perro se llama Toby y le gusta el almuerzo."]["identidades"] == [{"nombre": "Christian", "identidad_id": id_}]
-    assert cliente.get("/identidades").json()[0]["menciones"] >= 3
+    recuerdo = textos["El perro de Christian se llama Toby y le gusta el almuerzo."]
+    assert (recuerdo["origen"], recuerdo["identidades"]) == ("chat", [{"nombre": "Christian", "identidad_id": id_}])
+    assert cliente.get("/identidades").json()[0]["menciones"] == 2
 
 
 # ── Roles ──
@@ -225,6 +231,11 @@ def test_buscar_recuerdos_respeta_la_privacidad_aunque_el_rol_la_permita(cliente
     cliente.post("/roles", json={"nombre": "Todo", "herramientas": ["buscar_*"]}, headers=ADMIN)
     cliente.patch(f"/identidades/{id_}", json={"rol": "rol-1"}, headers=ADMIN)
     nodo = nuevo_nodo(cliente)
+    # Tampoco ve el historial de Sergio, que también se busca (ADR 0028).
+    cliente.post("/conversaciones")
+    cliente.post("/conversaciones/con-1/mensajes", json={"texto": "Anota que el wifi es de la nevera."})
+    responder(cliente, nodo, tomar(cliente, nodo), "Anotado.")
+    recordar_del_chat(cliente, nodo)
     conv = christian.post("/conversaciones").json()["id"]
     christian.post(f"/conversaciones/{conv}/mensajes", json={"texto": "Hola"})
     responder(cliente, nodo, tomar(cliente, nodo), llamadas=[("buscar_recuerdos", {"texto": "wifi nevera"})])

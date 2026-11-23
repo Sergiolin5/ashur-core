@@ -80,11 +80,11 @@ def crear_recuerdo(nuevo: memoria.RecuerdoNuevo, con=Depends(conexion)) -> memor
     return _guardar_recuerdo(con, nuevo)
 
 
-def _guardar_recuerdo(con, nuevo: memoria.RecuerdoNuevo) -> memoria.Recuerdo:
-    """El único camino para guardar un recuerdo, desde la API o desde un módulo."""
+def _guardar_recuerdo(con, nuevo: memoria.RecuerdoNuevo, mensaje_id: int | None = None) -> memoria.Recuerdo:
+    """El único camino para guardar un recuerdo, desde la API, desde un módulo o desde el chat ([mensaje_id])."""
     _exigir_identidades_conocidas(con, nuevo.identidades)
     _exigir_objetos_conocidos(con, nuevo.objetos)
-    creado = memoria.crear(con, nuevo)
+    creado = memoria.crear(con, nuevo, mensaje_id)
     identidades.recalcular_niveles(con)
     return creado
 
@@ -272,20 +272,38 @@ def _completa(con, conversacion: chat.Conversacion) -> chat.ConversacionCompleta
     return chat.ConversacionCompleta(conversacion=conversacion, mensajes=chat.mensajes(con, conversacion.id), espera=espera)
 
 
-def _decir(con, id_conversacion: str, rol: str, origen: str, texto: str) -> chat.Mensaje:
-    """Todo mensaje del chat también es un recuerdo, por el mismo camino que POST /recuerdos. En la conversación de
-    otra persona, el recuerdo la enlaza: así crece en la galaxia mientras habla con Ashur."""
-    fecha = chat.ahora()
+def _extraer_recuerdos(con, id_conversacion: str) -> None:
+    """Tras cada respuesta de Ashur, deja en la cola el trabajo de fondo en el que un nodo decide qué vale la pena
+    recordar de ese intercambio (docs/adr/0028-recuerdos-del-chat.md). Los mensajes ya quedaron en el historial."""
+    mensajes = chat.mensajes(con, id_conversacion)[-(memoria.CONTEXTO + 2):]
+    # Un mensaje anterior al ADR 0028 ya es un recuerdo: su respuesta pudo llegar después de actualizar el core.
+    if len(mensajes) < 2 or mensajes[-2].rol != "user" or mensajes[-2].recuerdo_id is not None:
+        return
     _, duenio = chat.duenio(con, id_conversacion)
+    nombre = identidades.obtener(con, duenio).nombre if duenio else "Sergio"
+    nodos.encolar(con, "conversar", memoria.pedido_de_recuerdos(mensajes, nombre, id_conversacion))
+
+
+def _guardar_recuerdos(con, entrada: dict, texto: str) -> None:
+    """Lo que el nodo decidió recordar, con origen «chat» y la fecha del mensaje del que salió. En la conversación de
+    otra persona, el recuerdo la enlaza: así crece en la galaxia mientras habla con Ashur. Si mientras el nodo pensaba
+    se borró algo de lo que leyó, también el contexto, no se guarda nada: lo que se olvida no vuelve como recuerdo."""
+    leidos = [chat.obtener_mensaje(con, id_) for id_ in entrada["vistos"]]
+    if any(m is None or m[1].texto == chat.BORRADO for m in leidos):
+        return
+    conversacion, mensaje = chat.obtener_mensaje(con, entrada["mensaje"])
+    _, duenio = chat.duenio(con, conversacion)
     persona = identidades.obtener(con, duenio) if duenio else None
     enlaces = [memoria.Identidad(nombre=persona.nombre, identidad_id=persona.id)] if persona else []
-    recuerdo = _guardar_recuerdo(
-        con,
-        memoria.RecuerdoNuevo(
-            texto=texto, origen=origen, fecha=fecha, sensibilidad="normal", identidades=enlaces, objetos=[], opinion=None
-        ),
-    )
-    return chat.agregar(con, id_conversacion, rol, texto, fecha, recuerdo.id)
+    for linea in memoria.leer_recuerdos(texto):
+        _guardar_recuerdo(
+            con,
+            memoria.RecuerdoNuevo(
+                texto=linea, origen=memoria.ORIGEN_CHAT, fecha=mensaje.fecha, sensibilidad="normal", identidades=enlaces,
+                objetos=[], opinion=None,
+            ),
+            mensaje.id,
+        )
 
 
 RUTAS_DE_PERSONAS = {
@@ -323,7 +341,7 @@ def enviar_mensaje(
         nodos.descartar(con, trabajo)
         raise HTTPException(status_code=409, detail="Ashur todavía está respondiendo el mensaje anterior.")
     try:
-        _decir(con, id_, "user", chat.ORIGEN_SERGIO, nuevo.texto)
+        chat.agregar(con, id_, "user", nuevo.texto)
         if buscar_primero:
             nodos.preparar(con, trabajo, {"input": [nuevo.texto]})
         else:
@@ -340,18 +358,22 @@ RECUERDOS_EN_EL_PEDIDO = 5
 ESPERA_SIGNIFICADO_S = 15
 
 
-def _recordar(con, id_conversacion: str, vector: list[float] | None) -> list[memoria.Recuerdo]:
+def _recordar(con, id_conversacion: str, vector: list[float] | None) -> tuple[list[memoria.Recuerdo], list[str]]:
     """Búsqueda híbrida: los recuerdos que mejor combinan la búsqueda por palabras y, si hay vector, la búsqueda por
-    significado. Sin los que ya están en el historial que ve el modelo."""
+    significado; y, por palabras, lo que se dijo en otras conversaciones (docs/adr/0028-recuerdos-del-chat.md). Sin
+    lo que ya está en el historial que ve el modelo, ni los recuerdos que salieron de él."""
     historial = chat.historial(con, id_conversacion)
     ultimo = next((m.texto for m in reversed(historial) if m.rol == "user"), "")
-    vistos = {m.recuerdo_id for m in historial}
+    a_la_vista = {m.id for m in historial}
+    vistos = memoria.salidos_de(con, a_la_vista)
+    _, duenio = chat.duenio(con, id_conversacion)
     permitidos = _permitidos(con, id_conversacion)
     listas = [[i for i in memoria.buscar_alguna(con, ultimo, permitidos=permitidos) if i not in vistos]]
     if vector is not None:
         listas.append([i for i in significado.cercanos(con, vector, permitidos) if i not in vistos])
     ids = significado.combinar(*listas, cuantos=RECUERDOS_EN_EL_PEDIDO)
-    return [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
+    recuerdos = [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
+    return recuerdos, chat.buscar(con, memoria.consulta_de(ultimo), duenio, sin=a_la_vista)
 
 
 @app.post("/conversaciones/{id_}/cerrar", status_code=202, response_model=chat.ConversacionCompleta)
@@ -393,12 +415,12 @@ def _permitidos(con, id_conversacion: str) -> set[int] | None:
 def _pedido(con, id_conversacion: str, vector: list[float] | None) -> dict:
     """El pedido al modelo, con lo que encontró la búsqueda y, si hay un nodo que sepa usarlas, las herramientas que
     se ofrecen en esta conversación (docs/adr/0021-herramientas-del-chat.md)."""
-    recuerdos = _recordar(con, id_conversacion, vector)
+    recuerdos, de_antes = _recordar(con, id_conversacion, vector)
     _, duenio = chat.duenio(con, id_conversacion)
     con_quien = identidades.obtener(con, duenio).nombre if duenio else None
     pedido = chat.pedido_al_modelo(
         con, id_conversacion, recuerdos, personalidad.sistema(con, con_quien, chat.PERSONALIDAD_POR_DEFECTO),
-        autores=personas.autores(con, [r.id for r in recuerdos]),
+        autores=personas.autores(con, [r.id for r in recuerdos]), de_antes=de_antes,
     )
     ofrecidas = herramientas.herramientas_para(con, duenio, registro_de_modulos())
     if ofrecidas and nodos.hay_quien(con, "conversar", requiere="tools"):
@@ -567,7 +589,8 @@ def entregar_trabajo(
             if llamadas:
                 _ronda_de_herramientas(con, conversacion, tomado["entrada"], mensaje, llamadas)
             else:
-                _decir(con, conversacion, "assistant", chat.ORIGEN_ASHUR, texto)
+                chat.agregar(con, conversacion, "assistant", texto)
+                _extraer_recuerdos(con, conversacion)
     try:
         estado, fila = nodos.entregar(con, id_nodo, id_, resultado)
     except nodos.TrabajoAjeno:
@@ -580,6 +603,8 @@ def entregar_trabajo(
         significado.guardar(con, fila["entrada"]["recuerdos"], vectores, fila["modelo"], id_)
     elif de_fondo and tomado["entrada"].get("proposito") == "correcciones" and estado == "hecho":
         _guardar_correcciones(con, tomado["entrada"]["conversacion"], respuesta[0])
+    elif de_fondo and tomado["entrada"].get("proposito") == "recuerdos" and estado == "hecho":
+        _guardar_recuerdos(con, tomado["entrada"], respuesta[0])
     if invalida:
         raise HTTPException(status_code=422, detail=invalida)
     return Response(status_code=204)
@@ -666,12 +691,13 @@ def _ronda_de_herramientas(con, id_conversacion: str, entrada: dict, mensaje: di
     nombres = {t["function"]["name"] for t in entrada.get("tools", [])}
     ofrecidas = [h for h in ofrecidas if h.nombre in nombres]
     permitidos = _permitidos(con, id_conversacion)
+    a_la_vista = {m.id for m in chat.historial(con, id_conversacion)}
     resultados = []
     for nombre, argumentos in llamadas:
         try:
             texto = herramientas.correr(
                 con, nombre, argumentos, ofrecidas, lambda m, a, p: _modulo_desde_el_chat(con, m, a, p, duenio),
-                permitidos,
+                permitidos, duenio, a_la_vista,
             )
         except Exception as e:  # todo error es texto para el modelo; si la ronda fallara, se repetiría entera
             texto = f"La herramienta {nombre} falló: {type(e).__name__}: {e}"

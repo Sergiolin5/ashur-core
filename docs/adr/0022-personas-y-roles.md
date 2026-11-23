@@ -86,6 +86,11 @@ Sus decisiones del 2026-11-22:
   - `buscar_recuerdos` respeta la privacidad aunque el rol la permita;
   - la migración desde la versión 11.
 
+## Revisión del 2026-11-22
+- Los mensajes ya no son recuerdos (ADR 0028). «Solo los suyos» ahora son los recuerdos que un nodo sacó de sus
+  conversaciones y, del historial, los mensajes de sus conversaciones. Lo que enlaza a la persona es cada uno de
+  esos recuerdos, no cada mensaje.
+
 ## Pendiente
 - La personalidad sin «Lo que sabes de Sergio» para los demás (fase 6).
 - Una galaxia propia para otra persona, si Sergio la quiere.

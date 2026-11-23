@@ -36,7 +36,11 @@
         "rol": { "description": "user es la persona; assistant es Ashur.", "enum": ["user", "assistant"] },
         "texto": { "type": "string", "minLength": 1 },
         "fecha": { "type": "string", "format": "date-time" },
-        "recuerdo_id": { "description": "Todo mensaje también es un recuerdo.", "type": "integer", "minimum": 1 }
+        "recuerdo_id": {
+          "description": "null desde el ADR 0028: los mensajes son historial y un nodo decide después qué se recuerda. Solo los mensajes anteriores, cuando cada uno era también un recuerdo, traen el suyo.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
       }
     },
     "espera": {

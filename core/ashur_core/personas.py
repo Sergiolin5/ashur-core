@@ -2,7 +2,8 @@
 (contracts/rol.schema.json, docs/adr/0022-personas-y-roles.md).
 
 Sergio usa ASHUR_CLAVE. Cada identidad puede tener su propia clave, que solo abre sus conversaciones. Con otra
-persona, Ashur solo usa los recuerdos que salieron de los mensajes de esa persona, y solo las herramientas de su rol.
+persona, Ashur solo usa los recuerdos que salieron de las conversaciones de esa persona, y solo las herramientas de su
+rol. Cada recuerdo del chat guarda de qué mensaje salió (recuerdos.mensaje_id, docs/adr/0028-recuerdos-del-chat.md).
 """
 
 import hashlib
@@ -152,19 +153,20 @@ def autores(conexion: sqlite3.Connection, ids: list[int]) -> dict[int, str]:
         return {}
     marcas = ",".join("?" * len(ids))
     filas = conexion.execute(
-        "SELECT m.recuerdo_id, i.nombre FROM mensajes m JOIN conversaciones c ON c.id = m.conversacion_id"
-        f" JOIN identidades i ON i.id = c.identidad_id WHERE m.recuerdo_id IN ({marcas})",
+        "SELECT r.id, i.nombre FROM recuerdos r JOIN mensajes m ON m.id = r.mensaje_id"
+        " JOIN conversaciones c ON c.id = m.conversacion_id"
+        f" JOIN identidades i ON i.id = c.identidad_id WHERE r.id IN ({marcas})",
         ids,
     ).fetchall()
     return dict(filas)
 
 
 def recuerdos_de(conexion: sqlite3.Connection, identidad_id: str) -> set[int]:
-    """Los únicos recuerdos que Ashur puede usar con esa persona: los de los mensajes de sus conversaciones. No los
-    que la mencionan: esos son las notas de Sergio sobre ella."""
+    """Los únicos recuerdos que Ashur puede usar con esa persona: los que salieron de sus conversaciones. No los que
+    la mencionan: esos son las notas de Sergio sobre ella."""
     filas = conexion.execute(
-        "SELECT m.recuerdo_id FROM mensajes m JOIN conversaciones c ON c.id = m.conversacion_id"
-        " WHERE c.identidad_id = ?",
+        "SELECT r.id FROM recuerdos r JOIN mensajes m ON m.id = r.mensaje_id"
+        " JOIN conversaciones c ON c.id = m.conversacion_id WHERE c.identidad_id = ?",
         (identidad_id,),
     ).fetchall()
     return {f[0] for f in filas}

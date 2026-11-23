@@ -78,5 +78,9 @@ Es la fase 6 del chat (ADR 0016). El número 0023 está reservado para el chat e
   Ashur le habla a otra persona. Se queda así mientras casi solo habla Sergio; se separan por persona cuando otros
   usen el chat.
 
+## Revisión del 2026-11-22
+- Los mensajes ya no son recuerdos (ADR 0028): la madurez cuenta lo que un nodo decide recordar de cada
+  intercambio, no dos recuerdos por cada uno, así que sube más despacio.
+
 ## Pendiente
 - Lo de Ashur (personalidad, correcciones, roles y claves) en la configuración avanzada de la app.

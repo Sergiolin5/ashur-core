@@ -109,12 +109,14 @@ def test_ashur_recuerda_por_significado_lo_que_las_palabras_no_encuentran(client
     assert "garaje" not in sistema
     assert cliente.get("/conversaciones/con-1").json()["mensajes"][-1]["texto"] == "En el cajón azul."
 
-    # Los mensajes del chat también reciben su vector en el próximo latido.
+    # Lo que el nodo decide recordar del chat también recibe su vector en el próximo latido; los mensajes, no.
+    recuerdos = atender(cliente, nodo, "- Las llavecitas de Sergio están en el cajón azul.")
+    assert recuerdos["entrada"]["proposito"] == "recuerdos"
     latir(cliente, nodo)
     atender_todo(cliente, nodo)
     con = memoria.abrir(str(tmp_path / "ashur.db"))
     assert significado.faltantes(con) == []
-    assert con.execute("SELECT COUNT(*) FROM embeddings WHERE vector IS NOT NULL").fetchone()[0] == 4
+    assert con.execute("SELECT COUNT(*) FROM embeddings WHERE vector IS NOT NULL").fetchone()[0] == 3
     con.close()
 
 

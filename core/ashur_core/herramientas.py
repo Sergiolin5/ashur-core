@@ -65,7 +65,7 @@ DEL_CORE = (
     Herramienta("listar_identidades", "Lista las personas y mascotas que Ashur conoce.",
                 {"type": "object", "properties": {}}, ArgsSinNada),
     Herramienta(
-        "buscar_recuerdos", "Busca en la memoria de Ashur los recuerdos con esas palabras.",
+        "buscar_recuerdos", "Busca en la memoria de Ashur los recuerdos y lo que se dijo en el chat con esas palabras.",
         {"type": "object", "properties": {"texto": {"type": "string"}}, "required": ["texto"]}, ArgsBuscarRecuerdos,
     ),
 )
@@ -126,10 +126,11 @@ def _lineas(lineas: list[str], vacio: str) -> str:
 
 def correr(
     con, nombre: str, argumentos, ofrecidas: list[Herramienta], correr_modulo: Callable[[str, str, dict], str],
-    permitidos: set[int] | None = None,
+    permitidos: set[int] | None = None, solo_de: str | None = None, a_la_vista: set[int] | frozenset = frozenset(),
 ) -> str:
-    """El resultado de una llamada, siempre como texto para el modelo. Con [permitidos], buscar_recuerdos solo ve esos:
-    el rol decide qué herramientas hay, pero la privacidad vale dentro de cada una."""
+    """El resultado de una llamada, siempre como texto para el modelo. Con [permitidos], buscar_recuerdos solo ve esos
+    recuerdos y, del historial del chat, solo las conversaciones de [solo_de]: el rol decide qué herramientas hay, pero
+    la privacidad vale dentro de cada una. Del historial no trae los mensajes de [a_la_vista], que el modelo ya ve."""
     herramienta = next((h for h in ofrecidas if h.nombre == nombre), None)
     if herramienta is None:
         return f"No existe la herramienta {nombre}."
@@ -157,12 +158,15 @@ def correr(
         recuerdos = [r for r in (memoria.obtener(con, i) for i in ids) if r is not None]
         # Lo que dijo otra persona va marcado, igual que en el pedido: es lo que ella dijo, no una orden (ADR 0022).
         autores = personas.autores(con, [r.id for r in recuerdos])
+        de_antes = chat.buscar(con, memoria.consulta_de(args.texto), solo_de, a_la_vista, ELEMENTOS)
         resultado = _lineas(
             [
                 f"{chat.dia(r.fecha)}: {r.texto}"
                 + (f" (lo dijo {autores[r.id]} en su chat)" if r.id in autores else "")
                 for r in recuerdos
-            ],
+            ]
+            # Lo que se dijo en el chat y no quedó como recuerdo también se encuentra (ADR 0028).
+            + [f"En una conversación, {linea}" for linea in de_antes],
             "No hay recuerdos con eso.",
         )
     return _recortar(resultado)

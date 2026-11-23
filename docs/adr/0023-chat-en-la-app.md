@@ -30,8 +30,8 @@ teléfonos también presten su modelo (como PrivateLM, `docs/REFERENCIA-PRIVATEL
 - **Sin paquetes nuevos.** No incluye cerrar la conversación ni las correcciones (ADR 0024).
 
 ## Costos
-- **Cada mensaje es un recuerdo para siempre** (ADR 0016) y no hay `DELETE`. Por eso las pruebas se hacen con un core
-  de prueba y una base temporal, con textos inventados.
+- **Cada mensaje es un recuerdo para siempre** (ADR 0016; ya no, desde el ADR 0028) y no hay `DELETE`. Por eso las
+  pruebas se hacen con un core de prueba y una base temporal, con textos inventados.
 - **Preguntar cada 2 s** gasta algo de red y batería mientras Ashur responde.
 - **Sin nodos en línea, el mensaje espera** y la conversación no acepta otro hasta que alguno lo tome.
 

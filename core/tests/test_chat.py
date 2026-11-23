@@ -106,16 +106,14 @@ def test_conversar_con_un_nodo(cliente):
     ]
     assert completa["conversacion"]["titulo"] == "Hola, ¿dónde dejé las llaves?"
 
-    # Todo el chat también es memoria.
-    recuerdos = cliente.get("/recuerdos").json()
-    assert [(r["origen"], r["texto"]) for r in recuerdos] == [
-        ("chat", "Hola, ¿dónde dejé las llaves?"), ("chat-ashur", "No lo sé todavía.")
-    ]
-    assert [m["recuerdo_id"] for m in completa["mensajes"]] == [r["id"] for r in recuerdos]
+    # Los mensajes son historial, no memoria: qué se recuerda lo decide un nodo después (ADR 0028).
+    assert cliente.get("/recuerdos").json() == []
+    assert [m["recuerdo_id"] for m in completa["mensajes"]] == [None, None]
 
-    # El segundo mensaje lleva la conversación entera.
+    # El segundo mensaje lleva la conversación entera, y va antes que el trabajo de fondo de los recuerdos.
     cliente.post("/conversaciones/con-1/mensajes", json={"texto": "Gracias."})
     segundo = responder(cliente, nodo, "De nada.")
+    assert "proposito" not in segundo["entrada"]
     assert [m["role"] for m in segundo["entrada"]["messages"]] == ["system", "user", "assistant", "user"]
     assert [c["id"] for c in cliente.get("/conversaciones").json()] == ["con-1"]
 
