@@ -203,6 +203,27 @@ def test_el_ejecutor_arma_el_comando_y_lee_la_respuesta_de_claude():
         ejecutor.leer_respuesta("claude_code", "no es json")
 
 
+def test_tomar_y_entregar_son_solo_de_administrador_y_el_ejecutor_manda_esa_clave(monkeypatch):
+    manifiesto = json.loads(Path(__file__).with_name("modulo.json").read_text(encoding="utf-8"))
+    assert sorted(a["id"] for a in manifiesto["acciones"] if a.get("admin")) == ["entregar_tarea", "tomar_tarea"]
+    vistos = []
+
+    class Respuesta:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b'{"resultado": {"tarea": null}}'
+
+    monkeypatch.setattr(ejecutor.urllib.request, "urlopen", lambda pedido, timeout: vistos.append(pedido) or Respuesta())
+    assert ejecutor.accion("http://core/", "secreta", "tomar_tarea", {}) == {"tarea": None}
+    assert vistos[0].full_url == "http://core/modulos/workbench/acciones/tomar_tarea"
+    assert vistos[0].get_header("X-ashur-clave-admin") == "secreta" and not vistos[0].has_header("X-ashur-clave")
+
+
 def test_el_ejecutor_toma_resuelve_y_entrega_contra_el_modulo():
     c = ContextoFalso()
     proveedor = _crear(c, "proveedores", nombre="Claude Code", familia="claude_code")

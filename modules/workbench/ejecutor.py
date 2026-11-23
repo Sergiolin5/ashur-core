@@ -1,12 +1,13 @@
 """Ejecutor de Workbench: corre en un equipo de Sergio (por ejemplo su Mac), le pide tareas al core y las resuelve con
 el programa oficial de cada familia, ya con su sesión iniciada. Ashur nunca ve esas credenciales.
 
-    ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE=... python3 modules/workbench/ejecutor.py
+    ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE_ADMIN=... python3 modules/workbench/ejecutor.py
 
 Variables:
 - ASHUR_CORE: dirección del core. Obligatoria.
-- ASHUR_CLAVE: la clave normal del core (no la de administrador). Si falta, en macOS se lee del Llavero, de la
-  entrada `ashur-workbench-ejecutor`, para no dejarla en texto plano (ver README.md).
+- ASHUR_CLAVE_ADMIN: la clave de administrador del core: tomar y entregar tareas son acciones solo de administrador
+  (docs/adr/0030-acciones-solo-de-administrador.md). Si falta, en macOS se lee del Llavero, de la entrada
+  `ashur-workbench-ejecutor`, para no dejarla en texto plano (ver README.md).
 - ASHUR_EQUIPO: nombre con el que aparece este equipo en Workbench. Por defecto, el nombre de la máquina.
 - ASHUR_EJECUTOR_FAMILIAS: familias que atiende, separadas por comas. Por defecto, solo claude_code.
 
@@ -89,7 +90,7 @@ def accion(core: str, clave: str, nombre: str, parametros: dict) -> dict:
     pedido = urllib.request.Request(
         f"{core.rstrip('/')}/modulos/workbench/acciones/{nombre}",
         data=json.dumps(parametros).encode("utf-8"),
-        headers={"Content-Type": "application/json", "X-Ashur-Clave": clave},
+        headers={"Content-Type": "application/json", "X-Ashur-Clave-Admin": clave},
     )
     with urllib.request.urlopen(pedido, timeout=30) as respuesta:
         return json.loads(respuesta.read().decode("utf-8"))["resultado"]
@@ -127,9 +128,9 @@ def clave_del_llavero() -> str | None:
 
 def main() -> int:
     core = os.environ.get("ASHUR_CORE")
-    clave = os.environ.get("ASHUR_CLAVE") or clave_del_llavero()
+    clave = os.environ.get("ASHUR_CLAVE_ADMIN") or clave_del_llavero()
     if not core or not clave:
-        print(f"Falta ASHUR_CORE, o la clave: ASHUR_CLAVE o la entrada {SERVICIO_LLAVERO} del Llavero.", file=sys.stderr)
+        print(f"Falta ASHUR_CORE, o la clave de administrador: ASHUR_CLAVE_ADMIN o la entrada {SERVICIO_LLAVERO} del Llavero.", file=sys.stderr)
         return 2
     equipo = os.environ.get("ASHUR_EQUIPO") or socket.gethostname().split(".")[0]
     pedidas = [f.strip() for f in os.environ.get("ASHUR_EJECUTOR_FAMILIAS", "claude_code").split(",") if f.strip()]
@@ -146,7 +147,8 @@ def main() -> int:
                 print(time.strftime("%H:%M:%S"), "tarea entregada")
                 continue  # puede haber otra esperando
         except urllib.error.HTTPError as e:
-            print(time.strftime("%H:%M:%S"), f"el core respondió HTTP {e.code}", file=sys.stderr)
+            motivo = " (la clave no es la de administrador del core)" if e.code == 401 else ""
+            print(time.strftime("%H:%M:%S"), f"el core respondió HTTP {e.code}{motivo}", file=sys.stderr)
         except OSError as e:  # sin red o core apagado: se reintenta
             print(time.strftime("%H:%M:%S"), f"sin core: {getattr(e, 'reason', e)}", file=sys.stderr)
         except KeyboardInterrupt:

@@ -11,7 +11,7 @@ Centro de desarrollo de Ashur: la pestaña Workbench de la app. Rehace Nexo DevH
   API de OpenAI, como Ollama. Copilot no tiene API: sus tareas no se ejecutan desde Ashur.
 - **Familias de equipo** (`claude_code`, `codex`, `gemini_cli`): no usan clave. `ejecutar_tarea` deja la tarea
   esperando, y la resuelve un equipo de Sergio con el programa oficial y su sesión ya iniciada (abajo). Ashur nunca ve
-  esas credenciales. `tomar_tarea` y `entregar_tarea` son para ese programa.
+  esas credenciales. `tomar_tarea` y `entregar_tarea` son para ese programa y piden la clave de administrador.
 - **Reparto:** cada tarea en cola va al proveedor activo con más cuota libre.
 
 Autoprueba, desde `core/`: `uv run pytest ../modules/workbench/autoprueba.py`.
@@ -23,7 +23,7 @@ con la cuenta de uno. Por eso las tareas de las familias de equipo las resuelve 
 de Sergio y solo usa la biblioteca estándar de Python:
 
 ```bash
-ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE=... python3 modules/workbench/ejecutor.py
+ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE_ADMIN=... python3 modules/workbench/ejecutor.py
 ```
 
 - Es el equipo el que le pide trabajo al core cada 10 segundos. No hay que abrirle puertos ni saber su dirección.
@@ -31,11 +31,12 @@ ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE=... python3 modules/workbench/ejecut
 - Claude Code corre con `claude -p`, sin herramientas ni servidores MCP y en una carpeta vacía: solo devuelve texto.
 - `ASHUR_EQUIPO` cambia el nombre con que aparece el equipo. `ASHUR_EJECUTOR_FAMILIAS=claude_code,codex,gemini_cli`
   activa las otras familias; Codex y Gemini CLI quedaron escritos pero **sin probar**, porque no estaban instalados.
-- La clave es la normal del core, no la de administrador.
+- La clave es la de administrador del core: `tomar_tarea` y `entregar_tarea` son acciones solo de administrador
+  (`docs/adr/0030-acciones-solo-de-administrador.md`), así nadie con la clave normal puede entregar un resultado.
 
 ### Que arranque solo en la Mac
 
-1. Guarda la clave en el Llavero, para no dejarla en texto plano (la pide sin mostrarla):
+1. Guarda la clave de administrador en el Llavero, para no dejarla en texto plano (la pide sin mostrarla):
 
    ```bash
    security add-generic-password -U -s ashur-workbench-ejecutor -a ashur -w
@@ -43,5 +44,7 @@ ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE=... python3 modules/workbench/ejecut
 
 2. Copia `com.ashur.workbench.ejecutor.plist` a `~/Library/LaunchAgents/` y cambia en la copia `RUTA_DEL_REPO`,
    `DIRECCION_DEL_CORE` y `RUTA_DE_LOS_PROGRAMAS` (la carpeta donde está `claude`; la da `dirname "$(which claude)"`).
-3. Actívalo con `launchctl load ~/Library/LaunchAgents/com.ashur.workbench.ejecutor.plist`. Para apagarlo,
+3. launchd no puede leer un disco externo: si el repo está en uno, copia `ejecutor.py` a una carpeta de tu usuario,
+   apunta el plist a esa copia y vuelve a copiarlo cuando cambie.
+4. Actívalo con `launchctl load ~/Library/LaunchAgents/com.ashur.workbench.ejecutor.plist`. Para apagarlo,
    `launchctl unload` con la misma ruta. Lo que imprime queda en `/tmp/ashur-workbench-ejecutor.log`.

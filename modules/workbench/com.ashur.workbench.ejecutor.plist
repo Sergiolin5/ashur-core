@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Arranca el ejecutor de Workbench al iniciar sesión en la Mac y lo vuelve a levantar si se cae.
      Cambia RUTA_DEL_REPO y DIRECCION_DEL_CORE antes de copiarlo a ~/Library/LaunchAgents/ (ver README.md).
-     La clave no va aquí: el ejecutor la lee del Llavero. -->
+     La clave de administrador no va aquí: el ejecutor la lee del Llavero. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>

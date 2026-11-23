@@ -1,7 +1,7 @@
 {
   "id": "workbench",
   "nombre": "Workbench",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "descripcion": "Centro de desarrollo: reparte tareas entre modelos, vigila cuotas y sigue las entregas.",
   "acciones": [
     {"id": "listar", "descripcion": "Lista los registros de un tipo: proyectos, proveedores, tareas, entregas, servidores o equipos. Solo lee.", "escribe": false},
@@ -10,8 +10,8 @@
     {"id": "borrar", "descripcion": "Borra un registro. Solo cambia los datos propios del módulo.", "escribe": false},
     {"id": "repartir_cola", "descripcion": "Asigna cada tarea en cola al proveedor activo con más cuota libre. Solo cambia los datos propios del módulo.", "escribe": false},
     {"id": "probar_servidor", "descripcion": "Comprueba si un servidor responde en su ruta de salud y anota estado y latencia.", "escribe": false},
-    {"id": "tomar_tarea", "descripcion": "Para ejecutor.py: anota que un equipo está vivo y le da la siguiente tarea que espera a una de sus familias. Solo cambia los datos propios del módulo.", "escribe": false},
-    {"id": "entregar_tarea", "descripcion": "Para ejecutor.py: guarda la respuesta de una tarea tomada por un equipo, o su error. Solo cambia los datos propios del módulo.", "escribe": false},
+    {"id": "tomar_tarea", "descripcion": "Para ejecutor.py: anota que un equipo está vivo y le da la siguiente tarea que espera a una de sus familias. Solo la corre un administrador.", "escribe": false, "admin": true},
+    {"id": "entregar_tarea", "descripcion": "Para ejecutor.py: guarda la respuesta de una tarea tomada por un equipo, o su error. Solo la corre un administrador.", "escribe": false, "admin": true},
     {"id": "ejecutar_tarea", "descripcion": "Manda una tarea al modelo de su proveedor y guarda la respuesta, o la deja esperando a un equipo si su familia es de equipo. Gasta cuota del proveedor.", "escribe": true},
     {"id": "compilar_entrega", "descripcion": "Pide al servidor que compile una entrega, en su ruta de compilación.", "escribe": true}
   ],
