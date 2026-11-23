@@ -139,3 +139,88 @@ def test_probar_servidor_y_compilar_entrega(monkeypatch):
     monkeypatch.setattr(modulo, "_pedir_http", caido)
     assert modulo.probar_servidor(c, servidor["id"])["registro"]["estado"] == "sin_conexion"
     assert modulo.compilar_entrega(c, entrega["id"])["registro"]["estado"] == "fallida"
+
+
+def test_una_tarea_de_equipo_espera_se_toma_y_se_entrega():
+    c = ContextoFalso()
+    proveedor = _crear(c, "proveedores", nombre="Claude Code", familia="claude_code", modelo="opus")
+    otro = _crear(c, "proveedores", nombre="Codex", familia="codex")
+    tarea = _crear(c, "tareas", titulo="Probar", proveedor_id=proveedor["id"])
+    ajena = _crear(c, "tareas", titulo="De Codex", proveedor_id=otro["id"])
+    assert modulo.tomar_tarea(c, "Mac", ["claude_code"]) == {"tarea": None}  # nadie pidió ejecutarla todavía
+
+    en_espera = modulo.ejecutar_tarea(c, tarea["id"])["registro"]
+    assert (en_espera["estado"], en_espera["espera_equipo"], en_espera["equipo"]) == ("ejecutando", True, None)
+    modulo.ejecutar_tarea(c, ajena["id"])
+
+    tomada = modulo.tomar_tarea(c, "Mac", ["claude_code", "inventada"])["tarea"]
+    assert (tomada["id"], tomada["familia"], tomada["modelo"]) == (tarea["id"], "claude_code", "opus")
+    assert "Tarea: Probar" in tomada["encargo"]
+    assert [(e["nombre"], e["familias"]) for e in c.datos.listar("equipos")] == [("Mac", ["claude_code"])]
+    assert modulo.tomar_tarea(c, "Mac", ["claude_code"]) == {"tarea": None}  # ya está tomada; la de Codex no es suya
+    assert len(c.datos.listar("equipos")) == 1
+
+    with pytest.raises(ValueError):
+        modulo.entregar_tarea(c, tarea["id"], "Otra Mac", resultado="x")
+    hecha = modulo.entregar_tarea(c, tarea["id"], "Mac", resultado="Hecho.", modelo="claude-code")["registro"]
+    assert (hecha["estado"], hecha["resultado"], hecha["modelo_usado"], hecha["ejecuciones"]) == (
+        "revision", "Hecho.", "claude-code", 1
+    )
+    assert hecha["espera_equipo"] is False and c.datos.leer("proveedores", proveedor["id"])["usadas"] == 1
+    with pytest.raises(ValueError):
+        modulo.entregar_tarea(c, tarea["id"], "Mac", resultado="otra vez")
+
+
+def test_una_tarea_tomada_hace_mucho_se_vuelve_a_ofrecer_y_un_error_del_equipo_queda_anotado():
+    c = ContextoFalso()
+    proveedor = _crear(c, "proveedores", nombre="Claude Code", familia="claude_code")
+    tarea = _crear(c, "tareas", titulo="Probar", proveedor_id=proveedor["id"])
+    modulo.ejecutar_tarea(c, tarea["id"])
+    assert modulo.tomar_tarea(c, "Mac", ["claude_code"])["tarea"]["id"] == tarea["id"]
+    vieja = {**c.datos.leer("tareas", tarea["id"]), "tomada": "2020-01-01T00:00:00+00:00"}  # la Mac se apagó
+    c.datos.guardar("tareas", vieja, tarea["id"])
+    assert modulo.tomar_tarea(c, "iMac", ["claude_code"])["tarea"]["id"] == tarea["id"]
+    with pytest.raises(ValueError):
+        modulo.entregar_tarea(c, tarea["id"], "Mac", resultado="tarde")
+    fallida = modulo.entregar_tarea(c, tarea["id"], "iMac", error="claude no inició sesión")["registro"]
+    assert (fallida["estado"], fallida["error"]) == ("error", "claude no inició sesión")
+    assert c.datos.leer("proveedores", proveedor["id"])["usadas"] == 0
+
+
+_esp_ejecutor = importlib.util.spec_from_file_location("ejecutor_workbench", Path(__file__).with_name("ejecutor.py"))
+ejecutor = importlib.util.module_from_spec(_esp_ejecutor)
+_esp_ejecutor.loader.exec_module(ejecutor)
+
+
+def test_el_ejecutor_arma_el_comando_y_lee_la_respuesta_de_claude():
+    assert ejecutor.comando("claude_code", None)[:2] == ["claude", "-p"]
+    assert ejecutor.comando("claude_code", "opus")[-2:] == ["--model", "opus"]
+    assert ejecutor.leer_respuesta("claude_code", json.dumps({"is_error": False, "result": " Hecho. "})) == "Hecho."
+    assert ejecutor.leer_respuesta("codex", " texto \n") == "texto"
+    with pytest.raises(RuntimeError, match="sin sesión"):
+        ejecutor.leer_respuesta("claude_code", json.dumps({"is_error": True, "result": "sin sesión"}))
+    with pytest.raises(RuntimeError):
+        ejecutor.leer_respuesta("claude_code", "no es json")
+
+
+def test_el_ejecutor_toma_resuelve_y_entrega_contra_el_modulo():
+    c = ContextoFalso()
+    proveedor = _crear(c, "proveedores", nombre="Claude Code", familia="claude_code")
+    buena = _crear(c, "tareas", titulo="Buena", proveedor_id=proveedor["id"])
+    mala = _crear(c, "tareas", titulo="Mala", proveedor_id=proveedor["id"])
+    modulo.ejecutar_tarea(c, buena["id"])
+    modulo.ejecutar_tarea(c, mala["id"])
+
+    def accion(core, clave, nombre, parametros):  # hace de core
+        return getattr(modulo, nombre)(c, **parametros)
+
+    def resolver(familia, modelo, encargo):
+        if "Mala" in encargo:
+            raise RuntimeError("claude terminó con error")
+        return "Respuesta"
+
+    atender = lambda: ejecutor.atender_una("http://core", "k", "Mac", ["claude_code"], resolver, accion)
+    assert atender() and atender() and not atender()
+    assert c.datos.leer("tareas", buena["id"])["resultado"] == "Respuesta"
+    assert c.datos.leer("tareas", buena["id"])["modelo_usado"] == "claude"
+    assert c.datos.leer("tareas", mala["id"])["error"] == "claude terminó con error"

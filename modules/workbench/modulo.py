@@ -31,7 +31,16 @@ TIPOS = {
         "obligatorio": "nombre",
         "por_defecto": {"ruta_salud": "/", "servicios": [], "estado": "sin_probar"},
     },
+    # Los equipos que corren ejecutor.py. Se anotan solos al pedir trabajo.
+    "equipos": {"obligatorio": "nombre", "por_defecto": {"familias": []}},
 }
+
+# Familias que no se llaman por API: las resuelve un equipo de Sergio con el programa oficial de cada una, ya con su
+# sesión iniciada (ejecutor.py). Ashur nunca ve esas credenciales.
+FAMILIAS_DE_EQUIPO = ("claude_code", "codex", "gemini_cli")
+
+# Si un equipo toma una tarea y no la entrega en este tiempo, se le ofrece a otro (o al mismo, cuando vuelva).
+PLAZO_EQUIPO_S = 45 * 60
 
 # Modelo que se usa cuando el proveedor no nombra uno.
 MODELOS = {"claude": "claude-opus-5-5"}
@@ -218,11 +227,16 @@ def _preguntar(contexto, proveedor: dict, encargo: str) -> tuple[str, str]:
 
 
 def ejecutar_tarea(contexto, id: str) -> dict:
-    """Si el modelo falla, la tarea queda con error y el motivo: la acción no lanza por eso."""
+    """Si el modelo falla, la tarea queda con error y el motivo: la acción no lanza por eso. Una tarea de una familia
+    de equipo no se resuelve aquí: queda esperando a que un equipo la tome."""
     tarea = _leer(contexto, "tareas", id)
     proveedor = contexto.datos.leer("proveedores", tarea.get("proveedor_id") or "")
     if proveedor is None:
         raise ValueError("La tarea no está asignada a un proveedor.")
+    if proveedor.get("familia") in FAMILIAS_DE_EQUIPO:
+        espera = {"estado": "ejecutando", "espera_equipo": True, "pedida": _ahora(), "tomada": None, "equipo": None,
+                  "error": None}
+        return {"registro": contexto.datos.guardar("tareas", {**tarea, **espera}, id)}
     proyecto = contexto.datos.leer("proyectos", tarea.get("proyecto_id") or "")
     cambios = {"ejecuciones": int(tarea.get("ejecuciones") or 0) + 1, "ultima_ejecucion": _ahora()}
     try:
@@ -234,6 +248,63 @@ def ejecutar_tarea(contexto, id: str) -> dict:
         contexto.datos.guardar(
             "proveedores", {**proveedor, "usadas": int(proveedor.get("usadas") or 0) + 1}, proveedor["id"]
         )
+    return {"registro": contexto.datos.guardar("tareas", {**tarea, **cambios}, id)}
+
+
+def _vencida(tarea: dict) -> bool:
+    tomada = tarea.get("tomada")
+    if not tomada:
+        return True
+    return (datetime.now(timezone.utc) - datetime.fromisoformat(tomada)).total_seconds() > PLAZO_EQUIPO_S
+
+
+def tomar_tarea(contexto, equipo: str, familias: list) -> dict:
+    """Lo llama ejecutor.py desde un equipo. Anota que el equipo está vivo y le da la tarea más vieja que espera a una
+    de sus familias, o ninguna. Una tarea tomada hace más de PLAZO_EQUIPO_S se vuelve a ofrecer."""
+    equipo = str(equipo or "").strip()
+    if not equipo:
+        raise ValueError("Falta el nombre del equipo.")
+    familias = [f for f in familias if f in FAMILIAS_DE_EQUIPO]
+    conocido = next((e for e in contexto.datos.listar("equipos") if e.get("nombre") == equipo), None)
+    ficha = {"nombre": equipo, "familias": familias, "visto": _ahora()}
+    contexto.datos.guardar("equipos", ficha, conocido["id"] if conocido else None)
+    for tarea in reversed(contexto.datos.listar("tareas")):
+        if not tarea.get("espera_equipo") or not _vencida(tarea):
+            continue
+        proveedor = contexto.datos.leer("proveedores", tarea.get("proveedor_id") or "")
+        if proveedor is None or proveedor.get("familia") not in familias:
+            continue
+        contexto.datos.guardar("tareas", {**tarea, "tomada": _ahora(), "equipo": equipo}, tarea["id"])
+        proyecto = contexto.datos.leer("proyectos", tarea.get("proyecto_id") or "")
+        return {
+            "tarea": {
+                "id": tarea["id"],
+                "familia": proveedor["familia"],
+                "modelo": str(proveedor.get("modelo") or "").strip() or None,
+                "encargo": _encargo(tarea, proyecto),
+            }
+        }
+    return {"tarea": None}
+
+
+def entregar_tarea(contexto, id: str, equipo: str, resultado: str | None = None, error: str | None = None,
+                   modelo: str | None = None) -> dict:
+    """Lo llama ejecutor.py con la respuesta del programa, o con el motivo si falló. Solo vale la entrega del equipo
+    que tiene tomada la tarea."""
+    tarea = _leer(contexto, "tareas", id)
+    if not tarea.get("espera_equipo") or tarea.get("equipo") != equipo:
+        raise ValueError("Esta tarea ya no está tomada por este equipo.")
+    cambios = {"espera_equipo": False, "tomada": None, "ejecuciones": int(tarea.get("ejecuciones") or 0) + 1,
+               "ultima_ejecucion": _ahora()}
+    if str(resultado or "").strip():
+        cambios.update(estado="revision", resultado=resultado, modelo_usado=modelo or equipo, error=None)
+        proveedor = contexto.datos.leer("proveedores", tarea.get("proveedor_id") or "")
+        if proveedor is not None:
+            contexto.datos.guardar(
+                "proveedores", {**proveedor, "usadas": int(proveedor.get("usadas") or 0) + 1}, proveedor["id"]
+            )
+    else:
+        cambios.update(estado="error", error=str(error or "El equipo no devolvió texto."))
     return {"registro": contexto.datos.guardar("tareas", {**tarea, **cambios}, id)}
 
 
