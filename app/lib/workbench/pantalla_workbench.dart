@@ -57,7 +57,7 @@ class _PantallaWorkbenchState extends State<PantallaWorkbench> {
                 final contenido = Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (!ancho) _BarraSuperior(seccion: _seccion, alIr: _ir),
+                    if (!ancho) _BarraSuperior(seccion: _seccion, alIr: _ir, alActualizar: _datos.cargar),
                     Expanded(
                       child: _datos.cargando
                           ? const Center(child: Text('Cargando', style: wbCuerpo))
@@ -73,7 +73,12 @@ class _PantallaWorkbenchState extends State<PantallaWorkbench> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _BarraLateral(seccion: _seccion, alIr: _ir, servidor: _datos.servidor),
+                    _BarraLateral(
+                      seccion: _seccion,
+                      alIr: _ir,
+                      servidor: _datos.servidor,
+                      alActualizar: _datos.cargar,
+                    ),
                     Expanded(child: contenido),
                   ],
                 );
@@ -118,10 +123,13 @@ class _Marca extends StatelessWidget {
 }
 
 class _BarraSuperior extends StatelessWidget {
-  const _BarraSuperior({required this.seccion, required this.alIr});
+  const _BarraSuperior({required this.seccion, required this.alIr, required this.alActualizar});
 
   final int seccion;
   final ValueChanged<int> alIr;
+
+  /// Vuelve a pedir los datos al core.
+  final VoidCallback alActualizar;
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +139,15 @@ class _BarraSuperior extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Marca(),
+          Row(
+            children: [
+              const Expanded(child: Align(alignment: Alignment.centerLeft, child: _Marca())),
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Boton('Actualizar', alTocar: alActualizar),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -152,11 +168,17 @@ class _BarraSuperior extends StatelessWidget {
 }
 
 class _BarraLateral extends StatelessWidget {
-  const _BarraLateral({required this.seccion, required this.alIr, required this.servidor});
+  const _BarraLateral({
+    required this.seccion,
+    required this.alIr,
+    required this.servidor,
+    required this.alActualizar,
+  });
 
   final int seccion;
   final ValueChanged<int> alIr;
   final Registro? servidor;
+  final VoidCallback alActualizar;
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +209,8 @@ class _BarraLateral extends StatelessWidget {
               ),
             ),
           const Spacer(),
+          Align(alignment: Alignment.centerLeft, child: Boton('Actualizar', alTocar: alActualizar)),
+          const SizedBox(height: 12),
           Tarjeta(
             padding: const EdgeInsets.all(12),
             child: Column(
