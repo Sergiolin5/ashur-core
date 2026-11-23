@@ -1,0 +1,23 @@
+{
+  "id": "workbench",
+  "nombre": "Workbench",
+  "version": "0.1.0",
+  "descripcion": "Centro de desarrollo: reparte tareas entre modelos, vigila cuotas y sigue las entregas.",
+  "acciones": [
+    {"id": "listar", "descripcion": "Lista los registros de un tipo: proyectos, proveedores, tareas, entregas o servidores. Solo lee.", "escribe": false},
+    {"id": "crear", "descripcion": "Crea un registro de un tipo. Solo cambia los datos propios del módulo.", "escribe": false},
+    {"id": "editar", "descripcion": "Cambia campos de un registro. Solo cambia los datos propios del módulo.", "escribe": false},
+    {"id": "borrar", "descripcion": "Borra un registro. Solo cambia los datos propios del módulo.", "escribe": false},
+    {"id": "repartir_cola", "descripcion": "Asigna cada tarea en cola al proveedor activo con más cuota libre. Solo cambia los datos propios del módulo.", "escribe": false},
+    {"id": "probar_servidor", "descripcion": "Comprueba si un servidor responde en su ruta de salud y anota estado y latencia.", "escribe": false},
+    {"id": "ejecutar_tarea", "descripcion": "Manda una tarea al modelo de su proveedor y guarda la respuesta. Gasta cuota del proveedor.", "escribe": true},
+    {"id": "compilar_entrega", "descripcion": "Pide al servidor que compile una entrega, en su ruta de compilación.", "escribe": true}
+  ],
+  "ajustes": [
+    {"id": "clave_claude", "tipo": "texto", "descripcion": "Clave de la API de Anthropic, para los proveedores de la familia Claude.", "secreto": true},
+    {"id": "clave_gpt", "tipo": "texto", "descripcion": "Clave de la API de OpenAI, para los proveedores de la familia OpenAI.", "secreto": true},
+    {"id": "clave_gemini", "tipo": "texto", "descripcion": "Clave de la API de Gemini, para los proveedores de la familia Gemini.", "secreto": true},
+    {"id": "url_propio", "tipo": "texto", "descripcion": "Dirección de un servidor compatible con la API de OpenAI (por ejemplo Ollama), para los proveedores de la familia Propio.", "por_defecto": "http://localhost:11434/v1"},
+    {"id": "clave_propio", "tipo": "texto", "descripcion": "Clave del servidor propio, si la pide.", "secreto": true}
+  ]
+}
