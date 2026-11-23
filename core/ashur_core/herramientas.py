@@ -77,6 +77,8 @@ def de_modulos(registro) -> list[Herramienta]:
     lista, usados = [], set()
     for id_, modulo in sorted(registro.modulos.items()):
         for accion in modulo.manifiesto.acciones:
+            if accion.admin:  # solo para un administrador: Ashur no la ve
+                continue
             nombre = f"modulo-{id_}-{accion.id}"[:64]
             if nombre in usados:  # al cortarlo chocó con otro: nunca se corre una acción equivocada
                 continue

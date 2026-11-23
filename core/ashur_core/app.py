@@ -714,6 +714,8 @@ def _modulo_desde_el_chat(con, id_modulo: str, accion: str, parametros: dict, pe
     definicion = modulo.accion(accion) if modulo else None
     if definicion is None:
         return f"El módulo {id_modulo} ya no tiene la acción {accion}."
+    if definicion.admin:
+        return f"La acción {accion} solo la corre un administrador."
     if definicion.escribe:
         pedido = modulos.pedir(con, id_modulo, accion, parametros, pedido_por)
         return f"Quedó pendiente de la aprobación de Sergio (pedido {pedido.id}). Todavía no se hizo."
@@ -788,16 +790,39 @@ def listar_modulos() -> list[modulos.EstadoModulo]:
     return registro_de_modulos().estados()
 
 
-@app.post("/modulos/{id_}/acciones/{accion}", dependencies=[Depends(exigir_clave)])
-def correr_accion(id_: str, accion: str, response: Response, parametros: dict | None = None, con=Depends(conexion)):
+def _es_admin(clave_admin: str | None) -> bool:
+    esperada = os.environ.get("ASHUR_CLAVE_ADMIN")
+    return bool(esperada) and clave_admin is not None and _igual(clave_admin, esperada)
+
+
+def exigir_alguna_clave(
+    clave: str | None = Security(_encabezado_clave), clave_admin: str | None = Security(_encabezado_admin)
+) -> bool:
+    """Deja pasar con la clave normal o con la de administrador. Devuelve si quien llama es administrador."""
+    if _es_admin(clave_admin):
+        return True
+    exigir_clave(clave)
+    return False
+
+
+@app.post("/modulos/{id_}/acciones/{accion}")
+def correr_accion(
+    id_: str, accion: str, response: Response, parametros: dict | None = None, con=Depends(conexion),
+    es_admin: bool = Depends(exigir_alguna_clave),
+):
     """Una acción que solo lee corre ya. Una que escribe queda como pedido pendiente (202) hasta que un administrador
-    la apruebe."""
+    la apruebe. Una acción solo de administrador pide su clave y corre ya
+    (docs/adr/0030-acciones-solo-de-administrador.md)."""
     modulo = registro_de_modulos().modulos.get(id_)
     if modulo is None:
         raise HTTPException(status_code=404, detail="No hay un módulo registrado con ese id.")
     definicion = modulo.accion(accion)
     if definicion is None:
         raise HTTPException(status_code=404, detail="Ese módulo no tiene esa acción.")
+    if definicion.admin:
+        if not es_admin:
+            raise HTTPException(status_code=401, detail="Esta acción pide la clave de administrador.")
+        return {"resultado": _correr(con, modulo, accion, parametros or {})}
     if definicion.escribe:
         response.status_code = 202
         return modulos.pedir(con, id_, accion, parametros or {}).model_dump()

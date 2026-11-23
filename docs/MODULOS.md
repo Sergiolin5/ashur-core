@@ -13,7 +13,7 @@ Cada módulo tiene un manifiesto `modulo.json` en su raíz con:
 | `nombre` | Nombre visible para Sergio. |
 | `version` | Versión del módulo. |
 | `descripcion` | Una frase sobre lo que hace. |
-| `acciones` | Lista de lo que el módulo sabe hacer. Cada acción tiene `id`, `descripcion` y si `escribe` (cambia algo fuera de Ashur) o solo lee. |
+| `acciones` | Lista de lo que el módulo sabe hacer. Cada acción tiene `id`, `descripcion` y si `escribe` (cambia algo fuera de Ashur) o solo lee. Opcional: `admin`, si solo la corre un administrador. |
 
 El módulo no guarda memoria propia: lo que aprende se lo entrega al core, que es la única memoria de Ashur. Sí puede
 guardar datos propios de trabajo (sección 2).
@@ -40,6 +40,9 @@ Ver `docs/adr/0013-modulos-en-el-core.md`.
   `contexto.ajuste(id)`, que devuelve lo que puso Sergio o el `por_defecto`. Un secreto nunca se vuelve a mostrar
   (`docs/adr/0019-ajustes-de-modulos-y-nodos.md`). Es opcional: un manifiesto sin `ajustes` sigue valiendo.
 - **Registro:** el core descubre los módulos de `modules/` solo. Uno roto aparece en `GET /modulos` con su error.
+- **Acciones solo de administrador:** una acción con `"admin": true` en el manifiesto pide la clave de administrador
+  (`X-Ashur-Clave-Admin`) y entonces corre ya, sin pedido. No se ofrece en el chat
+  (`docs/adr/0030-acciones-solo-de-administrador.md`).
 - **Acciones que escriben:** `POST /modulos/<id>/acciones/<accion>` crea un pedido pendiente, y la acción corre recién
   cuando un administrador lo aprueba en `POST /pedidos/<id>/aprobar`.
 - **Sin paquetes nuevos** salvo aprobación de Sergio; si hace falta uno, se agrega al core en una tarea aparte.

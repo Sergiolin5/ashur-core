@@ -161,3 +161,38 @@ def test_una_base_del_esquema_15_gana_la_tabla_de_datos(tmp_path):
     con = memoria.abrir(ruta)
     assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
     assert modulos.Datos(con, "uno").listar("x") == []
+
+
+def test_una_accion_solo_de_administrador_pide_su_clave_y_corre_sin_pedido(tmp_path, monkeypatch):
+    from ashur_core import herramientas
+
+    carpeta = tmp_path / "modules"
+    escribir_modulo(
+        carpeta, "taller",
+        [{"id": "entregar", "descripcion": "Solo administrador.", "escribe": False, "admin": True},
+         {"id": "mirar", "descripcion": "Lee.", "escribe": False},
+         {"id": "enviar", "descripcion": "Escribe.", "escribe": True}],
+        "def entregar(contexto, texto=''):\n    return {'entregado': texto}\n"
+        "def mirar(contexto):\n    return {'ok': True}\n"
+        "def enviar(contexto):\n    return {'enviado': True}\n",
+    )
+    monkeypatch.setenv("ASHUR_MODULOS", str(carpeta))
+    monkeypatch.setenv("ASHUR_DB", str(tmp_path / "ashur.db"))
+    monkeypatch.setenv("ASHUR_CLAVE", "c")
+    monkeypatch.setenv("ASHUR_CLAVE_ADMIN", "a")
+    normal, admin, nadie = TestClient(app, headers={"X-Ashur-Clave": "c"}), TestClient(app, headers=ADMIN), TestClient(app)
+    ruta = "/modulos/taller/acciones/"
+
+    assert normal.post(ruta + "entregar", json={"texto": "x"}).status_code == 401
+    assert nadie.post(ruta + "entregar", json={"texto": "x"}).status_code == 401
+    assert TestClient(app, headers={"X-Ashur-Clave-Admin": "mala"}).post(ruta + "entregar").status_code == 401
+    hecho = admin.post(ruta + "entregar", json={"texto": "x"})
+    assert hecho.status_code == 200 and hecho.json() == {"resultado": {"entregado": "x"}}
+    assert normal.get("/pedidos").json() == []  # corrió sin pedido
+
+    assert admin.post(ruta + "mirar").json() == {"resultado": {"ok": True}}  # el administrador también lee
+    assert admin.post(ruta + "enviar").status_code == 202  # y lo que escribe sigue siendo un pedido
+    assert nadie.post(ruta + "mirar").status_code == 401
+
+    registro = modulos.descubrir(carpeta)
+    assert [h.accion for h in herramientas.de_modulos(registro)] == ["mirar", "enviar"]  # Ashur no ve la de admin
