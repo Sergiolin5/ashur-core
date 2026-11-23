@@ -15,7 +15,8 @@ Cada módulo tiene un manifiesto `modulo.json` en su raíz con:
 | `descripcion` | Una frase sobre lo que hace. |
 | `acciones` | Lista de lo que el módulo sabe hacer. Cada acción tiene `id`, `descripcion` y si `escribe` (cambia algo fuera de Ashur) o solo lee. |
 
-El módulo no guarda memoria propia: lo que aprende se lo entrega al core, que es la única memoria de Ashur.
+El módulo no guarda memoria propia: lo que aprende se lo entrega al core, que es la única memoria de Ashur. Sí puede
+guardar datos propios de trabajo (sección 2).
 
 ## 2. Cómo se registra y corre en el core
 Ver `docs/adr/0013-modulos-en-el-core.md`.
@@ -26,10 +27,14 @@ Ver `docs/adr/0013-modulos-en-el-core.md`.
   - `autoprueba.py`, que corre sin red ni core, con un contexto falso. Desde `core/`:
     `uv run pytest ../modules/<id>/autoprueba.py`.
 - **Contexto:** `contexto.recordar(texto, fecha=None, sensibilidad="normal", identidades=None, objetos=None,
-  opinion=None)` guarda un recuerdo en el core con `origen` igual al id del módulo. Con `contexto.ajuste(id)` (abajo),
+  opinion=None)` guarda un recuerdo en el core con `origen` igual al id del módulo. Con `contexto.datos` y `contexto.ajuste(id)` (abajo),
   es todo lo que el módulo recibe.
   Como no puede consultar las identidades ni el inventario, usa `identidad_id: null` e `inventario_id: null`: un id
   que no existe hace fallar la acción.
+- **Datos propios:** `contexto.datos` guarda registros JSON del módulo, agrupados en colecciones:
+  `listar(coleccion)`, `leer(coleccion, id)`, `guardar(coleccion, datos, id=None)` y `borrar(coleccion, id)`. Un módulo
+  solo ve los suyos, y no son recuerdos: lo que Ashur deba saber se entrega con `contexto.recordar(...)`. Cambiar los
+  datos propios no cuenta como escribir (`docs/adr/0029-datos-propios-de-los-modulos.md`).
 - **Ajustes:** el manifiesto puede declarar `ajustes`, cada uno con `id`, `tipo` (`texto`, `numero` o `booleano`),
   `descripcion`, `por_defecto` y `secreto` (solo texto). Sergio los cambia desde la app, y el módulo los lee con
   `contexto.ajuste(id)`, que devuelve lo que puso Sergio o el `por_defecto`. Un secreto nunca se vuelve a mostrar
