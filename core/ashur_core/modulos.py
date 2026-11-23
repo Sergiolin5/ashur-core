@@ -13,6 +13,7 @@ import os
 import sqlite3
 import sys
 import traceback
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -160,15 +161,95 @@ def descubrir(carpeta: Path) -> Registro:
     return registro
 
 
+class Datos:
+    """Los datos propios de un módulo (docs/adr/0029-datos-propios-de-los-modulos.md): registros JSON agrupados en
+    colecciones. Un módulo solo ve los suyos. No son memoria de Ashur: lo que Ashur deba saber va con recordar()."""
+
+    def __init__(self, conexion: sqlite3.Connection, id_modulo: str):
+        self._con = conexion
+        self._modulo = id_modulo
+
+    def listar(self, coleccion: str) -> list[dict]:
+        """Todos los registros de la colección, del más nuevo al más viejo."""
+        filas = self._con.execute(
+            "SELECT id, datos, creado, actualizado FROM datos_modulos WHERE modulo = ? AND coleccion = ?"
+            " ORDER BY creado DESC, rowid DESC",
+            (self._modulo, coleccion),
+        ).fetchall()
+        return [_registro_de_datos(f) for f in filas]
+
+    def leer(self, coleccion: str, id_: str) -> dict | None:
+        fila = self._con.execute(
+            "SELECT id, datos, creado, actualizado FROM datos_modulos WHERE modulo = ? AND coleccion = ? AND id = ?",
+            (self._modulo, coleccion, id_),
+        ).fetchone()
+        return _registro_de_datos(fila) if fila else None
+
+    def guardar(self, coleccion: str, datos: dict, id_: str | None = None) -> dict:
+        """Crea un registro (sin id) o reemplaza el que tiene ese id. Devuelve el registro con id, creado y
+        actualizado."""
+        if not isinstance(datos, dict):
+            raise ValueError("Los datos de un registro tienen que ser un dict.")
+        ahora = datetime.now(timezone.utc).isoformat()
+        limpio = {k: v for k, v in datos.items() if k not in ("id", "creado", "actualizado")}
+        texto = json.dumps(limpio, ensure_ascii=False)
+        if id_ is None:
+            id_ = uuid.uuid4().hex
+            self._con.execute(
+                "INSERT INTO datos_modulos (modulo, coleccion, id, datos, creado, actualizado) VALUES (?, ?, ?, ?, ?, ?)",
+                (self._modulo, coleccion, id_, texto, ahora, ahora),
+            )
+        else:
+            cursor = self._con.execute(
+                "UPDATE datos_modulos SET datos = ?, actualizado = ? WHERE modulo = ? AND coleccion = ? AND id = ?",
+                (texto, ahora, self._modulo, coleccion, id_),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(f"No hay un registro {id_} en {coleccion}.")
+        self._con.commit()
+        return self.leer(coleccion, id_)
+
+    def borrar(self, coleccion: str, id_: str) -> bool:
+        cursor = self._con.execute(
+            "DELETE FROM datos_modulos WHERE modulo = ? AND coleccion = ? AND id = ?", (self._modulo, coleccion, id_)
+        )
+        self._con.commit()
+        return cursor.rowcount == 1
+
+
+def _registro_de_datos(fila: tuple) -> dict:
+    id_, datos, creado, actualizado = fila
+    return {**json.loads(datos), "id": id_, "creado": creado, "actualizado": actualizado}
+
+
+def crear_tabla_datos(conexion: sqlite3.Connection) -> None:
+    conexion.execute(
+        """CREATE TABLE datos_modulos (
+            modulo TEXT NOT NULL,
+            coleccion TEXT NOT NULL,
+            id TEXT NOT NULL,
+            datos TEXT NOT NULL,
+            creado TEXT NOT NULL,
+            actualizado TEXT NOT NULL,
+            PRIMARY KEY (modulo, coleccion, id)
+        )"""
+    )
+
+
 class Contexto:
-    """Lo único que un módulo recibe del core. No hay conexión a la base: el módulo no guarda memoria propia."""
+    """Lo único que un módulo recibe del core: recordar(), ajuste() y sus datos propios. No hay conexión a la base."""
 
     def __init__(
-        self, id_modulo: str, guardar_recuerdo: Callable[[dict], dict], leer_ajuste: Callable[[str], Any] | None = None
+        self,
+        id_modulo: str,
+        guardar_recuerdo: Callable[[dict], dict],
+        leer_ajuste: Callable[[str], Any] | None = None,
+        datos: Datos | None = None,
     ):
         self.id_modulo = id_modulo
         self._guardar = guardar_recuerdo
         self._ajuste = leer_ajuste or (lambda id_: None)
+        self.datos = datos
 
     def ajuste(self, id_: str) -> Any:
         """El valor de un ajuste del manifiesto: el que puso Sergio, o el por_defecto. None si no tiene ninguno."""

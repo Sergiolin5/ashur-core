@@ -109,3 +109,55 @@ def test_carga_un_modulo_con_dataclass_y_anotaciones_diferidas(tmp_path):
     registro = modulos.descubrir(tmp_path)
     assert registro.errores == {}
     assert modulos.ejecutar(registro.modulos["dc"], "a", {}, modulos.Contexto("dc", lambda r: r)) == {"x": 1}
+
+
+def test_un_modulo_guarda_sus_datos_propios_y_no_ve_los_de_otro(tmp_path):
+    from ashur_core import memoria
+
+    con = memoria.abrir(str(tmp_path / "ashur.db"))
+    datos = modulos.Datos(con, "uno")
+    nuevo = datos.guardar("tareas", {"titulo": "Probar", "id": "ignorado"})
+    assert nuevo["titulo"] == "Probar" and nuevo["id"] != "ignorado" and nuevo["creado"] == nuevo["actualizado"]
+    cambiado = datos.guardar("tareas", {"titulo": "Otra"}, nuevo["id"])
+    assert cambiado["titulo"] == "Otra" and cambiado["creado"] == nuevo["creado"]
+    assert [r["id"] for r in datos.listar("tareas")] == [nuevo["id"]]
+    assert datos.listar("proyectos") == []
+
+    otro = modulos.Datos(con, "dos")
+    assert otro.listar("tareas") == [] and otro.leer("tareas", nuevo["id"]) is None
+    assert otro.borrar("tareas", nuevo["id"]) is False
+    with pytest.raises(KeyError):
+        otro.guardar("tareas", {"titulo": "x"}, nuevo["id"])
+
+    assert datos.borrar("tareas", nuevo["id"]) is True and datos.leer("tareas", nuevo["id"]) is None
+
+
+def test_una_accion_usa_contexto_datos_desde_la_api(tmp_path, monkeypatch):
+    carpeta = tmp_path / "modules"
+    escribir_modulo(
+        carpeta, "notas", [{"id": "anotar", "descripcion": "Guarda una nota propia.", "escribe": False}],
+        "def anotar(contexto, texto=''):\n"
+        "    contexto.datos.guardar('notas', {'texto': texto})\n"
+        "    return {'notas': [n['texto'] for n in contexto.datos.listar('notas')]}\n",
+    )
+    monkeypatch.setenv("ASHUR_MODULOS", str(carpeta))
+    monkeypatch.setenv("ASHUR_DB", str(tmp_path / "ashur.db"))
+    monkeypatch.setenv("ASHUR_CLAVE", "c")
+    cliente = TestClient(app, headers={"X-Ashur-Clave": "c"})
+    assert cliente.post("/modulos/notas/acciones/anotar", json={"texto": "a"}).json() == {"resultado": {"notas": ["a"]}}
+    assert cliente.post("/modulos/notas/acciones/anotar", json={"texto": "b"}).json() == {"resultado": {"notas": ["b", "a"]}}
+    assert cliente.get("/recuerdos").json() == []  # los datos propios no son recuerdos
+
+
+def test_una_base_del_esquema_15_gana_la_tabla_de_datos(tmp_path):
+    from ashur_core import memoria
+    from bases import quitar_desde
+
+    ruta = str(tmp_path / "ashur.db")
+    con = memoria.abrir(ruta)
+    quitar_desde(con, 16)
+    con.execute("PRAGMA user_version = 15")
+    con.close()
+    con = memoria.abrir(ruta)
+    assert con.execute("PRAGMA user_version").fetchone()[0] == memoria.VERSION_ESQUEMA
+    assert modulos.Datos(con, "uno").listar("x") == []

@@ -773,7 +773,7 @@ def _contexto(con, id_modulo: str) -> modulos.Contexto:
         modulo = registro_de_modulos().modulos.get(id_modulo)
         return modulos.valor_de(con, modulo.manifiesto, id_ajuste) if modulo else None
 
-    return modulos.Contexto(id_modulo, guardar, ajuste)
+    return modulos.Contexto(id_modulo, guardar, ajuste, modulos.Datos(con, id_modulo))
 
 
 def _correr(con, modulo: modulos.ModuloCargado, accion: str, parametros: dict) -> dict:
