@@ -26,6 +26,9 @@ INTENTOS = 3
 LIVIANO_BYTES = 2_500_000_000
 # Mientras un trabajo es reciente, solo lo toma el nodo que mejor puede atenderlo; después, cualquiera que pueda.
 ESPERA_MEJOR_S = 10
+# Un nodo en modo light (con batería o en uso) es el último recurso: si hay un nodo full en línea que puede atender el
+# trabajo, el light espera esto antes de tomarlo («gracias por tu aporte, no te gasto», decisión de Sergio).
+ESPERA_LIGERO_S = 60
 
 Modo = Literal["full", "light", "busy", "off"]
 Necesidad = Literal["conversar", "embedding"]
@@ -155,9 +158,21 @@ def mejor_modelo(necesidad: str, modo: str, modelos: list[Modelo], requiere: str
 
 
 def le_toca(
-    necesidad: str, propio: Modelo, otros: list[tuple[str, list[Modelo]]], edad_s: float, requiere: str | None = None
+    necesidad: str,
+    propio: Modelo,
+    otros: list[tuple[str, list[Modelo]]],
+    edad_s: float,
+    requiere: str | None = None,
+    modo: str = "full",
 ) -> bool:
-    """Un trabajo reciente solo lo toma el nodo con el mejor modelo en línea; pasado ESPERA_MEJOR_S, cualquiera."""
+    """A quién le toca un trabajo (docs/adr/0016-chat-y-nodos.md, «Ashur decide»):
+    - Primero los nodos full (enchufados y libres, como la Zima o un equipo que está cargando). Un nodo light, con
+      batería o en uso, solo lo toma si ningún nodo full en línea puede, o pasado ESPERA_LIGERO_S.
+    - Entre los que pueden, un trabajo reciente solo lo toma el del mejor modelo; pasado ESPERA_MEJOR_S, cualquiera."""
+    if modo == "light":
+        hay_full = any(o_modo == "full" and mejor_modelo(necesidad, o_modo, modelos, requiere) for o_modo, modelos in otros)
+        if hay_full:
+            return edad_s >= ESPERA_LIGERO_S
     if edad_s >= ESPERA_MEJOR_S:
         return True
     mejores = [mejor_modelo(necesidad, modo, modelos, requiere) for modo, modelos in otros]
@@ -329,7 +344,7 @@ def tomar(conexion: sqlite3.Connection, id_nodo: str, ahora: datetime | None = N
         if modelo is None:
             continue
         edad = (ahora - datetime.fromisoformat(creado)).total_seconds()
-        if not le_toca(necesidad, modelo, otros, edad, requiere):
+        if not le_toca(necesidad, modelo, otros, edad, requiere, nodo.modo):
             continue
         cursor = conexion.execute(
             "UPDATE trabajos SET estado = 'tomado', nodo_id = ?, modelo = ?, vence = ?"

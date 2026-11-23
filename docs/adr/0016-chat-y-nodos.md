@@ -40,6 +40,10 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
 - **Ashur decide:**
   - Al entregar un trabajo, el core elige el modelo más grande que el nodo ofrece para esa necesidad y que su modo le deja correr.
   - Durante los primeros 10 s, un trabajo solo lo toma el nodo en línea con el mejor modelo; después, cualquiera que pueda.
+  - **Los equipos en batería van al final** (decisión de Sergio, 2026-11-23): un nodo en modo `light` (con batería o
+    en uso) no toma un trabajo mientras haya un nodo `full` en línea que pueda atenderlo, hasta que el trabajo tiene
+    60 s. Así trabajan primero la Zima y los equipos que están cargando y libres, con el modelo más grande entre ellos,
+    y a un teléfono en batería se lo usa solo si los demás no alcanzan, y con lo liviano.
   - Todo esto son funciones puras en `core/ashur_core/nodos.py`.
 - **Claves:**
   - El administrador crea cada nodo con `POST /nodos` y recibe su clave una sola vez. El core guarda solo su sha256.
@@ -103,5 +107,12 @@ Sergio aprobó el diseño el 2026-11-22. Esta es la primera de seis fases.
   cuándo, pero `nodo`, `modelo` y `error` van en `null`. Sergio los sigue viendo en las suyas.
 
 ## Pendiente
+- **Repartir un modelo entre equipos,** como PrivateLM (`lib/services/cluster_service.dart`): con el modo RPC de
+  llama.cpp, un maestro corre el modelo y los trabajadores guardan parte de sus capas; si el modelo entra en el
+  maestro, corre solo, y si no, se llena primero a los más rápidos hasta su memoria libre. Para Ashur, la Zima sería
+  el maestro y los teléfonos, Macs o Windows los trabajadores, sumados con la misma regla de arriba. Necesita llama.cpp
+  en la Zima y el motor de llama en la app, cada uno con aprobación de Sergio.
+- **Invitar a sumarse:** cuando haga falta, una notificación a los otros equipos; se suma quien acepte o quien tenga
+  la app abierta. En iOS, mantener la app viva con audio en silencio (Sergio lo acepta) solo da CPU.
 - **App:** la pantalla de chat está hecha (ADR 0023); falta el modelo dentro del iPhone y del iPad, desde la Mac.
 - **Galaxia:** los nodos todavía no son cuerpos.

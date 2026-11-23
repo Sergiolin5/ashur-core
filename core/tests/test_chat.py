@@ -65,6 +65,21 @@ def test_un_trabajo_reciente_espera_al_mejor_nodo():
     assert nodos.le_toca("conversar", M(QWEN7), [("light", [M(QWEN7)])], edad_s=0)  # light no puede con el 7B
 
 
+def test_un_nodo_en_bateria_es_el_ultimo_recurso():
+    # Un nodo light (con batería o en uso) espera mientras haya un nodo full en línea que pueda atender el trabajo,
+    # aunque su modelo sea igual o más liviano.
+    full = [("full", [M(QWEN3)])]
+    assert not nodos.le_toca("conversar", M(QWEN3), full, edad_s=nodos.ESPERA_MEJOR_S, modo="light")
+    assert not nodos.le_toca("conversar", M(QWEN3), full, edad_s=nodos.ESPERA_LIGERO_S - 1, modo="light")
+    assert nodos.le_toca("conversar", M(QWEN3), full, edad_s=nodos.ESPERA_LIGERO_S, modo="light")
+    # Si el único otro nodo full no puede con el trabajo, o no hay ninguno, el light no espera de más.
+    solo_embeddings = [("full", [M(BGE)])]
+    assert nodos.le_toca("conversar", M(QWEN3), solo_embeddings, edad_s=0, modo="light")
+    assert nodos.le_toca("conversar", M(QWEN3), [("light", [M(QWEN3)])], edad_s=0, modo="light")
+    # Un nodo full no espera a los light.
+    assert nodos.le_toca("conversar", M(QWEN3), [("light", [M(QWEN3)])], edad_s=0, modo="full")
+
+
 # ── Chat de punta a punta con un nodo falso ──
 
 
@@ -190,6 +205,29 @@ def test_el_trabajo_reciente_espera_al_nodo_full(tmp_path):
     nodos.encolar(con, "conversar", {"messages": []})
     assert nodos.tomar(con, liviano, t0) is None  # Ashur prefiere el 7B
     assert nodos.tomar(con, potente, t0).modelo == "qwen2.5:7b"
+    con.close()
+
+
+def test_el_nodo_en_bateria_espera_a_la_zima_y_toma_si_nadie_mas_puede(tmp_path):
+    from datetime import timedelta
+
+    con = memoria.abrir(str(tmp_path / "ashur.db"))
+    t0 = datetime.now(timezone.utc)
+    zima = nodos.crear(con, nodos.NodoNuevo(nombre="zima")).nodo.id
+    telefono = nodos.crear(con, nodos.NodoNuevo(nombre="telefono")).nodo.id
+    nodos.latir(con, zima, nodos.Latido(modo="full", modelos=[M(QWEN3)]), t0)
+    nodos.latir(con, telefono, nodos.Latido(modo="light", modelos=[M(QWEN3)]), t0)
+    primero = nodos.encolar(con, "conversar", {"messages": []})
+    tarde = t0 + timedelta(seconds=nodos.ESPERA_MEJOR_S + 5)
+    nodos.latir(con, zima, nodos.Latido(modo="full", modelos=[M(QWEN3)]), tarde)
+    nodos.latir(con, telefono, nodos.Latido(modo="light", modelos=[M(QWEN3)]), tarde)
+    assert nodos.tomar(con, telefono, tarde) is None  # pasados los 10 s, el de batería sigue esperando
+    assert nodos.tomar(con, zima, tarde).id == primero
+
+    # Con la Zima ocupada (busy), el teléfono en batería toma el trabajo sin esperar.
+    segundo = nodos.encolar(con, "conversar", {"messages": []})
+    nodos.latir(con, zima, nodos.Latido(modo="busy", modelos=[M(QWEN3)]), tarde)
+    assert nodos.tomar(con, telefono, tarde).id == segundo
     con.close()
 
 
