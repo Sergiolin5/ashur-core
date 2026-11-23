@@ -32,3 +32,16 @@ ASHUR_CORE=http://servidor:8720 ASHUR_CLAVE=... python3 modules/workbench/ejecut
 - `ASHUR_EQUIPO` cambia el nombre con que aparece el equipo. `ASHUR_EJECUTOR_FAMILIAS=claude_code,codex,gemini_cli`
   activa las otras familias; Codex y Gemini CLI quedaron escritos pero **sin probar**, porque no estaban instalados.
 - La clave es la normal del core, no la de administrador.
+
+### Que arranque solo en la Mac
+
+1. Guarda la clave en el Llavero, para no dejarla en texto plano (la pide sin mostrarla):
+
+   ```bash
+   security add-generic-password -U -s ashur-workbench-ejecutor -a ashur -w
+   ```
+
+2. Copia `com.ashur.workbench.ejecutor.plist` a `~/Library/LaunchAgents/` y cambia en la copia `RUTA_DEL_REPO`,
+   `DIRECCION_DEL_CORE` y `RUTA_DE_LOS_PROGRAMAS` (la carpeta donde está `claude`; la da `dirname "$(which claude)"`).
+3. Actívalo con `launchctl load ~/Library/LaunchAgents/com.ashur.workbench.ejecutor.plist`. Para apagarlo,
+   `launchctl unload` con la misma ruta. Lo que imprime queda en `/tmp/ashur-workbench-ejecutor.log`.

@@ -5,7 +5,8 @@ el programa oficial de cada familia, ya con su sesión iniciada. Ashur nunca ve 
 
 Variables:
 - ASHUR_CORE: dirección del core. Obligatoria.
-- ASHUR_CLAVE: la clave normal del core (no la de administrador). Obligatoria.
+- ASHUR_CLAVE: la clave normal del core (no la de administrador). Si falta, en macOS se lee del Llavero, de la
+  entrada `ashur-workbench-ejecutor`, para no dejarla en texto plano (ver README.md).
 - ASHUR_EQUIPO: nombre con el que aparece este equipo en Workbench. Por defecto, el nombre de la máquina.
 - ASHUR_EJECUTOR_FAMILIAS: familias que atiende, separadas por comas. Por defecto, solo claude_code.
 
@@ -109,10 +110,26 @@ def atender_una(core: str, clave: str, equipo: str, familias: list[str], resolve
     return True
 
 
+SERVICIO_LLAVERO = "ashur-workbench-ejecutor"
+
+
+def clave_del_llavero() -> str | None:
+    """La clave guardada en el Llavero de macOS, o None si no hay Llavero o no está la entrada."""
+    try:
+        proceso = subprocess.run(
+            ["security", "find-generic-password", "-s", SERVICIO_LLAVERO, "-w"], capture_output=True, text=True,
+            timeout=30,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    return proceso.stdout.strip() or None if proceso.returncode == 0 else None
+
+
 def main() -> int:
-    core, clave = os.environ.get("ASHUR_CORE"), os.environ.get("ASHUR_CLAVE")
+    core = os.environ.get("ASHUR_CORE")
+    clave = os.environ.get("ASHUR_CLAVE") or clave_del_llavero()
     if not core or not clave:
-        print("Faltan ASHUR_CORE y ASHUR_CLAVE.", file=sys.stderr)
+        print(f"Falta ASHUR_CORE, o la clave: ASHUR_CLAVE o la entrada {SERVICIO_LLAVERO} del Llavero.", file=sys.stderr)
         return 2
     equipo = os.environ.get("ASHUR_EQUIPO") or socket.gethostname().split(".")[0]
     pedidas = [f.strip() for f in os.environ.get("ASHUR_EJECUTOR_FAMILIAS", "claude_code").split(",") if f.strip()]
