@@ -32,6 +32,9 @@ class Accion(BaseModel):
     id: str = Field(pattern=PATRON_ID)
     descripcion: str = Field(min_length=1)
     escribe: bool
+    # Solo corre con la clave de administrador, y entonces corre ya, sin pedido. No se ofrece en el chat
+    # (docs/adr/0030-acciones-solo-de-administrador.md). Opcional: los manifiestos de antes siguen valiendo.
+    admin: bool = False
 
 
 TipoAjuste = Literal["texto", "numero", "booleano"]

@@ -66,6 +66,10 @@
         "escribe": {
           "description": "true si cambia algo fuera de Ashur: entonces espera la aprobación de un administrador.",
           "type": "boolean"
+        },
+        "admin": {
+          "description": "Opcional. true si solo corre con la clave de administrador: entonces corre ya, sin pedido, y no se ofrece en el chat. Ver docs/adr/0030-acciones-solo-de-administrador.md.",
+          "type": "boolean"
         }
       }
     },
