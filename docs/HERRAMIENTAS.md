@@ -3,9 +3,14 @@
 ## REA
 - **Repositorio:** github.com/morluto/rea
 - **Para qué se usa:** herramienta inicial de Claude Code y de Ashur, conectada vía MCP.
-- **Qué requiere:** un cliente MCP (Claude Code ya lo es; Ashur lo será desde el core). Los requisitos de
-  instalación, el lenguaje y las herramientas concretas que expone están **por verificar**: al escribir este
-  documento no había acceso a la red para leer el repositorio, y no se instaló nada.
+- **Qué es:** «Reverse Engineer Anything», un servidor MCP y una línea de comandos (`rea`) de ingeniería inversa para
+  binarios, apps de Electron y JavaScript, y sitios web. El paquete de npm es `rea-agents`.
+- **Instalación:** `npx rea-agents@latest setup` (lo corrió Sergio el 2026-11-22; versión 6.10.1). Registra el servidor
+  MCP `rea` en Claude Code e instala la skill `reverse-engineer-anything`. Las herramientas MCP aparecen recién en una
+  sesión nueva; la línea de comandos sirve de inmediato.
+- **Uso verificado:** `rea analyze-javascript-application <carpeta> --json` sobre el JavaScript público de Nexo
+  (`modules/workbench/README.md`). Leyó los 48 archivos, pero no reconoció las rutas de TanStack: las pantallas se
+  sacaron leyendo los archivos a mano.
 
 ## Advisor de Claude Code
 - **Para qué se usa:** un revisor más fuerte que ve toda la conversación de la sesión. En este repo se consulta antes

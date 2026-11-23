@@ -18,13 +18,22 @@ void abrirTarea(BuildContext context, DatosWorkbench datos, String id) {
   ));
 }
 
-class PaginaTareas extends StatelessWidget {
+class PaginaTareas extends StatefulWidget {
   const PaginaTareas({super.key, required this.datos});
 
   final DatosWorkbench datos;
 
   @override
+  State<PaginaTareas> createState() => _PaginaTareasState();
+}
+
+class _PaginaTareasState extends State<PaginaTareas> {
+  /// Estado de la única columna que se muestra, o null para verlas todas.
+  String? _columna;
+
+  @override
   Widget build(BuildContext context) {
+    final datos = widget.datos;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -48,20 +57,39 @@ class PaginaTareas extends StatelessWidget {
             ),
           ],
         ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
+              Ficha('Todas', elegida: _columna == null, alTocar: () => setState(() => _columna = null)),
               for (final estado in estadosTarea.entries)
-                Container(
-                  width: 240,
-                  margin: const EdgeInsets.only(right: 12),
-                  child: _Columna(datos: datos, estado: estado.key, nombre: estado.value),
+                Ficha(
+                  '${estado.value} ${datos.tareas.where((t) => t['estado'] == estado.key).length}',
+                  elegida: _columna == estado.key,
+                  alTocar: () => setState(() => _columna = estado.key),
                 ),
             ],
           ),
         ),
+        if (_columna != null)
+          _Columna(datos: datos, estado: _columna!, nombre: estadosTarea[_columna]!)
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final estado in estadosTarea.entries)
+                  Container(
+                    width: 240,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: _Columna(datos: datos, estado: estado.key, nombre: estado.value),
+                  ),
+              ],
+            ),
+          ),
       ],
     );
   }

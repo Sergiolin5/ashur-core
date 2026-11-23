@@ -123,6 +123,18 @@ void main() {
     expect(find.text('1 tareas repartidas'), findsOneWidget);
     expect(almacen.datos[tipoTareas]!.single['estado'], 'asignada');
 
+    await _tocar(tester, 'Listas 0'); // una sola columna
+    expect(find.text('Arreglar el zoom'), findsNothing);
+    expect(find.text('Vacío'), findsOneWidget);
+    await _tocar(tester, 'Asignadas 1');
+    expect(find.text('Arreglar el zoom'), findsOneWidget);
+
+    almacen.datos[tipoTareas]!.single['titulo'] = 'Arreglar el zoom ya'; // cambió en otro equipo
+    await _tocar(tester, 'Actualizar');
+    expect(find.text('Arreglar el zoom ya'), findsOneWidget);
+    almacen.datos[tipoTareas]!.single['titulo'] = 'Arreglar el zoom';
+    await _tocar(tester, 'Actualizar');
+
     await _tocar(tester, 'Arreglar el zoom');
     expect(find.text('Pendiente de ejecución'), findsOneWidget);
     await _tocar(tester, 'Ejecutar');
