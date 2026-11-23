@@ -81,7 +81,11 @@ class Tarjeta extends StatelessWidget {
             : RadialGradient(
                 center: Alignment.topRight,
                 radius: 1.4,
-                colors: [brillo!.withValues(alpha: 0.32), brillo!.withValues(alpha: 0.1), wbPanel],
+                colors: [
+                  Color.alphaBlend(brillo!.withValues(alpha: 0.32), wbPanel),
+                  Color.alphaBlend(brillo!.withValues(alpha: 0.1), wbPanel),
+                  wbPanel,
+                ],
                 stops: const [0, 0.35, 0.7],
               ),
         border: Border.all(color: wbBorde),
