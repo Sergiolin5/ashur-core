@@ -62,6 +62,28 @@ class PaginaProveedores extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 12),
+        Seccion(
+          etiqueta: 'Sin claves',
+          titulo: 'Equipos',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Claude Code, Codex y Gemini CLI no usan clave: las tareas las resuelve uno de tus equipos con el '
+                'programa oficial y tu sesión. Esperan hasta que el equipo esté en la red con el ejecutor.',
+                style: wbCuerpo,
+              ),
+              const SizedBox(height: 12),
+              if (datos.equipos.isEmpty) const Text('Ningún equipo ha pedido trabajo todavía.', style: wbCuerpo),
+              for (final e in datos.equipos)
+                Dato(
+                  '${e['nombre']} · ${[for (final f in (e['familias'] as List?) ?? const []) familias[f] ?? f].join(', ')}',
+                  'visto ${fechaCorta(e['visto'])}',
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -238,7 +260,13 @@ class _FormularioProveedorState extends State<_FormularioProveedor> {
       children: [
         Campo('Nombre', _nombre, pista: 'Claude'),
         Selector('Familia', opciones: familias, valor: _familia, alElegir: (v) => setState(() => _familia = v)),
-        Campo('Modelo', _modelo, pista: 'Identificador del modelo que ejecuta las tareas'),
+        Campo(
+          'Modelo',
+          _modelo,
+          pista: familiasDeEquipo.contains(_familia)
+              ? 'Opcional: el modelo que usa el programa del equipo'
+              : 'Identificador del modelo que ejecuta las tareas',
+        ),
         Selector(
           'Plan',
           opciones: const {'libre': 'Libre', 'pro': 'Pro'},

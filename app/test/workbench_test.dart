@@ -1,4 +1,5 @@
 import 'package:ashur/workbench/almacen.dart';
+import 'package:ashur/workbench/pagina_tareas.dart';
 import 'package:ashur/workbench/pantalla_workbench.dart';
 // ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
@@ -12,6 +13,7 @@ class _AlmacenFalso implements AlmacenWorkbench {
     tipoTareas: [],
     tipoEntregas: [],
     tipoServidores: [],
+    tipoEquipos: [],
   };
   int _cuenta = 0;
 
@@ -44,7 +46,16 @@ class _AlmacenFalso implements AlmacenWorkbench {
   }
 
   @override
-  Future<Registro> ejecutarTarea(String id) => editar(tipoTareas, id, {
+  Future<Registro> ejecutarTarea(String id) {
+    final tarea = datos[tipoTareas]!.firstWhere((t) => t['id'] == id);
+    final proveedor = datos[tipoProveedores]!.firstWhere((p) => p['id'] == tarea['proveedor_id']);
+    if (familiasDeEquipo.contains(proveedor['familia'])) {
+      return editar(tipoTareas, id, {'estado': 'ejecutando', 'espera_equipo': true, 'equipo': null});
+    }
+    return _resolver(id);
+  }
+
+  Future<Registro> _resolver(String id) => editar(tipoTareas, id, {
         'estado': 'revision',
         'resultado': 'Respuesta del modelo',
         'modelo_usado': 'modelo-x',
@@ -147,6 +158,35 @@ void main() {
     await _tocar(tester, 'Sí, eliminar');
     expect(almacen.datos[tipoTareas], isEmpty);
     expect(find.text('Tablero de tareas'), findsOneWidget);
+  });
+
+  testWidgets('una tarea de Claude Code espera a un equipo y se puede cancelar', (tester) async {
+    final almacen = _AlmacenFalso();
+    almacen.datos[tipoProveedores]!
+        .add({'id': 'p1', 'nombre': 'Mi Claude Code', 'familia': 'claude_code', 'estado': 'activo'});
+    almacen.datos[tipoTareas]!.add({'id': 't1', 'titulo': 'Con la Mac', 'estado': 'asignada', 'proveedor_id': 'p1'});
+    almacen.datos[tipoEquipos]!
+        .add({'id': 'e1', 'nombre': 'Mac', 'familias': ['claude_code'], 'visto': '2026-11-22T20:00:00Z'});
+    await _abrir(tester, almacen);
+
+    await _tocar(tester, 'Proveedores');
+    expect(find.textContaining('Mac · Claude Code'), findsOneWidget);
+
+    await _tocar(tester, 'Tareas');
+    await _tocar(tester, 'Con la Mac');
+    await _tocar(tester, 'Ejecutar');
+    expect(find.text('En espera de un equipo'), findsWidgets);
+    expect(find.textContaining('Esperando a que un equipo la tome'), findsOneWidget);
+    expect(find.text('Ejecutar'), findsNothing);
+
+    almacen.datos[tipoTareas]!.single.addAll({'equipo': 'Mac', 'tomada': '2026-11-22T20:01:00Z'});
+    tester.widget<PantallaTarea>(find.byType(PantallaTarea)).datos.cargar(); // el equipo la tomó
+    await tester.pumpAndSettle();
+    expect(find.textContaining('La tomó Mac'), findsOneWidget);
+
+    await _tocar(tester, 'Cancelar espera');
+    expect(almacen.datos[tipoTareas]!.single['espera_equipo'], false);
+    expect(find.text('Ejecutar'), findsOneWidget);
   });
 
   testWidgets('un error del almacén se ve como aviso', (tester) async {

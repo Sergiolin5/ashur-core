@@ -10,6 +10,7 @@ const tipoProveedores = 'proveedores';
 const tipoTareas = 'tareas';
 const tipoEntregas = 'entregas';
 const tipoServidores = 'servidores';
+const tipoEquipos = 'equipos';
 
 const tiposTarea = {
   'funcion': 'Función',
@@ -41,7 +42,13 @@ const familias = {
   'gemini': 'Gemini',
   'copilot': 'Copilot',
   'propio': 'Propio',
+  'claude_code': 'Claude Code',
+  'codex': 'Codex',
+  'gemini_cli': 'Gemini CLI',
 };
+
+/// Familias que resuelve un equipo de Sergio con el programa oficial y su sesión, no una API con clave.
+const familiasDeEquipo = {'claude_code', 'codex', 'gemini_cli'};
 
 const coloresFamilia = {
   'claude': 0xFFD9A06A,
@@ -49,6 +56,9 @@ const coloresFamilia = {
   'gemini': 0xFF8FA9D9,
   'copilot': 0xFFC7A6D9,
   'propio': 0xFF9C9A8E,
+  'claude_code': 0xFFE3B98F,
+  'codex': 0xFF7FB8AE,
+  'gemini_cli': 0xFF8FA9D9,
 };
 
 const plataformas = ['ios', 'macos', 'web', 'android', 'windows'];
@@ -106,6 +116,9 @@ class DatosWorkbench extends ChangeNotifier {
   List<Registro> tareas = [];
   List<Registro> entregas = [];
   List<Registro> servidores = [];
+
+  /// Los equipos que corren el ejecutor, con la última vez que pidieron trabajo.
+  List<Registro> equipos = [];
   bool cargando = true;
   String? aviso;
   bool avisoEsError = false;
@@ -131,12 +144,14 @@ class DatosWorkbench extends ChangeNotifier {
         almacen.listar(tipoTareas),
         almacen.listar(tipoEntregas),
         almacen.listar(tipoServidores),
+        almacen.listar(tipoEquipos),
       ]);
       proyectos = listas[0];
       proveedores = listas[1];
       tareas = listas[2];
       entregas = listas[3];
       servidores = listas[4];
+      equipos = listas[5];
     } catch (e) {
       aviso = '$e';
       avisoEsError = true;
